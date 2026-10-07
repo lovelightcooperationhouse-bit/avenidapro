@@ -85,7 +85,7 @@ export default function HomePage() {
           <div className="flex items-center gap-2.5">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
             <span className="font-extrabold uppercase tracking-wide text-white text-[11px] sm:text-xs">
-              Portail Officiel d&apos;Accès &bull; Hôtel École Avenida Lomé
+              Portail Officiel d&apos;Accès &bull; Hôtel École Avenida
             </span>
           </div>
 
@@ -117,7 +117,7 @@ export default function HomePage() {
             </div>
             <div>
               <h1 className="text-2xl sm:text-3xl font-black text-[#0C356A] uppercase tracking-tight font-serif">
-                HÔTEL ÉCOLE <span className="text-[#DC2626]">AVENIDA</span> LOMÉ
+                HÔTEL ÉCOLE <span className="text-[#DC2626]">AVENIDA</span>
               </h1>
               <p className="text-xs text-amber-600 font-bold uppercase tracking-wider mt-0.5">
                 « Travail • Discipline • Excellence »
@@ -316,7 +316,7 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-[#DC2626]"></span>
-            <span className="font-bold text-[#0C356A]">HÔTEL ÉCOLE AVENIDA LOMÉ</span>
+            <span className="font-bold text-[#0C356A]">HÔTEL ÉCOLE AVENIDA</span>
             <span>&bull; 30, Rue d&apos;Almeida Leopold, Dékon, Lomé - Togo</span>
           </div>
           <div className="text-[11px] text-slate-500 font-medium">
