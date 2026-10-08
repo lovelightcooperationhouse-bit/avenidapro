@@ -168,11 +168,67 @@ export interface GradeRecord {
   appreciation: string;
 }
 
+export interface SubjectGrade {
+  id: string;
+  subject_code: string;
+  subject_name: string;
+  category: "Pôle Pratique & Professionnel" | "Pôle Gestion & Technologie" | "Pôle Langues & Général";
+  coefficient: number;
+  score: number; // Note sur 20
+  teacher_name: string;
+  teacher_comment: string;
+  class_min?: number;
+  class_avg?: number;
+  class_max?: number;
+  subject_rank?: number;
+}
+
+export interface StudentReportCard {
+  id: string;
+  bulletin_number: string; // ex: "BUL-2025-BTS1-01"
+  student_id: string;
+  student_name: string;
+  student_matricule: string;
+  student_number?: string;
+  gender: "M" | "F";
+  birth_date: string;
+  birth_place: string;
+  nationality: string;
+  photo_url?: string;
+  class_name: string;
+  program_code: DiplomeCode;
+  academic_year: string;
+  period: "Semestre 1" | "Semestre 2" | "Trimestre 1" | "Trimestre 2" | "Trimestre 3" | "Session Annuelle";
+  total_students: number;
+  subjects: SubjectGrade[];
+  total_coefficients: number;
+  total_points: number; // Somme des (score * coefficient)
+  general_average: number; // total_points / total_coefficients (sur 20)
+  class_general_average: number;
+  class_highest_average: number;
+  class_lowest_average: number;
+  rank: number; // 1, 2, 3...
+  rank_display: string; // "1er", "2ème"...
+  appreciation_mention: "Très Bien" | "Bien" | "Assez Bien" | "Passable" | "Insuffisant" | "Médiocre";
+  council_decision: string; // Félicitations, Tableau d'honneur, Admis, etc.
+  absences_unjustified: number;
+  absences_justified: number;
+  lates_count: number;
+  conduct_appreciation: string;
+  principal_teacher_name: string;
+  principal_teacher_comment: string;
+  director_comment: string;
+  issue_date: string;
+}
+
 export interface HotelReservation {
   id: string;
   booking_ref: string; // ex: "RES-2026-089"
   customer_name: string;
   customer_phone: string;
+  customer_email?: string;
+  customer_id_card?: string;
+  customer_nationality?: string;
   room_number: string;
   room_type: string;
   check_in: string;
@@ -182,7 +238,10 @@ export interface HotelReservation {
   total_price: number;
   deposit_paid: number;
   payment_status: "réglé" | "acompte" | "en_attente";
-  status: "confirmée" | "en_cours" | "terminée" | "annulée";
+  status: "réservée" | "payée" | "confirmée" | "en_cours" | "terminée" | "annulée";
+  payment_method?: "Espèces" | "Stripe" | "Mobile Money" | "Virement" | "Carte Bancaire";
+  cashier_name?: string;
+  notes?: string;
 }
 
 export interface HotelCustomer {

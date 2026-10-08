@@ -212,3 +212,31 @@ textarea.form-input-avenida {
   resize: vertical;
 }
 
+/* =========================================================================
+   Print Optimizations for Official School Report Cards & Hotel Receipts
+   ========================================================================= */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 8mm;
+  }
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  aside, nav, header, .print\\:hidden {
+    display: none !important;
+  }
+  #avenida-official-report-card,
+  #avenida-official-hotel-receipt {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+}
+
+

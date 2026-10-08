@@ -1,6 +1,6 @@
 "use client";
 
-import { use } from "react";
+import { use, useState, useEffect } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -14,6 +14,8 @@ import {
   Mail,
   MapPin,
   CheckCircle2,
+  Award,
+  GraduationCap,
 } from "lucide-react";
 import {
   MOCK_STUDENTS,
@@ -22,6 +24,13 @@ import {
   MOCK_LATES,
 } from "@/lib/mock-data";
 import { formatFCFA } from "@/lib/utils";
+import { StudentReportCard } from "@/types";
+import { ReportCardModal } from "@/components/shared/ReportCardModal";
+import {
+  getReportCardsFromStorage,
+  createBlankReportCardForStudent,
+  upsertReportCard,
+} from "@/lib/report-cards-data";
 
 export default function StudentDetailPage({
   params,
@@ -31,6 +40,22 @@ export default function StudentDetailPage({
   const unwrappedParams = use(params);
   const student =
     MOCK_STUDENTS.find((s) => s.id === unwrappedParams.id) || MOCK_STUDENTS[0];
+
+  const [reportCard, setReportCard] = useState<StudentReportCard | null>(null);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+
+  useEffect(() => {
+    const list = getReportCardsFromStorage();
+    const existing = list.find((c) => c.student_matricule === student.registration_number);
+    if (existing) {
+      setReportCard(existing);
+    } else {
+      const created = createBlankReportCardForStudent(student.id);
+      const ranked = upsertReportCard(created);
+      const match = ranked.find((c) => c.student_matricule === student.registration_number) || created;
+      setReportCard(match);
+    }
+  }, [student]);
 
   const studentReceipts = MOCK_RECEIPTS.filter(
     (r) => r.student_matricule === student.registration_number
@@ -45,22 +70,34 @@ export default function StudentDetailPage({
   return (
     <div className="space-y-6">
       {/* Navigation Breadcrumb */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <Link
           href="/dashboard/students"
           className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0C356A] hover:text-[#164E87] bg-white px-3 py-1.5 rounded-lg border border-slate-200 transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Retour à l'Espace École</span>
+          <span>Retour à l&apos;Espace École</span>
         </Link>
 
-        <button
-          onClick={() => window.print()}
-          className="px-3.5 py-1.5 bg-[#0C356A] hover:bg-[#164E87] text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors shadow-xs"
-        >
-          <Printer className="w-3.5 h-3.5 text-blue-200" />
-          <span>Imprimer Fiche Signalétique 360°</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {reportCard && (
+            <button
+              onClick={() => setIsReportModalOpen(true)}
+              className="px-3.5 py-1.5 bg-[#0C356A] hover:bg-[#164E87] text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors shadow-xs active:scale-95"
+            >
+              <Award className="w-3.5 h-3.5 text-amber-300" />
+              <span>Voir & Télécharger Bulletin Officiel</span>
+            </button>
+          )}
+
+          <button
+            onClick={() => window.print()}
+            className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors"
+          >
+            <Printer className="w-3.5 h-3.5 text-slate-500" />
+            <span>Imprimer Fiche 360°</span>
+          </button>
+        </div>
       </div>
 
       {/* Hero Profile Card */}
@@ -114,6 +151,65 @@ export default function StudentDetailPage({
           </div>
         </div>
       </div>
+
+      {/* 2. BANNIÈRE BULLETIN SCOLAIRE & CLASSEMENT */}
+      {reportCard && (
+        <div className="bg-gradient-to-r from-blue-900 via-[#0C356A] to-[#164E87] text-white p-6 rounded-3xl shadow-md border-2 border-blue-300 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-amber-300 shadow-inner">
+              <Award className="w-7 h-7" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-wider bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full font-mono">
+                  {reportCard.period} &bull; {reportCard.academic_year}
+                </span>
+                <span className="text-xs text-blue-200">
+                  Bulletin Officiel N° {reportCard.bulletin_number}
+                </span>
+              </div>
+              <h2 className="text-lg font-black mt-1 font-serif">
+                Relevé de Notes & Classement Académique
+              </h2>
+              <p className="text-xs text-blue-200/90">
+                Mention : <strong className="text-white">{reportCard.appreciation_mention}</strong> &bull; {reportCard.council_decision}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
+            <div className="text-right">
+              <span className="text-[10px] uppercase font-bold text-blue-200 block">
+                Moyenne Générale
+              </span>
+              <div className="text-2xl font-black font-serif text-white">
+                {reportCard.general_average.toFixed(2)}{" "}
+                <span className="text-xs font-normal text-blue-200">/ 20</span>
+              </div>
+            </div>
+
+            <div className="text-right border-l border-white/20 pl-4">
+              <span className="text-[10px] uppercase font-bold text-blue-200 block">
+                Rang dans la classe
+              </span>
+              <div className="inline-block px-3 py-1 bg-amber-400 text-slate-950 font-black rounded-xl text-base shadow-sm">
+                {reportCard.rank_display}{" "}
+                <span className="text-xs font-semibold text-slate-800">
+                  / {reportCard.total_students}
+                </span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setIsReportModalOpen(true)}
+              className="px-4 py-2.5 bg-white text-[#0C356A] hover:bg-blue-50 font-black text-xs rounded-xl shadow-md transition-all shrink-0 active:scale-95 flex items-center gap-1.5"
+            >
+              <Printer className="w-4 h-4 text-[#0C356A]" />
+              <span>Consulter & Imprimer</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 360° Tabs & Detail Sections */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -269,6 +365,15 @@ export default function StudentDetailPage({
           </div>
         </div>
       </div>
+
+      {/* MODAL BULLETIN DE NOTES OFFICIEL */}
+      {reportCard && isReportModalOpen && (
+        <ReportCardModal
+          reportCard={reportCard}
+          isOpen={isReportModalOpen}
+          onClose={() => setIsReportModalOpen(false)}
+        />
+      )}
     </div>
   );
 }

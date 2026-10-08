@@ -11,15 +11,44 @@ import {
   Wrench,
   AlertTriangle,
   Plus,
+  Printer,
 } from "lucide-react";
-import { MOCK_ROOMS } from "@/lib/mock-data";
-import { HotelRoom, RoomStatus } from "@/types";
+import { MOCK_ROOMS, MOCK_RESERVATIONS } from "@/lib/mock-data";
+import { HotelRoom, RoomStatus, HotelReservation } from "@/types";
 import { formatFCFA } from "@/lib/utils";
+import { HotelReceiptModal } from "@/components/shared/HotelReceiptModal";
 
 export default function HotelRoomsPage() {
   const [rooms, setRooms] = useState<HotelRoom[]>(MOCK_ROOMS);
   const [selectedFloor, setSelectedFloor] = useState<number | "ALL">("ALL");
   const [selectedStatus, setSelectedStatus] = useState<RoomStatus | "ALL">("ALL");
+  const [selectedReceiptReservation, setSelectedReceiptReservation] = useState<HotelReservation | null>(null);
+
+  const handleOpenRoomReceipt = (room: HotelRoom) => {
+    const match = MOCK_RESERVATIONS.find((r) => r.room_number === room.room_number);
+    if (match) {
+      setSelectedReceiptReservation(match);
+    } else {
+      setSelectedReceiptReservation({
+        id: `res-room-${room.room_number}`,
+        booking_ref: `RES-HOT-${room.room_number}-2026`,
+        customer_name: room.current_guest || "Client Résident",
+        customer_phone: "+228 90 22 11 00",
+        room_number: room.room_number,
+        room_type: room.room_type,
+        check_in: new Date().toISOString().split("T")[0],
+        check_out: new Date(Date.now() + 86400000 * 2).toISOString().split("T")[0],
+        nights_count: 2,
+        nightly_rate: room.price_per_night,
+        total_price: room.price_per_night * 2,
+        deposit_paid: room.price_per_night * 2,
+        payment_status: "réglé",
+        status: "payée",
+        payment_method: "Espèces",
+        cashier_name: "Yao Richard MENSAH (Chef de Réception)",
+      });
+    }
+  };
 
   const filteredRooms = rooms.filter((r) => {
     const matchesFloor = selectedFloor === "ALL" || r.floor === selectedFloor;
@@ -189,9 +218,19 @@ export default function HotelRoomsPage() {
                 </div>
 
                 {room.current_guest && (
-                  <div className="mt-3 p-2.5 bg-white/90 rounded-xl border border-slate-200 text-xs">
-                    <span className="text-slate-400 block text-[10px] uppercase font-bold">Client en cours</span>
-                    <span className="font-bold text-slate-900">{room.current_guest}</span>
+                  <div className="mt-3 p-2.5 bg-white/90 rounded-xl border border-slate-200 text-xs flex items-center justify-between gap-2">
+                    <div>
+                      <span className="text-slate-400 block text-[10px] uppercase font-bold">Client en cours</span>
+                      <span className="font-bold text-slate-900">{room.current_guest}</span>
+                    </div>
+                    <button
+                      onClick={() => handleOpenRoomReceipt(room)}
+                      className="px-2 py-1 bg-red-50 hover:bg-[#DC2626] hover:text-white text-[#DC2626] rounded-lg text-[10px] font-bold border border-red-200 transition-colors flex items-center gap-1 shrink-0"
+                      title="Générer et imprimer le reçu officiel de séjour"
+                    >
+                      <Printer className="w-3 h-3" />
+                      <span>Reçu</span>
+                    </button>
                   </div>
                 )}
               </div>
@@ -235,6 +274,15 @@ export default function HotelRoomsPage() {
           );
         })}
       </div>
+
+      {/* MODAL REÇU DE SÉJOUR HÔTEL */}
+      {selectedReceiptReservation && (
+        <HotelReceiptModal
+          reservation={selectedReceiptReservation}
+          isOpen={!!selectedReceiptReservation}
+          onClose={() => setSelectedReceiptReservation(null)}
+        />
+      )}
     </div>
   );
 }

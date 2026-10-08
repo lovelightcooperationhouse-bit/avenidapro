@@ -102,9 +102,11 @@ export function Sidebar() {
           allowedRoles: ["directeur_general", "directeur_pedagogique"],
         },
         {
-          label: "Notes & Examens",
+          label: "Bulletins & Notes",
           href: "/dashboard/grades",
           icon: BookOpen,
+          badge: "Rangs & PDF",
+          badgeColor: "bg-blue-100 text-blue-800 border-blue-200",
           allowedRoles: ["directeur_general", "directeur_pedagogique"],
         },
         {
@@ -131,9 +133,11 @@ export function Sidebar() {
           allowedRoles: ["directeur_general", "responsable_hotel"],
         },
         {
-          label: "Réservations de Séjours",
+          label: "Réservations & Reçus",
           href: "/dashboard/reservations",
           icon: CalendarDays,
+          badge: "Réservé/Payé",
+          badgeColor: "bg-red-100 text-red-800 border-red-200",
           allowedRoles: ["directeur_general", "responsable_hotel"],
         },
         {
