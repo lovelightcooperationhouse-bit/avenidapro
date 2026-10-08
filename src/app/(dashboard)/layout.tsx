@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
 import { SchoolYearProvider } from "@/context/SchoolYearContext";
+import { MobileNavProvider } from "@/context/MobileNavContext";
 import { ShieldAlert, ArrowLeft, Lock } from "lucide-react";
 import { AvenidaLogo } from "@/components/shared/AvenidaLogo";
 import Link from "next/link";
@@ -81,46 +82,48 @@ export default function DashboardLayout({
 
   return (
     <SchoolYearProvider>
-      <div className="flex min-h-screen bg-slate-50">
-        <Sidebar />
-        <div className="flex-1 flex flex-col min-w-0">
-          <Topbar />
-          <main className="flex-1 p-6 md:p-8 max-w-7xl w-full mx-auto">
-            {!isAllowed ? (
-              <div className="bg-white rounded-2xl border border-red-200 p-8 shadow-sm text-center max-w-2xl mx-auto my-12">
-                <div className="w-16 h-16 rounded-full bg-red-100 text-[#DC2626] flex items-center justify-center mx-auto mb-4 border border-red-200">
-                  <ShieldAlert className="w-8 h-8" />
+      <MobileNavProvider>
+        <div className="flex min-h-screen bg-slate-50 overflow-x-hidden">
+          <Sidebar />
+          <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
+            <Topbar />
+            <main className="flex-1 p-3 sm:p-5 md:p-8 max-w-7xl w-full mx-auto overflow-x-hidden">
+              {!isAllowed ? (
+                <div className="bg-white rounded-2xl border border-red-200 p-6 sm:p-8 shadow-sm text-center max-w-2xl mx-auto my-8 sm:my-12">
+                  <div className="w-16 h-16 rounded-full bg-red-100 text-[#DC2626] flex items-center justify-center mx-auto mb-4 border border-red-200">
+                    <ShieldAlert className="w-8 h-8" />
+                  </div>
+                  <span className="px-3 py-1 bg-red-50 border border-red-200 rounded-full text-xs font-bold text-[#DC2626] uppercase tracking-wider">
+                    Accès Restreint par Prérogatives
+                  </span>
+                  <h3 className="text-xl font-black text-slate-900 mt-3">
+                    Rubrique non attribuée à votre profil
+                  </h3>
+                  <p className="text-sm text-slate-600 mt-2 leading-relaxed">
+                    Conformément à la politique de séparation stricte des rôles de l'Hôtel École Avenida, votre compte{" "}
+                    <strong className="text-slate-900 font-bold">{user.fullName}</strong> ({user.roleLabel}) ne dispose pas des droits d'accès à cette section.
+                  </p>
+                  <div className="mt-4 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-500 text-left">
+                    <p className="font-bold text-slate-700 mb-1">Vos prérogatives autorisées :</p>
+                    <p className="italic text-slate-600">{user.roleDescription}</p>
+                  </div>
+                  <div className="mt-6 flex items-center justify-center gap-3">
+                    <Link
+                      href={defaultAllowedPath}
+                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#0C356A] hover:bg-[#082447] text-white text-xs font-bold rounded-xl shadow-sm transition-all"
+                    >
+                      <ArrowLeft className="w-4 h-4" />
+                      <span>Retourner à mon espace autorisé</span>
+                    </Link>
+                  </div>
                 </div>
-                <span className="px-3 py-1 bg-red-50 border border-red-200 rounded-full text-xs font-bold text-[#DC2626] uppercase tracking-wider">
-                  Accès Restreint par Prérogatives
-                </span>
-                <h3 className="text-xl font-black text-slate-900 mt-3">
-                  Rubrique non attribuée à votre profil
-                </h3>
-                <p className="text-sm text-slate-600 mt-2 leading-relaxed">
-                  Conformément à la politique de séparation stricte des rôles de l'Hôtel École Avenida, votre compte{" "}
-                  <strong className="text-slate-900 font-bold">{user.fullName}</strong> ({user.roleLabel}) ne dispose pas des droits d'accès à cette section.
-                </p>
-                <div className="mt-4 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-500 text-left">
-                  <p className="font-bold text-slate-700 mb-1">Vos prérogatives autorisées :</p>
-                  <p className="italic text-slate-600">{user.roleDescription}</p>
-                </div>
-                <div className="mt-6 flex items-center justify-center gap-3">
-                  <Link
-                    href={defaultAllowedPath}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#0C356A] hover:bg-[#082447] text-white text-xs font-bold rounded-xl shadow-sm transition-all"
-                  >
-                    <ArrowLeft className="w-4 h-4" />
-                    <span>Retourner à mon espace autorisé</span>
-                  </Link>
-                </div>
-              </div>
-            ) : (
-              children
-            )}
-          </main>
+              ) : (
+                children
+              )}
+            </main>
+          </div>
         </div>
-      </div>
+      </MobileNavProvider>
     </SchoolYearProvider>
   );
 }

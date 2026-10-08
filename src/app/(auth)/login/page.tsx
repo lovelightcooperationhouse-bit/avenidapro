@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Lock, Mail, ArrowRight, ShieldCheck, AlertCircle } from "lucide-react";
+import { Lock, Mail, ArrowRight, AlertCircle } from "lucide-react";
 import { AvenidaLogo } from "@/components/shared/AvenidaLogo";
-import { useAuth, PRESET_USERS } from "@/context/AuthContext";
+import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
 
 export default function LoginPage() {
@@ -92,28 +92,6 @@ export default function LoginPage() {
                 required
               />
             </div>
-          </div>
-
-          {/* Quick Selection */}
-          <div className="space-y-1 pt-1">
-            <label className="font-bold text-slate-700 flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5 text-[#0C356A]" />
-              <span>Choix Rapide du Rôle</span>
-            </label>
-            <select
-              value={identity}
-              onChange={(e) => {
-                setIdentity(e.target.value);
-                setPassword("avenida");
-              }}
-              className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800"
-            >
-              {PRESET_USERS.map((u) => (
-                <option key={u.id} value={u.username}>
-                  {u.roleLabel} ({u.username})
-                </option>
-              ))}
-            </select>
           </div>
 
           <button

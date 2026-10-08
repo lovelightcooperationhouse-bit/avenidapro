@@ -51,7 +51,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8 animate-fade-in">
       {/* 1. Official Header & Institution Banner */}
-      <div className="bg-white rounded-3xl border-2 border-slate-200 p-6 md:p-8 shadow-sm relative overflow-hidden">
+      <div className="bg-white rounded-2xl sm:rounded-3xl border-2 border-slate-200 p-4 sm:p-6 md:p-8 shadow-sm relative overflow-hidden">
         {/* Tricolore Top Accent Bar: Blue - White - Red */}
         <div className="absolute top-0 left-0 right-0 h-2 flex">
           <div className="w-1/3 bg-[#0C356A]" />
@@ -286,55 +286,57 @@ export default function DashboardPage() {
               </div>
 
               <div className="border border-slate-200 rounded-2xl overflow-hidden">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-blue-50/60 text-[#0C356A] font-bold border-b border-blue-100">
-                    <tr>
-                      <th className="py-2.5 px-3">Réf</th>
-                      <th className="py-2.5 px-3">Élève & Matricule</th>
-                      <th className="py-2.5 px-3">Classe</th>
-                      <th className="py-2.5 px-3">Motif</th>
-                      <th className="py-2.5 px-3 text-right">Payé</th>
-                      <th className="py-2.5 px-3 text-right">Reste</th>
-                      <th className="py-2.5 px-3 text-center">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {MOCK_RECEIPTS.slice(0, 3).map((r) => (
-                      <tr key={r.id} className="hover:bg-blue-50/30 transition-colors">
-                        <td className="py-3 px-3 font-mono font-bold text-slate-900">
-                          {r.reference}
-                        </td>
-                        <td className="py-3 px-3">
-                          <div className="font-bold text-slate-900">{r.student_name}</div>
-                          <div className="text-[10px] text-blue-900 font-mono">
-                            {r.student_matricule}
-                          </div>
-                        </td>
-                        <td className="py-3 px-3 font-medium text-slate-700">{r.class_name}</td>
-                        <td className="py-3 px-3 text-slate-600">{r.designation}</td>
-                        <td className="py-3 px-3 text-right font-black text-emerald-700">
-                          {formatFCFA(r.amount_paid)}
-                        </td>
-                        <td className="py-3 px-3 text-right font-bold text-amber-900">
-                          {formatFCFA(r.remaining_due)}
-                        </td>
-                        <td className="py-3 px-3 text-center">
-                          <button
-                            onClick={() =>
-                              alert(
-                                `Impression Reçu Officiel ${r.reference} certifié pour ${r.student_name}`
-                              )
-                            }
-                            className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg"
-                            title="Imprimer Reçu Duplicata"
-                          >
-                            <Printer className="w-3.5 h-3.5" />
-                          </button>
-                        </td>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-blue-50/60 text-[#0C356A] font-bold border-b border-blue-100 whitespace-nowrap">
+                      <tr>
+                        <th className="py-2.5 px-3">Réf</th>
+                        <th className="py-2.5 px-3">Élève & Matricule</th>
+                        <th className="py-2.5 px-3">Classe</th>
+                        <th className="py-2.5 px-3">Motif</th>
+                        <th className="py-2.5 px-3 text-right">Payé</th>
+                        <th className="py-2.5 px-3 text-right">Reste</th>
+                        <th className="py-2.5 px-3 text-center">Action</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {MOCK_RECEIPTS.slice(0, 3).map((r) => (
+                        <tr key={r.id} className="hover:bg-blue-50/30 transition-colors">
+                          <td className="py-3 px-3 font-mono font-bold text-slate-900 whitespace-nowrap">
+                            {r.reference}
+                          </td>
+                          <td className="py-3 px-3 whitespace-nowrap">
+                            <div className="font-bold text-slate-900">{r.student_name}</div>
+                            <div className="text-[10px] text-blue-900 font-mono">
+                              {r.student_matricule}
+                            </div>
+                          </td>
+                          <td className="py-3 px-3 font-medium text-slate-700 whitespace-nowrap">{r.class_name}</td>
+                          <td className="py-3 px-3 text-slate-600 whitespace-nowrap">{r.designation}</td>
+                          <td className="py-3 px-3 text-right font-black text-emerald-700 whitespace-nowrap">
+                            {formatFCFA(r.amount_paid)}
+                          </td>
+                          <td className="py-3 px-3 text-right font-bold text-amber-900 whitespace-nowrap">
+                            {formatFCFA(r.remaining_due)}
+                          </td>
+                          <td className="py-3 px-3 text-center whitespace-nowrap">
+                            <button
+                              onClick={() =>
+                                alert(
+                                  `Impression Reçu Officiel ${r.reference} certifié pour ${r.student_name}`
+                                )
+                              }
+                              className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg cursor-pointer transition-colors"
+                              title="Imprimer Reçu Duplicata"
+                            >
+                              <Printer className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
               {/* Carnet de Correspondance : Billets Absences / Retards */}

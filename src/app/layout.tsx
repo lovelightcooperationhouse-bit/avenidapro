@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 
@@ -6,6 +6,13 @@ export const metadata: Metadata = {
   title: "Avenida Management — Plateforme Intégrée Hôtel École Avenida",
   description:
     "Logiciel SaaS de gestion intégrée pour l'Hôtel École Avenida : administration scolaire, gestion des élèves, carnet numérique, scolarité, gestion hôtelière et RH.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: "#0C356A",
 };
 
 export default function RootLayout({
