@@ -466,13 +466,10 @@ export default function DashboardPage() {
 
               <div className="flex items-center gap-3 text-xs font-semibold">
                 <span className="flex items-center gap-1.5 text-emerald-800">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> 3 Disponibles
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> {totalAvailableRooms} Disponible{totalAvailableRooms > 1 ? "s" : ""}
                 </span>
                 <span className="flex items-center gap-1.5 text-rose-800">
-                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span> 2 Occupées
-                </span>
-                <span className="flex items-center gap-1.5 text-amber-800">
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span> 1 En Ménage
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span> {totalOccupiedRooms} Occupée{totalOccupiedRooms > 1 ? "s" : ""}
                 </span>
               </div>
             </div>

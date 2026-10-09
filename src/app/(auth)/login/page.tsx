@@ -10,8 +10,8 @@ import Link from "next/link";
 export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
-  const [identity, setIdentity] = useState("directeur");
-  const [password, setPassword] = useState("avenida");
+  const [identity, setIdentity] = useState("");
+  const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -70,7 +70,7 @@ export default function LoginPage() {
                 type="text"
                 value={identity}
                 onChange={(e) => setIdentity(e.target.value)}
-                placeholder="ex: directeur, pedagogie, comptable..."
+                placeholder="Saisissez votre identifiant ou email..."
                 className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0C356A]/20 focus:border-[#0C356A] text-slate-900 font-semibold"
                 required
               />
@@ -80,7 +80,6 @@ export default function LoginPage() {
           <div className="space-y-1">
             <div className="flex items-center justify-between">
               <label className="font-bold text-slate-700">Mot de Passe</label>
-              <span className="text-[10px] text-slate-400">avenida</span>
             </div>
             <div className="relative">
               <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -88,6 +87,7 @@ export default function LoginPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••••••"
                 className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0C356A]/20 focus:border-[#0C356A] text-slate-900 font-semibold"
                 required
               />

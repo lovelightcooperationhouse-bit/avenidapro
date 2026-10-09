@@ -13,7 +13,11 @@ import {
   InventoryItem,
   FinancialEntry,
 } from "@/types";
+import { ALL_REAL_STUDENTS } from "@/lib/real-students";
 
+// =========================================================================
+// FILIÈRES & DIPLÔMES DE L'ÉCOLE AVENIDA
+// =========================================================================
 export const MOCK_PROGRAMS: Program[] = [
   {
     id: "prog-1",
@@ -35,13 +39,7 @@ export const MOCK_PROGRAMS: Program[] = [
     annual_tuition: 260000,
     registration_fee: 10000,
     supplies_fee: 75000,
-    specialties: [
-      "Cuisine / Pâtisserie",
-      "Restaurant / Bar",
-      "Réception / Étage",
-      "Boucherie / Charcuterie",
-      "Lingerie / Buanderie",
-    ],
+    specialties: ["Cuisine / Pâtisserie", "Restaurant / Bar", "Réception / Étage"],
   },
   {
     id: "prog-3",
@@ -52,7 +50,7 @@ export const MOCK_PROGRAMS: Program[] = [
     annual_tuition: 330000,
     registration_fee: 10000,
     supplies_fee: 75000,
-    specialties: ["Cuisine / Pâtisserie", "Restaurant / Bar", "Réception / Étage"],
+    specialties: ["Cuisine / Pâtisserie", "Restaurant / Bar"],
   },
   {
     id: "prog-4",
@@ -77,11 +75,15 @@ export const MOCK_PROGRAMS: Program[] = [
     specialties: ["Restauration", "Hébergement"],
   },
 ];
-import { ALL_REAL_STUDENTS } from "@/lib/real-students";
 
+// =========================================================================
+// 1. DOSSIERS SCOLAIRES (2 ÉLÈVES DE TEST)
+// =========================================================================
 export const MOCK_STUDENTS: Student[] = ALL_REAL_STUDENTS;
 
-
+// =========================================================================
+// 2. REÇUS DE CAISSE SCOLAIRE (2 REÇUS)
+// =========================================================================
 export const MOCK_RECEIPTS: PaymentReceipt[] = [
   {
     id: "rec-1",
@@ -89,10 +91,10 @@ export const MOCK_RECEIPTS: PaymentReceipt[] = [
     student_name: "AFOLEHO Essi",
     student_matricule: "801AVN-24",
     class_name: "BTS1 - Restauration",
-    designation: "Frais d'inscription",
-    amount_paid: 20000,
+    designation: "Frais d'inscription & Scolarité T1",
+    amount_paid: 200000,
     total_due: 420000,
-    remaining_due: 400000,
+    remaining_due: 220000,
     depositor_name: "AFOLEHO Koffi",
     depositor_id_card: "TG-LOM-2022-8941",
     depositor_phone: "90112233",
@@ -100,30 +102,11 @@ export const MOCK_RECEIPTS: PaymentReceipt[] = [
     payment_method: "Espèces",
     site: "LOMÉ",
     date: "2024-10-24 09:43:54",
-    cashier_name: "BANGASSOU AGNETA",
+    cashier_name: "BOURAIMA RAOUDHATOU",
   },
   {
     id: "rec-2",
     reference: "#AV2022-3487",
-    student_name: "AFOLEHO Essi",
-    student_matricule: "801AVN-24",
-    class_name: "BTS1 - Restauration",
-    designation: "FOURNITURES SCOLAIRES & TENUE",
-    amount_paid: 75000,
-    total_due: 420000,
-    remaining_due: 325000,
-    depositor_name: "AFOLEHO Koffi",
-    depositor_id_card: "TG-LOM-2022-8941",
-    depositor_phone: "90112233",
-    depositor_role: "Parent",
-    payment_method: "Espèces",
-    site: "LOMÉ",
-    date: "2024-10-24 09:44:32",
-    cashier_name: "BANGASSOU AGNETA",
-  },
-  {
-    id: "rec-3",
-    reference: "#AV2022-3497",
     student_name: "AGBAHEY Toundé Jean Chrysotome",
     student_matricule: "802AVN-24",
     class_name: "BTS1 - Restauration",
@@ -134,33 +117,17 @@ export const MOCK_RECEIPTS: PaymentReceipt[] = [
     depositor_name: "AGBAHEY Michel",
     depositor_id_card: "TG-LOM-2022-4120",
     depositor_phone: "91223344",
-    depositor_role: "Parent",
+    depositor_role: "Tuteur",
     payment_method: "Espèces",
     site: "LOMÉ",
     date: "2024-10-26 10:29:59",
-    cashier_name: "BANGASSOU AGNETA",
-  },
-  {
-    id: "rec-4",
-    reference: "#AV2022-3672",
-    student_name: "ADADEVI Akossiwa Jeannette",
-    student_matricule: "835AVN-25",
-    class_name: "CAP - Session Mai",
-    designation: "Frais de scolarité (Tranche 1)",
-    amount_paid: 150000,
-    total_due: 280000,
-    remaining_due: 130000,
-    depositor_name: "ADADEVI Koffi",
-    depositor_id_card: "TG-LOM-2023-7712",
-    depositor_phone: "92405010",
-    depositor_role: "Parent",
-    payment_method: "Espèces",
-    site: "LOMÉ",
-    date: "2025-01-07 14:32:52",
     cashier_name: "BOURAIMA RAOUDHATOU",
   },
 ];
 
+// =========================================================================
+// 3. CHAMBRES DE L'HÔTEL AVENIDA (2 CHAMBRES DE TEST)
+// =========================================================================
 export const MOCK_ROOMS: HotelRoom[] = [
   {
     id: "rm-101",
@@ -174,63 +141,16 @@ export const MOCK_ROOMS: HotelRoom[] = [
     id: "rm-102",
     room_number: "102",
     floor: 1,
-    room_type: "Chambre Standard Découverte",
-    price_per_night: 25000,
-    status: "occupée",
-    current_guest: "M. Jean-Paul KOUAME",
-  },
-  {
-    id: "rm-103",
-    room_number: "103",
-    floor: 1,
-    room_type: "Chambre Confort Exécutive",
-    price_per_night: 35000,
-    status: "réservée",
-    current_guest: "Mme Clarisse AMEGAH",
-  },
-  {
-    id: "rm-201",
-    room_number: "201",
-    floor: 2,
-    room_type: "Chambre Confort Exécutive",
-    price_per_night: 35000,
-    status: "nettoyage",
-  },
-  {
-    id: "rm-202",
-    room_number: "202",
-    floor: 2,
     room_type: "Suite Junior Avenida",
-    price_per_night: 55000,
+    price_per_night: 45000,
     status: "occupée",
-    current_guest: "Délégation Ministère Éducation",
-  },
-  {
-    id: "rm-203",
-    room_number: "203",
-    floor: 2,
-    room_type: "Suite Présidentielle Prestige",
-    price_per_night: 90000,
-    status: "disponible",
-  },
-  {
-    id: "rm-301",
-    room_number: "301",
-    floor: 3,
-    room_type: "Chambre Standard Découverte",
-    price_per_night: 25000,
-    status: "maintenance",
-  },
-  {
-    id: "rm-302",
-    room_number: "302",
-    floor: 3,
-    room_type: "Chambre Confort Exécutive",
-    price_per_night: 35000,
-    status: "disponible",
+    current_guest: "Dr. Mensah Agbéyomé",
   },
 ];
 
+// =========================================================================
+// 4. ABSENCES & RETARDS (2 ENTRÉES CHACUN)
+// =========================================================================
 export const MOCK_ABSENCES: AbsenceTicket[] = [
   {
     id: "abs-1",
@@ -247,8 +167,8 @@ export const MOCK_ABSENCES: AbsenceTicket[] = [
   {
     id: "abs-2",
     ticket_number: 2,
-    student_name: "ADADEVI Akossiwa Jeannette",
-    class_name: "CAP - Session Mai",
+    student_name: "AGBAHEY Toundé Jean Chrysotome",
+    class_name: "BTS1 - Restauration",
     start_date: "2025-01-20 à 07:30",
     end_date: "2025-01-20 à 14:30",
     reason: "Problème de transport intra-urbain",
@@ -273,10 +193,10 @@ export const MOCK_LATES: LateTicket[] = [
   {
     id: "lat-2",
     ticket_number: 2,
-    student_name: "ABALO Zakyatou",
-    class_name: "CAP1 - Cuisine & Mod",
+    student_name: "AFOLEHO Essi",
+    class_name: "BTS1 - Restauration",
     duration_minutes: 15,
-    reason: "Retard bus scolaire",
+    reason: "Retard transport scolaire",
     destination: "classe",
     visa_vie_scolaire: true,
     date: "2025-01-23 07:45",
@@ -284,10 +204,10 @@ export const MOCK_LATES: LateTicket[] = [
 ];
 
 // =========================================================================
-// COLLABORATEURS : PROFESSEURS DE L'ÉCOLE & PERSONNEL DE L'HÔTEL
+// 5. COLLABORATEURS : 2 PROFESSEURS ÉCOLE + 2 PERSONNEL RH / HÔTEL
 // =========================================================================
 export const MOCK_EMPLOYEES: Employee[] = [
-  // --- PROFESSEURS & FORMATEURS ÉCOLE ---
+  // --- 2 PROFESSEURS & FORMATEURS ÉCOLE ---
   {
     id: "emp-ens-01",
     matricule: "AVN-ENS-001",
@@ -310,7 +230,7 @@ export const MOCK_EMPLOYEES: Employee[] = [
     cnss_number: "TG-CNSS-884120",
     highest_degree: "Brevet de Maîtrise Culinaire (Ferrandi / Lomé)",
     experience_years: 16,
-    cv_summary: "16 années d'expérience en restauration gastronomique et formation hôtelière en Afrique de l'Ouest. Ancien sous-chef à l'Hôtel 2 Février, formateur certifié en cuisine internationale et valorisation des terroirs togolais.",
+    cv_summary: "16 années d'expérience en restauration gastronomique et formation hôtelière.",
     status: "actif",
   },
   {
@@ -335,87 +255,11 @@ export const MOCK_EMPLOYEES: Employee[] = [
     cnss_number: "TG-CNSS-741982",
     highest_degree: "Master en Management du Tourisme & de l'Hôtellerie",
     experience_years: 11,
-    cv_summary: "Spécialiste de la gestion financière des structures d'hébergement. Enseignante en BTS et BT, ancienne auditrice de nuit et responsable administrative de complexes balnéaires.",
-    status: "actif",
-  },
-  {
-    id: "emp-ens-03",
-    matricule: "AVN-ENS-003",
-    first_name: "Boèvi Éric",
-    last_name: "LAWSON",
-    gender: "M",
-    birth_date: "1990-01-18",
-    nationality: "Togolaise",
-    phone: "+228 92 88 11 22",
-    email: "e.lawson@avenida-lome.tg",
-    neighborhood: "Hedzranawoé",
-    sector: "ecole",
-    role_title: "Maître Pâtissier & Instructeur Boulangerie",
-    department: "Pédagogie & Arts Culinaires",
-    specialty: "Pâtisserie Fine, Viennoiserie & Chocolaterie",
-    contract_type: "CDI",
-    hire_date: "2023-09-01",
-    contract_duration: "Indéterminée (CDI)",
-    base_salary: 290000,
-    cnss_number: "TG-CNSS-652391",
-    highest_degree: "BTM Pâtissier Confiseur Glacier",
-    experience_years: 9,
-    cv_summary: "Parcours d'excellence en pâtisserie fine et traiteur. Ancien chef pâtissier en hôtellerie 4 étoiles, encadrant technique des promotions CFA et CAP Avenida.",
-    status: "actif",
-  },
-  {
-    id: "emp-ens-04",
-    matricule: "AVN-ENS-004",
-    first_name: "Koffi Jean",
-    last_name: "ADANLETE",
-    gender: "M",
-    birth_date: "1988-11-05",
-    nationality: "Togolaise",
-    phone: "+228 93 44 55 66",
-    email: "j.adanlete@avenida-lome.tg",
-    neighborhood: "Agoè Assiyéyé",
-    sector: "ecole",
-    role_title: "Enseignant d'Anglais Professionnel Hôtelier",
-    department: "Pédagogie Générale",
-    specialty: "English for Tourism & Hospitality Service",
-    contract_type: "Vacation",
-    hire_date: "2023-10-10",
-    contract_duration: "Volume horaire (18h / semaine)",
-    base_salary: 195000,
-    cnss_number: "TG-CNSS-512098",
-    highest_degree: "Master en Linguistique Appliquée & Anglais des Affaires",
-    experience_years: 8,
-    cv_summary: "Enseignant formateur en communication interculturelle et accueil de clientèle internationale anglophone pour le secteur de l'hôtellerie de luxe.",
-    status: "actif",
-  },
-  {
-    id: "emp-ens-05",
-    matricule: "AVN-ENS-005",
-    first_name: "Essi Nadia",
-    last_name: "TCHALLA",
-    gender: "F",
-    birth_date: "1992-06-30",
-    nationality: "Togolaise",
-    phone: "+228 90 77 88 99",
-    email: "n.tchalla@avenida-lome.tg",
-    neighborhood: "Bè Kpota",
-    sector: "ecole",
-    role_title: "Formatrice Service Restaurant, Bar & Mixologie",
-    department: "Pédagogie & Service en Salle",
-    specialty: "Art de la Table, Sommellerie & Cocktails",
-    contract_type: "CDD",
-    hire_date: "2024-01-05",
-    contract_duration: "24 mois (Renouvelable)",
-    contract_end_date: "2026-01-04",
-    base_salary: 260000,
-    cnss_number: "TG-CNSS-904123",
-    highest_degree: "BTS Hôtellerie Restauration - Option Arts de la Table",
-    experience_years: 6,
-    cv_summary: "Maîtrise des protocoles de service banquet, flambage et bar à cocktails. Formatrice dynamique des apprenants en situation réelle au restaurant d'application.",
+    cv_summary: "Spécialiste de la gestion financière des structures d'hébergement.",
     status: "actif",
   },
 
-  // --- PERSONNEL OPÉRATIONNEL HÔTEL AVENIDA ---
+  // --- 2 PERSONNEL OPÉRATIONNEL & RH HÔTEL AVENIDA ---
   {
     id: "emp-hot-01",
     matricule: "AVN-HOT-001",
@@ -436,9 +280,9 @@ export const MOCK_EMPLOYEES: Employee[] = [
     contract_duration: "Indéterminée (CDI)",
     base_salary: 280000,
     cnss_number: "TG-CNSS-332901",
-    highest_degree: "Licence Professionnelle Management Hôtelier & Tourisme",
+    highest_degree: "Licence Professionnelle Management Hôtelier",
     experience_years: 12,
-    cv_summary: "12 ans en gestion de réception et conciergerie hôtelière. Gestion du planning des 8 chambres Avenida, encadrement des élèves en stage à la réception.",
+    cv_summary: "12 ans en gestion de réception et conciergerie hôtelière.",
     status: "actif",
   },
   {
@@ -463,90 +307,13 @@ export const MOCK_EMPLOYEES: Employee[] = [
     cnss_number: "TG-CNSS-219401",
     highest_degree: "BTS Hôtellerie - Option Hébergement",
     experience_years: 14,
-    cv_summary: "Gouvernante d'expérience veillant au standing irréprochable des suites et chambres de l'Hôtel Avenida. Supervise la propreté, la lingerie et le tutorat des élèves en pratique.",
-    status: "actif",
-  },
-  {
-    id: "emp-hot-03",
-    matricule: "AVN-HOT-003",
-    first_name: "Kwami François",
-    last_name: "DOSSEH",
-    gender: "M",
-    birth_date: "1994-12-02",
-    nationality: "Togolaise",
-    phone: "+228 92 33 44 55",
-    email: "f.dosseh@avenida-lome.tg",
-    neighborhood: "Adidogomé",
-    sector: "hotel",
-    role_title: "Chef de Partie & Cuisinier Hôtel",
-    department: "Restauration Hôtel",
-    specialty: "Buffets Petit-déjeuner & Plats du Jour",
-    contract_type: "CDD",
-    hire_date: "2023-11-01",
-    contract_duration: "12 mois (Renouvelable)",
-    contract_end_date: "2025-10-31",
-    base_salary: 190000,
-    cnss_number: "TG-CNSS-771829",
-    highest_degree: "CAP Cuisine & Arts Culinaires",
-    experience_years: 5,
-    cv_summary: "Spécialisé dans les petits-déjeuners continentaux et déjeuners des clients résidents de l'hôtel. Assure la production quotidienne avec les élèves commis.",
-    status: "actif",
-  },
-  {
-    id: "emp-hot-04",
-    matricule: "AVN-HOT-004",
-    first_name: "Senyo Gilbert",
-    last_name: "KPOGO",
-    gender: "M",
-    birth_date: "1989-07-25",
-    nationality: "Togolaise",
-    phone: "+228 93 77 66 55",
-    email: "g.kpogo@avenida-lome.tg",
-    neighborhood: "Nyékonakpoè",
-    sector: "hotel",
-    role_title: "Chef Barman & Maître d'Hôtel Avenida",
-    department: "Restauration & Bar",
-    specialty: "Service Salle VIP, Événements & Cocktails",
-    contract_type: "CDI",
-    hire_date: "2023-02-10",
-    contract_duration: "Indéterminée (CDI)",
-    base_salary: 230000,
-    cnss_number: "TG-CNSS-661290",
-    highest_degree: "Certificat Professionnel Restauration & Sommellerie",
-    experience_years: 9,
-    cv_summary: "Responsable du bar de l'hôtel et de la salle de restaurant pour la clientèle extérieure et résidente. Organisation des banquets de prestige Avenida.",
-    status: "actif",
-  },
-  {
-    id: "emp-hot-05",
-    matricule: "AVN-HOT-005",
-    first_name: "Kodjo Jacques",
-    last_name: "KOUDOU",
-    gender: "M",
-    birth_date: "1991-05-17",
-    nationality: "Togolaise",
-    phone: "+228 90 11 99 88",
-    email: "j.koudou@avenida-lome.tg",
-    neighborhood: "Totsi",
-    sector: "hotel",
-    role_title: "Technicien Polyvalent & Maintenance Bâtiment",
-    department: "Services Techniques",
-    specialty: "Climatisation, Plomberie & Électricité Hôtelière",
-    contract_type: "CDD",
-    hire_date: "2024-04-01",
-    contract_duration: "12 mois (Renouvelable)",
-    contract_end_date: "2025-03-31",
-    base_salary: 175000,
-    cnss_number: "TG-CNSS-448201",
-    highest_degree: "BT Électrotechnique & Froid Industriel",
-    experience_years: 7,
-    cv_summary: "Maintenance préventive des chambres (climatiseurs, chauffe-eau, serrures électroniques) et des installations pédagogiques des cuisines de l'école.",
+    cv_summary: "Supervise la propreté, la lingerie et le tutorat des élèves en pratique.",
     status: "actif",
   },
 ];
 
 // =========================================================================
-// NOTES & ÉVALUATIONS PÉDAGOGIQUES
+// 6. NOTES & ÉVALUATIONS PÉDAGOGIQUES (2 ÉVALUATIONS)
 // =========================================================================
 export const MOCK_GRADES: GradeRecord[] = [
   {
@@ -575,36 +342,10 @@ export const MOCK_GRADES: GradeRecord[] = [
     teacher_name: "Mme AGBOBLI Amivi Sylvie",
     appreciation: "Bonne compréhension des mécanismes de check-in et facturation.",
   },
-  {
-    id: "grd-3",
-    student_name: "ADADEVI Akossiwa Jeannette",
-    student_matricule: "835AVN-25",
-    class_name: "CAP - Session Mai",
-    subject: "Pâtisserie & Viennoiserie",
-    evaluation_type: "Pratique Cuisine",
-    score: 17.5,
-    coefficient: 4,
-    date: "2025-01-22",
-    teacher_name: "M. LAWSON Boèvi Éric",
-    appreciation: "Très belle exécution de pâte feuilletée et éclairs au chocolat.",
-  },
-  {
-    id: "grd-4",
-    student_name: "ABALO Zakyatou",
-    student_matricule: "847AVN-25",
-    class_name: "CAP1 - Cuisine & Mod",
-    subject: "Anglais Professionnel Hôtelier",
-    evaluation_type: "Devoir Écrit",
-    score: 15.0,
-    coefficient: 2,
-    date: "2025-01-15",
-    teacher_name: "M. ADANLETE Koffi Jean",
-    appreciation: "Aisance orale et vocabulaire technique d'accueil bien assimilé.",
-  },
 ];
 
 // =========================================================================
-// RÉSERVATIONS DE SÉJOURS HÔTEL AVENIDA
+// 7. RÉSERVATIONS DE SÉJOURS HÔTEL AVENIDA (2 RÉSERVATIONS)
 // =========================================================================
 export const MOCK_RESERVATIONS: HotelReservation[] = [
   {
@@ -612,14 +353,14 @@ export const MOCK_RESERVATIONS: HotelReservation[] = [
     booking_ref: "RES-2026-089",
     customer_name: "Dr. Mensah Agbéyomé",
     customer_phone: "+228 90 22 11 00",
-    room_number: "201",
-    room_type: "Chambre Supérieure Avenida",
+    room_number: "102",
+    room_type: "Suite Junior Avenida",
     check_in: "2026-10-06",
     check_out: "2026-10-10",
     nights_count: 4,
-    nightly_rate: 30000,
-    total_price: 120000,
-    deposit_paid: 60000,
+    nightly_rate: 45000,
+    total_price: 180000,
+    deposit_paid: 90000,
     payment_status: "acompte",
     status: "en_cours",
   },
@@ -628,53 +369,21 @@ export const MOCK_RESERVATIONS: HotelReservation[] = [
     booking_ref: "RES-2026-090",
     customer_name: "Mme Clarisse Dupont (Consultante)",
     customer_phone: "+33 6 12 34 56 78",
-    room_number: "102",
-    room_type: "Suite Junior Prestige",
+    room_number: "101",
+    room_type: "Chambre Standard Découverte",
     check_in: "2026-10-08",
-    check_out: "2026-10-14",
-    nights_count: 6,
-    nightly_rate: 45000,
-    total_price: 270000,
-    deposit_paid: 270000,
+    check_out: "2026-10-11",
+    nights_count: 3,
+    nightly_rate: 25000,
+    total_price: 75000,
+    deposit_paid: 75000,
     payment_status: "réglé",
-    status: "confirmée",
-  },
-  {
-    id: "res-03",
-    booking_ref: "RES-2026-091",
-    customer_name: "M. Ayité Foli (Mission Banque BOAD)",
-    customer_phone: "+228 91 99 88 77",
-    room_number: "302",
-    room_type: "Chambre Confort Exécutive",
-    check_in: "2026-10-05",
-    check_out: "2026-10-07",
-    nights_count: 2,
-    nightly_rate: 35000,
-    total_price: 70000,
-    deposit_paid: 70000,
-    payment_status: "réglé",
-    status: "terminée",
-  },
-  {
-    id: "res-04",
-    booking_ref: "RES-2026-092",
-    customer_name: "Mme Fatou Diop (Dakar)",
-    customer_phone: "+221 77 654 32 10",
-    room_number: "202",
-    room_type: "Chambre Supérieure Avenida",
-    check_in: "2026-10-12",
-    check_out: "2026-10-16",
-    nights_count: 4,
-    nightly_rate: 30000,
-    total_price: 120000,
-    deposit_paid: 30000,
-    payment_status: "acompte",
     status: "confirmée",
   },
 ];
 
 // =========================================================================
-// FICHIER CLIENTS HÔTEL AVENIDA
+// 8. FICHIER CLIENTS HÔTEL AVENIDA (2 CLIENTS)
 // =========================================================================
 export const MOCK_CUSTOMERS: HotelCustomer[] = [
   {
@@ -701,42 +410,14 @@ export const MOCK_CUSTOMERS: HotelCustomer[] = [
     nationality: "Française",
     id_card_or_passport: "FR-PASS-22AA90123",
     total_stays: 2,
-    total_spent: 510000,
+    total_spent: 270000,
     is_vip: true,
     created_at: "2025-01-10",
-  },
-  {
-    id: "clt-03",
-    code: "CLT-0044",
-    full_name: "M. Ayité Foli",
-    company: "BOAD Lomé",
-    phone: "+228 91 99 88 77",
-    email: "a.foli@boad.org",
-    nationality: "Togolaise",
-    id_card_or_passport: "TG-CNI-910423",
-    total_stays: 6,
-    total_spent: 385000,
-    is_vip: false,
-    created_at: "2023-11-04",
-  },
-  {
-    id: "clt-04",
-    code: "CLT-0045",
-    full_name: "Mme Fatou Diop",
-    company: "Société Ouest-Africaine de Négoce",
-    phone: "+221 77 654 32 10",
-    email: "f.diop@negoce-dakar.sn",
-    nationality: "Sénégalaise",
-    id_card_or_passport: "SN-PASS-44BC881",
-    total_stays: 3,
-    total_spent: 290000,
-    is_vip: false,
-    created_at: "2024-08-19",
   },
 ];
 
 // =========================================================================
-// SALAIRES & PAIE F CFA
+// 9. SALAIRES & PAIE F CFA (2 BULLETINS DE SALAIRE)
 // =========================================================================
 export const MOCK_SALARIES: SalaryRecord[] = [
   {
@@ -759,23 +440,6 @@ export const MOCK_SALARIES: SalaryRecord[] = [
   {
     id: "sal-02",
     slip_ref: "PAY-2026-10-02",
-    employee_id: "emp-ens-02",
-    employee_name: "Amivi Sylvie AGBOBLI",
-    employee_matricule: "AVN-ENS-002",
-    sector: "ecole",
-    role_title: "Professeure Gestion Hôtelière",
-    period_month: "Octobre 2026",
-    base_salary: 320000,
-    bonuses: 20000,
-    cnss_deduction: 12800,
-    net_payable: 327200,
-    payment_method: "Virement Bancaire",
-    payment_date: "2026-10-05",
-    status: "payé",
-  },
-  {
-    id: "sal-03",
-    slip_ref: "PAY-2026-10-03",
     employee_id: "emp-hot-01",
     employee_name: "Yao Richard MENSAH",
     employee_matricule: "AVN-HOT-001",
@@ -790,27 +454,10 @@ export const MOCK_SALARIES: SalaryRecord[] = [
     payment_date: "2026-10-05",
     status: "payé",
   },
-  {
-    id: "sal-04",
-    slip_ref: "PAY-2026-10-04",
-    employee_id: "emp-hot-02",
-    employee_name: "Ablamba Reine LAWSON",
-    employee_matricule: "AVN-HOT-002",
-    sector: "hotel",
-    role_title: "Gouvernante Générale",
-    period_month: "Octobre 2026",
-    base_salary: 260000,
-    bonuses: 15000,
-    cnss_deduction: 10400,
-    net_payable: 264600,
-    payment_method: "Virement Bancaire",
-    payment_date: "2026-10-05",
-    status: "payé",
-  },
 ];
 
 // =========================================================================
-// ÉCONOMAT & STOCKS
+// 10. ÉCONOMAT & STOCKS (2 ARTICLES)
 // =========================================================================
 export const MOCK_INVENTORY: InventoryItem[] = [
   {
@@ -828,19 +475,6 @@ export const MOCK_INVENTORY: InventoryItem[] = [
   },
   {
     id: "inv-02",
-    code: "STK-CUIS-002",
-    name: "Beurre Pâtissier 82% MG (Cartons 10kg)",
-    category: "Cuisine & Épicerie",
-    quantity: 4,
-    unit: "cartons",
-    min_alert_threshold: 6, // Alerte stock bas
-    unit_price: 36000,
-    supplier: "SOPROLAC Lomé",
-    last_restock_date: "2026-09-28",
-    location: "Chambre Froide Pédagogique",
-  },
-  {
-    id: "inv-03",
     code: "STK-HOT-001",
     name: "Draps de Lit Percale 100% Coton (Grands Lits)",
     category: "Lingerie & Produits d'Entretien",
@@ -852,36 +486,10 @@ export const MOCK_INVENTORY: InventoryItem[] = [
     last_restock_date: "2026-09-15",
     location: "Lingerie Centrale Hôtel",
   },
-  {
-    id: "inv-04",
-    code: "STK-HOT-002",
-    name: "Gel Douche & Shampoing Accueil VIP (Flacons 50ml)",
-    category: "Lingerie & Produits d'Entretien",
-    quantity: 120,
-    unit: "flacons",
-    min_alert_threshold: 50,
-    unit_price: 450,
-    supplier: "Parfumerie & Hygiène Pro Lomé",
-    last_restock_date: "2026-10-04",
-    location: "Réserve Étage 2",
-  },
-  {
-    id: "inv-05",
-    code: "STK-BAR-001",
-    name: "Jus de fruits naturels locaux (Cartons 24)",
-    category: "Boissons & Bar",
-    quantity: 12,
-    unit: "cartons",
-    min_alert_threshold: 10,
-    unit_price: 14000,
-    supplier: "Coopérative Fruitière Togo",
-    last_restock_date: "2026-10-05",
-    location: "Cave & Bar Hôtel",
-  },
 ];
 
 // =========================================================================
-// TRÉSORERIE & FINANCES
+// 11. TRÉSORERIE & FINANCES (2 ÉCRITURES)
 // =========================================================================
 export const MOCK_FINANCES: FinancialEntry[] = [
   {
@@ -890,7 +498,7 @@ export const MOCK_FINANCES: FinancialEntry[] = [
     type: "recette",
     category: "Écolages Scolaires",
     description: "Tranche 1 écolage élève AFOLEHO Essi (#AV2022-3486)",
-    amount: 120000,
+    amount: 200000,
     date: "2026-10-06",
     recorded_by: "Caissier Lomé",
     payment_mode: "Espèces",
@@ -901,47 +509,11 @@ export const MOCK_FINANCES: FinancialEntry[] = [
     reference: "FIN-2026-102",
     type: "recette",
     category: "Hébergement Hôtel",
-    description: "Acompte séjour Dr. Mensah Chambre 201",
-    amount: 60000,
+    description: "Acompte séjour Dr. Mensah Suite 102",
+    amount: 90000,
     date: "2026-10-06",
     recorded_by: "Réception Avenida",
     payment_mode: "Espèces",
     receipt_number: "#HOT-2026-089",
-  },
-  {
-    id: "fin-03",
-    reference: "FIN-2026-103",
-    type: "depense",
-    category: "Approvisionnement Cuisine",
-    description: "Achat denrées fraîches marché Lomé pour cours pratique cuisine",
-    amount: 45000,
-    date: "2026-10-06",
-    recorded_by: "Économe Avenida",
-    payment_mode: "Espèces",
-    receipt_number: "FACT-MARCHE-412",
-  },
-  {
-    id: "fin-04",
-    reference: "FIN-2026-104",
-    type: "depense",
-    category: "Électricité CEET",
-    description: "Facture énergie électricité CEET Agence Lomé Dékon",
-    amount: 185000,
-    date: "2026-10-04",
-    recorded_by: "Comptabilité",
-    payment_mode: "Chèque",
-    receipt_number: "CEET-2026-09-881",
-  },
-  {
-    id: "fin-05",
-    reference: "FIN-2026-105",
-    type: "recette",
-    category: "Restauration & Bar",
-    description: "Recette déjeuners restaurant d'application",
-    amount: 87500,
-    date: "2026-10-05",
-    recorded_by: "Maître d'Hôtel",
-    payment_mode: "Mobile Money",
-    receipt_number: "REST-2026-105",
   },
 ];

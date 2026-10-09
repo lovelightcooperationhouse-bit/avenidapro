@@ -232,7 +232,7 @@ export default function HomePage() {
                       type="text"
                       value={identity}
                       onChange={(e) => setIdentity(e.target.value)}
-                      placeholder="ex: directeur, pedagogie, comptable..."
+                      placeholder="Saisissez votre identifiant ou adresse email..."
                       autoComplete="username"
                       className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-sm sm:text-xs placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0C356A]/20 focus:border-[#0C356A] transition-all font-semibold"
                     />
@@ -302,13 +302,11 @@ export default function HomePage() {
               </form>
             </div>
 
-            {/* Note informative discrète pour le test */}
+            {/* Note institutionnelle de sécurité (sans affichage des identifiants/mots de passe) */}
             <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
               <div className="flex items-center gap-1.5">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                <span>
-                  Accès démo : identifiant <strong className="text-slate-800 font-mono">directeur</strong> &bull; mot de passe <strong className="text-slate-800 font-mono">avenida</strong>
-                </span>
+                <span>Portail sécurisé réservé au personnel habilité de l&apos;établissement</span>
               </div>
               <span className="hidden sm:inline text-slate-400">Site Lomé</span>
             </div>

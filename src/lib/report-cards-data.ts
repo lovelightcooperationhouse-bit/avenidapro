@@ -408,29 +408,14 @@ export function calculateClassRankings(cards: StudentReportCard[]): StudentRepor
 // =========================================================================
 
 function generateDefaultBTSCards(): StudentReportCard[] {
-  const btsStudents = ALL_REAL_STUDENTS.filter(
-    (s) => s.class_name.includes("BTS1") || s.program_code === "BTS"
-  ).slice(0, 15);
+  const btsStudents = ALL_REAL_STUDENTS.slice(0, 2);
 
   const curriculum = CURRICULUM_BY_PROGRAM.BTS;
 
-  // Profils de notes prédéfinis pour avoir une distribution réaliste
+  // 2 Profils de notes prédéfinis pour les 2 élèves de test
   const scoreProfiles = [
     [17.5, 16.0, 17.0, 16.5, 17.0, 16.0, 15.5, 16.0], // 1ère (~16.5)
-    [16.0, 15.5, 16.0, 15.0, 15.5, 16.5, 14.0, 15.0], // 2ème (~15.5)
-    [15.5, 14.5, 15.0, 15.5, 14.0, 15.0, 14.5, 15.0], // 3ème (~14.9)
-    [14.0, 15.0, 14.5, 14.0, 15.0, 14.0, 13.5, 14.0], // 4ème (~14.3)
-    [13.5, 14.0, 13.5, 14.5, 13.0, 14.5, 13.0, 13.5], // 5ème (~13.7)
-    [13.0, 13.5, 14.0, 12.5, 13.5, 13.0, 12.5, 13.0], // 6ème (~13.1)
-    [12.5, 13.0, 12.5, 13.0, 12.0, 13.5, 12.0, 13.0], // 7ème (~12.7)
-    [12.0, 12.5, 12.0, 12.0, 13.0, 12.5, 11.5, 12.5], // 8ème (~12.3)
-    [11.5, 12.0, 11.5, 12.5, 11.0, 12.0, 11.0, 12.0], // 9ème (~11.7)
-    [11.0, 11.5, 11.0, 11.5, 11.5, 11.0, 10.5, 11.5], // 10ème (~11.2)
-    [10.5, 10.5, 11.0, 10.0, 10.5, 11.5, 10.0, 11.0], // 11ème (~10.6)
-    [10.0, 10.0, 10.5, 10.0, 10.0, 10.5, 9.5, 10.5],  // 12ème (~10.1)
-    [9.5, 9.0, 10.0, 9.5, 9.0, 10.0, 9.0, 9.5],       // 13ème (~9.5)
-    [9.0, 8.5, 9.5, 8.5, 9.0, 9.0, 8.5, 9.0],         // 14ème (~8.9)
-    [8.0, 8.5, 8.0, 7.5, 8.5, 8.0, 8.0, 8.5],         // 15ème (~8.1)
+    [15.0, 14.5, 15.0, 14.0, 14.5, 15.0, 13.5, 14.0], // 2ème (~14.4)
   ];
 
   const rawCards: StudentReportCard[] = btsStudents.map((st, i) => {
@@ -519,7 +504,7 @@ export const INITIAL_REPORT_CARDS: StudentReportCard[] = generateDefaultBTSCards
 // GESTION DU STOCKAGE LOCAL (PERSISTENCE)
 // =========================================================================
 
-const STORAGE_KEY = "avenida_report_cards_v1";
+const STORAGE_KEY = "avenida_report_cards_v3";
 
 export function getReportCardsFromStorage(): StudentReportCard[] {
   if (typeof window === "undefined") return INITIAL_REPORT_CARDS;
@@ -530,7 +515,8 @@ export function getReportCardsFromStorage(): StudentReportCard[] {
       return INITIAL_REPORT_CARDS;
     }
     const parsed = JSON.parse(data);
-    return calculateClassRankings(parsed);
+    const limited = Array.isArray(parsed) && parsed.length > 2 ? parsed.slice(0, 2) : parsed;
+    return calculateClassRankings(limited);
   } catch (err) {
     console.error("Erreur lecture local storage report cards:", err);
     return INITIAL_REPORT_CARDS;

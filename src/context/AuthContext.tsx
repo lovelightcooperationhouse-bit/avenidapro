@@ -63,7 +63,7 @@ export const PRESET_USERS: (UserAccount & { passwordHash: string })[] = [
     fullName: "M. Le Directeur Pédagogique",
     role: "directeur_pedagogique",
     roleLabel: "Directeur Pédagogique",
-    roleDescription: "Base École complète : 152 élèves, inscriptions, filières/départements, absences, retards, notes et situation des écolages",
+    roleDescription: "Base École complète : dossiers des élèves, inscriptions, filières/départements, absences, retards, notes et situation des écolages",
     department: "Direction des Études & Pédagogie",
     avatarColor: "from-[#0C356A] to-[#1E4D82]",
     initials: "DP",

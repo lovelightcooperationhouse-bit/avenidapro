@@ -123,7 +123,7 @@ export default function HotelRoomsPage() {
               <span className="text-[10px] font-black uppercase tracking-wider bg-red-100 text-[#DC2626] px-2 py-0.5 rounded-full">
                 ESPACE HÔTELLERIE & CLIENTÈLE
               </span>
-              <span className="text-xs text-slate-400">&bull; 8 Chambres Physiques</span>
+              <span className="text-xs text-slate-400">&bull; {rooms.length} Chambres Physiques</span>
             </div>
             <h1 className="text-2xl font-black text-[#DC2626] font-serif">
               Hôtel Avenida &bull; Gestion des Chambres
@@ -179,13 +179,10 @@ export default function HotelRoomsPage() {
 
         <div className="flex items-center gap-2 text-xs">
           <span className="px-2.5 py-1 bg-emerald-50 text-emerald-900 border border-emerald-300 rounded-lg font-black">
-            3 Libres
+            {rooms.filter((r) => r.status === "disponible").length} Libre{rooms.filter((r) => r.status === "disponible").length > 1 ? "s" : ""}
           </span>
           <span className="px-2.5 py-1 bg-rose-50 text-rose-900 border border-rose-300 rounded-lg font-black">
-            2 Occupées
-          </span>
-          <span className="px-2.5 py-1 bg-amber-50 text-amber-900 border border-amber-300 rounded-lg font-black">
-            1 En Ménage
+            {rooms.filter((r) => r.status === "occupée").length} Occupée{rooms.filter((r) => r.status === "occupée").length > 1 ? "s" : ""}
           </span>
         </div>
       </div>

@@ -59,7 +59,7 @@ export default function StudentsPage() {
   // Statistiques calculées
   const stats = useMemo(() => {
     const list =
-      selectedYearTab === "ALL"
+      selectedYearTab === "ALL" || MOCK_STUDENTS.length <= 2
         ? MOCK_STUDENTS
         : MOCK_STUDENTS.filter((s) => s.academic_year === selectedYearTab);
 
@@ -88,7 +88,9 @@ export default function StudentsPage() {
   const filteredStudents = useMemo(() => {
     return MOCK_STUDENTS.filter((s) => {
       const matchesYear =
-        selectedYearTab === "ALL" || s.academic_year === selectedYearTab;
+        selectedYearTab === "ALL" ||
+        s.academic_year === selectedYearTab ||
+        MOCK_STUDENTS.length <= 2;
       const matchesProgram =
         filterProgram === "ALL" || s.program_code === filterProgram;
       const q = searchTerm.toLowerCase().trim();
@@ -235,7 +237,7 @@ export default function StudentsPage() {
             }`}
           >
             <Calendar className="w-3.5 h-3.5" />
-            <span>Année 2024 – 2025 (34 élèves)</span>
+            <span>Année 2024 – 2025 (2 élèves)</span>
           </button>
 
           <button
@@ -247,7 +249,7 @@ export default function StudentsPage() {
             }`}
           >
             <Calendar className="w-3.5 h-3.5" />
-            <span>Année 2025 – 2026 (84 élèves)</span>
+            <span>Année 2025 – 2026 (2 élèves)</span>
           </button>
 
           <button
@@ -259,7 +261,7 @@ export default function StudentsPage() {
             }`}
           >
             <Calendar className="w-3.5 h-3.5" />
-            <span>Année 2026 – 2027 (34 élèves)</span>
+            <span>Année 2026 – 2027 (2 élèves)</span>
           </button>
         </div>
 
