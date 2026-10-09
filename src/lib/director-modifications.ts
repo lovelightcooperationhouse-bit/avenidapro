@@ -11,6 +11,30 @@ import {
   broadcastDataChange,
 } from "@/lib/realtime-store";
 import { notifyDirector } from "@/lib/notifications";
+import { createClient } from "@/lib/supabase/client";
+
+async function syncModificationToSupabase(req: ModificationRequest) {
+  try {
+    const supabase = createClient();
+    await supabase.from("director_modifications").upsert({
+      id: req.id,
+      entity_type: req.entity_type,
+      entity_id: req.entity_id,
+      entity_name: req.entity_name,
+      entity_code: req.entity_code || null,
+      requested_by: req.requested_by,
+      requested_at: req.requested_at,
+      status: req.status,
+      proposed_changes: req.proposed_changes,
+      previous_data: req.previous_data,
+      director_notes: req.director_notes || null,
+      approved_by: req.approved_by || null,
+      approved_at: req.approved_at || null,
+    });
+  } catch (err) {
+    console.warn("Sync Supabase modification non bloquante:", err);
+  }
+}
 
 export type EntityType = "student" | "employee" | "customer";
 
@@ -99,6 +123,7 @@ export function requestEntityModification(params: {
 
   const updated = [newReq, ...list];
   saveModifications(updated);
+  syncModificationToSupabase(newReq);
 
   const typeLabels = {
     student: "Élève",
@@ -173,6 +198,7 @@ export async function applyImmediateDirectorModification(params: {
   };
 
   saveModifications([logReq, ...list]);
+  syncModificationToSupabase(logReq);
   broadcastDataChange();
 }
 
@@ -226,6 +252,8 @@ export async function approveModificationRequest(
   );
 
   saveModifications(updated);
+  const targetReq = updated.find((m) => m.id === requestId);
+  if (targetReq) syncModificationToSupabase(targetReq);
   broadcastDataChange();
 }
 
@@ -251,5 +279,7 @@ export async function rejectModificationRequest(
   );
 
   saveModifications(updated);
+  const targetReq = updated.find((m) => m.id === requestId);
+  if (targetReq) syncModificationToSupabase(targetReq);
   broadcastModifications();
 }

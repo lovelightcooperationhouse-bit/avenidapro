@@ -167,6 +167,7 @@ export async function saveAndSyncStudent(student: Student): Promise<Student[]> {
       remaining_fee: student.remaining_fee || 0,
       photo_url: student.photo_url || null,
       status: student.status || "actif",
+      uploaded_documents: student.uploaded_documents || {},
     };
 
     const { error } = await supabase
@@ -768,6 +769,21 @@ export async function saveAndSyncAbsence(ticket: AbsenceTicket): Promise<Absence
 
   safeSetStorage("avenida_custom_absences", updatedList);
 
+  // Synchronisation Supabase Cloud
+  try {
+    const supabase = createClient();
+    await supabase.from("student_absences").insert({
+      ticket_number: `ABS-${ticket.ticket_number}`,
+      start_date: new Date().toISOString(),
+      end_date: new Date().toISOString(),
+      reason: ticket.reason,
+      is_justified: Boolean(ticket.parent_justified),
+      visa_vie_scolaire: Boolean(ticket.visa_vie_scolaire),
+    });
+  } catch (err) {
+    console.warn("Sync Supabase absence non bloquante :", err);
+  }
+
   notifyDirector(
     "student",
     `Billet d'Absence Enregistré : ${ticket.student_name}`,
@@ -800,6 +816,20 @@ export async function saveAndSyncLate(ticket: LateTicket): Promise<LateTicket[]>
   const updatedList = [ticket, ...filtered];
 
   safeSetStorage("avenida_custom_lates", updatedList);
+
+  // Synchronisation Supabase Cloud
+  try {
+    const supabase = createClient();
+    await supabase.from("student_lates").insert({
+      ticket_number: `RET-${ticket.ticket_number}`,
+      date: new Date().toISOString().split("T")[0],
+      duration_minutes: ticket.duration_minutes,
+      reason: ticket.reason,
+      orientation: ticket.destination || "classe",
+    });
+  } catch (err) {
+    console.warn("Sync Supabase retard non bloquant :", err);
+  }
 
   notifyDirector(
     "student",
