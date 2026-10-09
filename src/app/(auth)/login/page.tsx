@@ -15,20 +15,23 @@ export default function LoginPage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
     setLoading(true);
 
-    setTimeout(() => {
-      const res = login(identity, password);
+    try {
+      const res = await login(identity, password);
       setLoading(false);
       if (res.success) {
         router.push("/dashboard");
       } else {
         setErrorMessage(res.message || "Identifiants invalides.");
       }
-    }, 300);
+    } catch (err: any) {
+      setLoading(false);
+      setErrorMessage(err?.message || "Erreur de connexion.");
+    }
   };
 
   return (

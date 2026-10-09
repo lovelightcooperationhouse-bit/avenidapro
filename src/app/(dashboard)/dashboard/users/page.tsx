@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ShieldCheck,
   UserCheck,
@@ -16,6 +16,7 @@ import {
   Building,
 } from "lucide-react";
 import { UserRole } from "@/types";
+import { createClient } from "@/lib/supabase/client";
 
 interface SystemUser {
   id: string;
@@ -33,9 +34,9 @@ interface SystemUser {
 const INITIAL_USERS: SystemUser[] = [
   {
     id: "usr-01",
-    name: "Direction Générale Avenida",
-    email: "direction@avenida-lome.tg",
-    username: "super_admin",
+    name: "M. Hope d'Almeida",
+    email: "direction@ecole-avenida.tg",
+    username: "directeur",
     role: "super_admin",
     role_label: "Super Administrateur",
     scope: "Global",
@@ -95,6 +96,37 @@ export default function UsersPage() {
     scope: "École" as "Global" | "École" | "Hôtel" | "Finance",
   });
 
+  useEffect(() => {
+    async function loadInvitations() {
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase.from("user_invitations").select("*");
+        if (data && data.length > 0) {
+          const mapped: SystemUser[] = data.map((inv: any) => ({
+            id: inv.id,
+            name: `${inv.first_name || ''} ${inv.last_name || ''}`.trim() || inv.email,
+            email: inv.email,
+            username: inv.email.split("@")[0],
+            role: (inv.role_code as UserRole) || "professeur",
+            role_label: inv.role_code === "professeur" ? "Professeur" : inv.role_code === "eleve" ? "Élève" : "Opérateur",
+            scope: inv.role_code === "professeur" || inv.role_code === "eleve" ? "École" : inv.role_code === "responsable_hotel" ? "Hôtel" : "Global",
+            created_at: inv.created_at ? inv.created_at.split("T")[0] : "2024-01-01",
+            last_login: inv.status === "accepted" ? "Compte actif" : "En attente d'activation par l'utilisateur",
+            status: "actif",
+          }));
+          setUsers((prev) => {
+            const existingEmails = new Set(prev.map((u) => u.email));
+            const newOnes = mapped.filter((m) => !existingEmails.has(m.email));
+            return [...newOnes, ...prev];
+          });
+        }
+      } catch (e) {
+        console.error("Erreur de chargement des invitations:", e);
+      }
+    }
+    loadInvitations();
+  }, []);
+
   const filteredUsers = users.filter(
     (u) =>
       u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -103,20 +135,38 @@ export default function UsersPage() {
       u.role_label.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleAddUser = (e: React.FormEvent) => {
+  const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newUser.name || !newUser.username) return;
+    if (!newUser.name) return;
+
+    const email = newUser.email || `${newUser.username}@ecole-avenida.tg`;
+    const names = newUser.name.trim().split(" ");
+    const firstName = names[0] || newUser.name;
+    const lastName = names.slice(1).join(" ") || "Personnel";
+
+    try {
+      const supabase = createClient();
+      await supabase.from("user_invitations").insert({
+        email: email.toLowerCase().trim(),
+        first_name: firstName,
+        last_name: lastName,
+        role_code: newUser.role,
+        status: "pending",
+      });
+    } catch (err) {
+      console.error("Erreur sauvegarde invitation Supabase:", err);
+    }
 
     const added: SystemUser = {
       id: `usr-${Date.now()}`,
       name: newUser.name,
-      email: newUser.email || `${newUser.username}@avenida-lome.tg`,
-      username: newUser.username,
+      email: email,
+      username: newUser.username || email.split("@")[0],
       role: newUser.role,
       role_label: newUser.role_label,
       scope: newUser.scope,
       created_at: new Date().toISOString().split("T")[0],
-      last_login: "Jamais connecté",
+      last_login: "En attente d'activation par l'utilisateur",
       status: "actif",
     };
 

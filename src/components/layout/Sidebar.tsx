@@ -283,116 +283,48 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* Navigation List */}
-      <nav className="flex-1 overflow-y-auto px-3.5 py-4 space-y-5 text-xs sidebar-scrollbar">
+      {/* Navigation List — Aérée, Élégante & Lisible */}
+      <nav className="flex-1 overflow-y-auto px-3.5 py-3 space-y-4 text-xs sidebar-scrollbar">
         {visibleSections.map((sec, idx) => {
-          const headerThemes = {
-            blue: {
-              container: "bg-gradient-to-r from-[#113B6B] to-[#0D2D52] border-blue-400/30 text-blue-100 shadow-sm",
-              badge: "bg-blue-500/30 text-cyan-200 border-blue-300/40",
-              dot: "bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.9)] animate-pulse",
-              badgeText: "ÉCOLE",
-              textColor: "text-white font-black",
-            },
-            red: {
-              container: "bg-gradient-to-r from-[#7F1D1D]/90 to-[#450A0A]/90 border-red-500/30 text-red-100 shadow-sm",
-              badge: "bg-red-500/30 text-rose-200 border-red-300/40",
-              dot: "bg-rose-400 shadow-[0_0_8px_rgba(244,63,94,0.9)] animate-pulse",
-              badgeText: "HÔTEL",
-              textColor: "text-white font-black",
-            },
-            emerald: {
-              container: "bg-gradient-to-r from-emerald-950/80 to-slate-900/80 border-emerald-500/30 text-emerald-100 shadow-sm",
-              badge: "bg-emerald-500/20 text-emerald-300 border-emerald-400/30",
-              dot: "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] animate-pulse",
-              badgeText: "FINANCES",
-              textColor: "text-emerald-100 font-extrabold",
-            },
-            amber: {
-              container: "bg-gradient-to-r from-amber-950/70 to-slate-900/80 border-amber-500/30 text-amber-100 shadow-sm",
-              badge: "bg-amber-500/20 text-amber-300 border-amber-400/30",
-              dot: "bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)] animate-pulse",
-              badgeText: "RH & STOCKS",
-              textColor: "text-amber-100 font-extrabold",
-            },
-            indigo: {
-              container: "bg-gradient-to-r from-indigo-950/70 to-slate-900/80 border-indigo-500/30 text-indigo-100 shadow-sm",
-              badge: "bg-indigo-500/20 text-indigo-300 border-indigo-400/30",
-              dot: "bg-indigo-400 shadow-[0_0_8px_rgba(129,140,248,0.8)] animate-pulse",
-              badgeText: "SYSTÈME",
-              textColor: "text-indigo-100 font-extrabold",
-            },
-            neutral: {
-              container: "bg-white/10 border-white/20 text-slate-100",
-              badge: "bg-white/20 text-white border-white/30",
-              dot: "bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.8)]",
-              badgeText: "PILOTAGE",
-              textColor: "text-slate-100 font-extrabold",
-            },
-          }[sec.color];
-
           return (
-            <div key={idx} className="space-y-1.5">
-              {/* Grand Titre de Section Mis en Valeur */}
-              <div
-                className={`flex items-center justify-between px-3 py-1.5 rounded-xl border backdrop-blur-xs transition-all duration-200 ${headerThemes.container}`}
-              >
-                <div className="flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full shrink-0 ${headerThemes.dot}`} />
-                  <span className={`text-[10.5px] tracking-wider uppercase font-sans ${headerThemes.textColor}`}>
-                    {sec.title}
-                  </span>
-                </div>
-                <span className={`text-[8.5px] font-black uppercase px-2 py-0.5 rounded-md border tracking-wider ${headerThemes.badge}`}>
-                  {headerThemes.badgeText}
+            <div key={idx} className="space-y-1">
+              {/* Titre de Section Épuré & Aéré */}
+              <div className="px-3 pt-2 pb-1 flex items-center justify-between">
+                <span className="text-[10.5px] font-bold tracking-widest uppercase text-blue-200/60 font-sans">
+                  {sec.title}
                 </span>
               </div>
 
-              {/* Menu Items */}
-              <div className="space-y-1 pt-0.5">
+              {/* Menu Items avec espacement confortable */}
+              <div className="space-y-1">
                 {sec.items.map((item) => {
                   const Icon = item.icon;
                   const isActive =
                     pathname === item.href ||
                     (item.href !== "/dashboard" && pathname.startsWith(item.href));
 
-                  const activeClasses =
-                    sec.color === "red"
-                      ? "bg-[#DC2626] text-white border-l-4 border-white font-bold shadow-lg shadow-red-950/40 translate-x-1 ring-1 ring-white/20"
-                      : sec.color === "blue"
-                      ? "bg-gradient-to-r from-[#1E4D82] to-[#143B66] text-white border-l-4 border-amber-400 font-bold shadow-md shadow-black/25 translate-x-1 ring-1 ring-white/15"
-                      : sec.color === "emerald"
-                      ? "bg-emerald-700 text-white border-l-4 border-amber-400 font-bold shadow-md translate-x-1"
-                      : sec.color === "amber"
-                      ? "bg-amber-700 text-white border-l-4 border-white font-bold shadow-md translate-x-1"
-                      : sec.color === "indigo"
-                      ? "bg-indigo-800 text-white border-l-4 border-amber-400 font-bold shadow-md translate-x-1"
-                      : "bg-[#164E87] text-white border-l-4 border-blue-300 font-bold shadow-inner translate-x-1";
-
                   return (
                     <Link
                       key={item.href}
                       href={item.href}
                       onClick={() => isMobile && close()}
-                      className={`group relative flex items-center justify-between px-3 py-2.5 rounded-xl font-medium text-[12px] transition-all duration-200 ease-out active:scale-[0.98] ${
+                      className={`group relative flex items-center justify-between px-3 py-2 rounded-xl text-[12.5px] font-medium transition-all duration-150 ease-out active:scale-[0.99] ${
                         isActive
-                          ? activeClasses
-                          : "text-blue-100/80 hover:text-white hover:bg-white/10 hover:translate-x-1 hover:shadow-xs"
+                          ? "bg-white/15 text-white font-bold border-l-[3px] border-amber-400 shadow-xs"
+                          : "text-blue-100/75 hover:text-white hover:bg-white/10"
                       }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
                         <div
-                          className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all duration-200 shrink-0 ${
+                          className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-150 shrink-0 ${
                             isActive
-                              ? sec.color === "red"
-                                ? "bg-white/20 text-white"
-                                : "bg-white/15 text-white"
-                              : "bg-white/5 text-blue-200/90 group-hover:bg-white/15 group-hover:text-amber-300 group-hover:scale-105"
+                              ? "bg-amber-400/20 text-amber-300"
+                              : "bg-white/5 text-blue-200/70 group-hover:bg-white/15 group-hover:text-white"
                           }`}
                         >
-                          <Icon className="w-3.5 h-3.5 transition-transform duration-200 group-hover:rotate-3" />
+                          <Icon className="w-3.5 h-3.5" />
                         </div>
-                        <span className="truncate transition-transform duration-200 group-hover:translate-x-0.5">
+                        <span className="truncate">
                           {item.label}
                         </span>
                       </div>
@@ -400,15 +332,17 @@ export function Sidebar() {
                       <div className="flex items-center gap-1.5 shrink-0 ml-1">
                         {item.badge && (
                           <span
-                            className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold border transition-transform duration-200 group-hover:scale-105 shadow-2xs ${
-                              item.badgeColor || "bg-white/20 text-white border-white/30"
+                            className={`text-[9px] px-2 py-0.5 rounded-full font-semibold border transition-all ${
+                              isActive
+                                ? "bg-white/20 text-white border-white/30"
+                                : "bg-white/10 text-blue-200/80 border-white/10 group-hover:text-white"
                             }`}
                           >
                             {item.badge}
                           </span>
                         )}
                         {isActive && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-white shadow-xs"></span>
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-xs"></span>
                         )}
                       </div>
                     </Link>
@@ -421,20 +355,20 @@ export function Sidebar() {
       </nav>
 
       {/* User Footer Card with Dynamic Auth Session & Logout */}
-      <div className="p-3 border-t border-[#164E87]/80 bg-[#061B36] shrink-0">
-        <div className="p-2.5 rounded-xl bg-[#0C356A]/90 border border-white/10 shadow-sm">
+      <div className="p-3 border-t border-white/10 bg-[#06182e] shrink-0">
+        <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 shadow-xs">
           <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2 min-w-0">
+            <div className="flex items-center gap-2.5 min-w-0">
               <div
-                className={`w-7 h-7 rounded-xl bg-gradient-to-br ${
+                className={`w-8 h-8 rounded-xl bg-gradient-to-br ${
                   user?.avatarColor || "from-[#DC2626] to-[#991B1B]"
                 } text-white font-black text-xs flex items-center justify-center shadow-md ring-2 ring-white/20 shrink-0`}
               >
-                {user?.initials || "DG"}
+                {user?.initials || "HA"}
               </div>
               <div className="flex flex-col text-left min-w-0">
                 <span className="text-xs font-bold text-white leading-tight truncate">
-                  {user?.fullName || "Direction Générale"}
+                  {user?.fullName || "M. Hope d'Almeida"}
                 </span>
                 <span className="text-[10px] text-amber-300 font-semibold truncate">
                   {user?.roleLabel || "Directeur Général"}
@@ -444,7 +378,7 @@ export function Sidebar() {
             <button
               onClick={() => logout()}
               title="Déconnexion sécurisée"
-              className="p-1.5 rounded-lg text-blue-200 hover:text-white hover:bg-[#DC2626] hover:shadow-md hover:scale-110 active:scale-95 transition-all duration-200 cursor-pointer shrink-0 ml-1"
+              className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-[#DC2626] hover:shadow-md transition-all duration-150 cursor-pointer shrink-0 ml-1"
             >
               <LogOut className="w-3.5 h-3.5" />
             </button>
@@ -452,7 +386,7 @@ export function Sidebar() {
 
           <div className="pt-1.5 border-t border-white/10 flex items-center justify-between text-[10px] text-blue-200/80">
             <span className="truncate max-w-[140px]" title={user?.department}>
-              {user?.department || "Direction Générale"}
+              {user?.department || "Direction Générale & Stratégique"}
             </span>
             <span className="flex items-center gap-1 text-emerald-400 font-bold shrink-0">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>

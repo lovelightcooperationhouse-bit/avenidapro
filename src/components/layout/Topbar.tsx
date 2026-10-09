@@ -14,6 +14,7 @@ import {
   LayoutDashboard,
   Sparkles,
   ArrowRight,
+  ShieldCheck,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -67,6 +68,14 @@ export function Topbar() {
     !user ||
     user.role === "directeur_general" ||
     user.role === "responsable_hotel";
+
+  const canAccessAdmin =
+    !user ||
+    user.role === "directeur_general" ||
+    (user.role as any) === "super_admin" ||
+    (user.role as any) === "direction" ||
+    (user.role as any) === "administration" ||
+    user.email === "direction@ecole-avenida.tg";
 
   return (
     <header className="sticky top-0 z-20 bg-white shadow-xs">
@@ -150,7 +159,7 @@ export function Topbar() {
           </div>
 
           {/* Bouton Rapide Caisse */}
-          {user?.role === "comptable" || user?.role === "directeur_general" ? (
+          {user?.role === "comptable" || user?.role === "directeur_general" || !user ? (
             <Link
               href="/dashboard/payments"
               className="flex items-center gap-1 bg-[#DC2626] hover:bg-[#b91c1c] text-white px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-xs font-bold shadow-sm shadow-red-900/20 active:scale-95 transition-all duration-200 group"
@@ -159,6 +168,22 @@ export function Topbar() {
               <span className="hidden sm:inline">Caisse</span>
             </Link>
           ) : null}
+
+          {/* Bouton Rapide Administrateur & Rôles (pour Direction / Super Admin) */}
+          {canAccessAdmin && (
+            <Link
+              href="/dashboard/users"
+              title="Gestion des Comptes, Rôles et Autorisations Administrateur"
+              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl text-xs font-bold transition-all duration-200 border ${
+                pathname === "/dashboard/users"
+                  ? "bg-indigo-900 text-white border-indigo-900 shadow-sm"
+                  : "bg-indigo-50/90 hover:bg-indigo-100 text-indigo-950 border-indigo-200"
+              }`}
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+              <span className="hidden sm:inline">Admin & Rôles</span>
+            </Link>
+          )}
 
           {/* Profil Utilisateur & Déconnexion */}
           <div className="flex items-center gap-2 pl-1.5 sm:pl-2 border-l border-slate-200">
@@ -345,8 +370,8 @@ export function Topbar() {
             )}
           </div>
 
-          {/* Bouton Rapide : Vue Consolidée / Tableau de Bord Global */}
-          <div className="hidden lg:flex items-center shrink-0">
+          {/* Boutons Rapides : Vue Globale & Admin/Rôles */}
+          <div className="hidden lg:flex items-center gap-2 shrink-0">
             <Link
               href="/dashboard"
               className={`px-3 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all duration-200 border ${
@@ -358,6 +383,20 @@ export function Topbar() {
               <LayoutDashboard className="w-3.5 h-3.5" />
               <span>Vue Globale</span>
             </Link>
+
+            {canAccessAdmin && (
+              <Link
+                href="/dashboard/users"
+                className={`px-3 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all duration-200 border ${
+                  pathname === "/dashboard/users"
+                    ? "bg-indigo-900 text-white border-indigo-900 shadow-md"
+                    : "bg-white text-indigo-900 border-indigo-200 hover:bg-indigo-50"
+                }`}
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-indigo-700" />
+                <span>Admin & Rôles</span>
+              </Link>
+            )}
           </div>
         </div>
       </div>

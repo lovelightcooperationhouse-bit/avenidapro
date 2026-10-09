@@ -18,24 +18,38 @@ import {
   ShieldCheck,
   LogOut,
   Sparkles,
+  UserPlus,
+  Info,
 } from "lucide-react";
 
 export default function HomePage() {
   const router = useRouter();
-  const { login, logout, isAuthenticated, user } = useAuth();
+  const { login, register, logout, isAuthenticated, user } = useAuth();
 
+  const [activeTab, setActiveTab] = useState<"login" | "register">("login");
+
+  // État Connexion
   const [identity, setIdentity] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+
+  // État Inscription / Activation
+  const [regFirstName, setRegFirstName] = useState("");
+  const [regLastName, setRegLastName] = useState("");
+  const [regEmail, setRegEmail] = useState("");
+  const [regPassword, setRegPassword] = useState("");
+  const [regConfirmPassword, setRegConfirmPassword] = useState("");
+
   const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const handleQuickRedirect = () => {
     router.push("/dashboard");
   };
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
 
@@ -49,15 +63,63 @@ export default function HomePage() {
     }
 
     setIsLoading(true);
-    setTimeout(() => {
-      const res = login(identity, password);
+    try {
+      const res = await login(identity, password);
       setIsLoading(false);
       if (res.success) {
         router.push("/dashboard");
       } else {
         setErrorMessage(res.message || "Identifiants incorrects. Veuillez réessayer.");
       }
-    }, 350);
+    } catch (err: any) {
+      setIsLoading(false);
+      setErrorMessage(err?.message || "Erreur de connexion.");
+    }
+  };
+
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    if (!regFirstName.trim() || !regLastName.trim()) {
+      setErrorMessage("Veuillez renseigner votre prénom et votre nom.");
+      return;
+    }
+    if (!regEmail.trim()) {
+      setErrorMessage("Veuillez renseigner votre adresse e-mail professionnelle.");
+      return;
+    }
+    if (regPassword.length < 6) {
+      setErrorMessage("Le mot de passe doit comporter au moins 6 caractères.");
+      return;
+    }
+    if (regPassword !== regConfirmPassword) {
+      setErrorMessage("Les deux mots de passe ne correspondent pas.");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const res = await register({
+        firstName: regFirstName.trim(),
+        lastName: regLastName.trim(),
+        email: regEmail.trim(),
+        password: regPassword.trim(),
+      });
+      setIsLoading(false);
+      if (res.success) {
+        setSuccessMessage("Compte validé avec succès ! Redirection vers votre espace...");
+        setTimeout(() => {
+          router.push("/dashboard");
+        }, 1000);
+      } else {
+        setErrorMessage(res.message || "Impossible d'activer ce compte.");
+      }
+    } catch (err: any) {
+      setIsLoading(false);
+      setErrorMessage(err?.message || "Erreur lors de l'activation du compte.");
+    }
   };
 
   return (
@@ -212,7 +274,7 @@ export default function HomePage() {
                 </div>
               )}
 
-              {/* Message d'erreur de saisie */}
+              {/* Messages de Statut */}
               {errorMessage && (
                 <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-center gap-2 animate-in fade-in">
                   <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
@@ -220,86 +282,226 @@ export default function HomePage() {
                 </div>
               )}
 
-              {/* Formulaire de Connexion Unique */}
-              <form onSubmit={handleLoginSubmit} className="space-y-4 mt-5">
-                <div>
-                  <label className="block text-xs font-bold text-[#0C356A] mb-1.5">
-                    Identifiant utilisateur ou Email institutionnel
-                  </label>
-                  <div className="relative">
-                    <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    <input
-                      type="text"
-                      value={identity}
-                      onChange={(e) => setIdentity(e.target.value)}
-                      placeholder="Saisissez votre identifiant ou adresse email..."
-                      autoComplete="username"
-                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-sm sm:text-xs placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0C356A]/20 focus:border-[#0C356A] transition-all font-semibold"
-                    />
-                  </div>
+              {successMessage && (
+                <div className="mt-4 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800 flex items-center gap-2 animate-in fade-in font-semibold">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>{successMessage}</span>
                 </div>
+              )}
 
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-xs font-bold text-[#0C356A]">
-                      Mot de passe de session
+              {/* Onglets de Bascule : Connexion vs Activation de Compte */}
+              <div className="flex bg-slate-100 p-1 rounded-xl mt-4 border border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => { setActiveTab("login"); setErrorMessage(""); setSuccessMessage(""); }}
+                  className={`flex-1 py-2 text-xs font-black rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                    activeTab === "login"
+                      ? "bg-white text-[#0C356A] shadow-xs"
+                      : "text-slate-500 hover:text-slate-800"
+                  }`}
+                >
+                  <Lock className="w-3.5 h-3.5" />
+                  <span>S&apos;identifier</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setActiveTab("register"); setErrorMessage(""); setSuccessMessage(""); }}
+                  className={`flex-1 py-2 text-xs font-black rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                    activeTab === "register"
+                      ? "bg-[#0C356A] text-white shadow-xs"
+                      : "text-slate-500 hover:text-slate-800"
+                  }`}
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span>Activer mon Compte</span>
+                </button>
+              </div>
+
+              {/* ────────────────── FORMULAIRE 1 : CONNEXION ────────────────── */}
+              {activeTab === "login" && (
+                <form onSubmit={handleLoginSubmit} className="space-y-4 mt-4">
+                  <div>
+                    <label className="block text-xs font-bold text-[#0C356A] mb-1.5">
+                      Identifiant utilisateur ou Email institutionnel
                     </label>
-                    <span className="text-[11px] text-slate-500 font-medium">
-                      Sensible à la casse
+                    <div className="relative">
+                      <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <input
+                        type="text"
+                        value={identity}
+                        onChange={(e) => setIdentity(e.target.value)}
+                        placeholder="Ex: direction@ecole-avenida.tg ou directeur..."
+                        autoComplete="username"
+                        className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-sm sm:text-xs placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0C356A]/20 focus:border-[#0C356A] transition-all font-semibold"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-xs font-bold text-[#0C356A]">
+                        Mot de passe de session
+                      </label>
+                      <span className="text-[11px] text-slate-500 font-medium">
+                        Sensible à la casse
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <KeyRound className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="••••••••••••"
+                        autoComplete="current-password"
+                        className="w-full pl-10 pr-11 py-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-sm sm:text-xs placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0C356A]/20 focus:border-[#0C356A] transition-all font-semibold"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 rounded-md cursor-pointer"
+                        title={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs pt-1">
+                    <label className="flex items-center gap-2 cursor-pointer select-none text-slate-600 font-medium">
+                      <input
+                        type="checkbox"
+                        checked={rememberMe}
+                        onChange={(e) => setRememberMe(e.target.checked)}
+                        className="rounded border-slate-300 text-[#0C356A] focus:ring-[#0C356A] w-4 h-4 cursor-pointer"
+                      />
+                      <span>Mémoriser cette session</span>
+                    </label>
+                    <span className="text-[11px] text-slate-400">
+                      Protocole SSL 256-bit
                     </span>
                   </div>
-                  <div className="relative">
-                    <KeyRound className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••••••"
-                      autoComplete="current-password"
-                      className="w-full pl-10 pr-11 py-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-sm sm:text-xs placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0C356A]/20 focus:border-[#0C356A] transition-all font-semibold"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 rounded-md cursor-pointer"
-                      title={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
+
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full py-3.5 px-4 bg-[#0C356A] hover:bg-[#082447] text-white text-xs font-black rounded-xl shadow-md flex items-center justify-center gap-2 transition-all duration-200 cursor-pointer active:scale-[0.99] disabled:opacity-50 tracking-wide uppercase mt-2 group"
+                  >
+                    {isLoading ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <Lock className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
+                        <span>S&apos;identifier & Accéder</span>
+                        <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
+                      </>
+                    )}
+                  </button>
+                </form>
+              )}
+
+              {/* ────────────────── FORMULAIRE 2 : ACTIVATION DE COMPTE AUTORISÉ ────────────────── */}
+              {activeTab === "register" && (
+                <form onSubmit={handleRegisterSubmit} className="space-y-3.5 mt-4">
+                  <div className="p-2.5 bg-blue-50 border border-blue-200 rounded-xl text-[11px] text-blue-900 flex items-start gap-2">
+                    <Info className="w-4 h-4 text-blue-700 shrink-0 mt-0.5" />
+                    <span>
+                      <strong>Accès sur autorisation préalable :</strong> Saisissez l&apos;adresse e-mail que la Direction Générale vous a attribuée pour activer vos droits et choisir votre mot de passe personnel.
+                    </span>
                   </div>
-                </div>
 
-                <div className="flex items-center justify-between text-xs pt-1">
-                  <label className="flex items-center gap-2 cursor-pointer select-none text-slate-600 font-medium">
-                    <input
-                      type="checkbox"
-                      checked={rememberMe}
-                      onChange={(e) => setRememberMe(e.target.checked)}
-                      className="rounded border-slate-300 text-[#0C356A] focus:ring-[#0C356A] w-4 h-4 cursor-pointer"
-                    />
-                    <span>Mémoriser cette session</span>
-                  </label>
-                  <span className="text-[11px] text-slate-400">
-                    Protocole SSL 256-bit
-                  </span>
-                </div>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-xs font-bold text-[#0C356A] mb-1">
+                        Prénom
+                      </label>
+                      <input
+                        type="text"
+                        value={regFirstName}
+                        onChange={(e) => setRegFirstName(e.target.value)}
+                        placeholder="Ex: Koffi"
+                        className="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-[#0C356A]/20 focus:border-[#0C356A] font-semibold"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-[#0C356A] mb-1">
+                        Nom de famille
+                      </label>
+                      <input
+                        type="text"
+                        value={regLastName}
+                        onChange={(e) => setRegLastName(e.target.value)}
+                        placeholder="Ex: Mensah"
+                        className="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-[#0C356A]/20 focus:border-[#0C356A] font-semibold"
+                        required
+                      />
+                    </div>
+                  </div>
 
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full py-3.5 px-4 bg-[#0C356A] hover:bg-[#082447] text-white text-xs font-black rounded-xl shadow-md flex items-center justify-center gap-2 transition-all duration-200 cursor-pointer active:scale-[0.99] disabled:opacity-50 tracking-wide uppercase mt-2 group"
-                >
-                  {isLoading ? (
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <Lock className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
-                      <span>S&apos;identifier & Accéder au Tableau de Bord</span>
-                      <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
-                    </>
-                  )}
-                </button>
-              </form>
+                  <div>
+                    <label className="block text-xs font-bold text-[#0C356A] mb-1">
+                      Adresse Email Autorisée par la Direction
+                    </label>
+                    <div className="relative">
+                      <User className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                      <input
+                        type="email"
+                        value={regEmail}
+                        onChange={(e) => setRegEmail(e.target.value)}
+                        placeholder="Ex: prof.culinaire@ecole-avenida.tg..."
+                        className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-[#0C356A]/20 focus:border-[#0C356A] font-semibold"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-xs font-bold text-[#0C356A] mb-1">
+                        Nouveau Mot de Passe
+                      </label>
+                      <input
+                        type="password"
+                        value={regPassword}
+                        onChange={(e) => setRegPassword(e.target.value)}
+                        placeholder="Min. 6 caractères"
+                        className="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-[#0C356A]/20 focus:border-[#0C356A] font-semibold"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-[#0C356A] mb-1">
+                        Confirmer le Mot de Passe
+                      </label>
+                      <input
+                        type="password"
+                        value={regConfirmPassword}
+                        onChange={(e) => setRegConfirmPassword(e.target.value)}
+                        placeholder="Répétez le mot de passe"
+                        className="w-full px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 text-xs focus:outline-none focus:ring-2 focus:ring-[#0C356A]/20 focus:border-[#0C356A] font-semibold"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full py-3 px-4 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-black rounded-xl shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-[0.99] disabled:opacity-50 uppercase tracking-wider mt-1 group"
+                  >
+                    {isLoading ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <UserPlus className="w-4 h-4 text-emerald-200 group-hover:scale-110 transition-transform" />
+                        <span>Activer mon Compte & Accéder à mon Espace</span>
+                        <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
+                      </>
+                    )}
+                  </button>
+                </form>
+              )}
             </div>
 
             {/* Note institutionnelle de sécurité (sans affichage des identifiants/mots de passe) */}

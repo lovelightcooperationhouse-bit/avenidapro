@@ -240,7 +240,9 @@ textarea.form-input-avenida {
     display: none !important;
   }
   #avenida-official-report-card,
-  #avenida-official-hotel-receipt {
+  #avenida-official-hotel-receipt,
+  #avenida-official-student-enrollment,
+  #avenida-official-customer-attestation {
     width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   UserCheck,
   Building,
@@ -12,15 +12,36 @@ import {
   CreditCard,
   X,
   Award,
+  Printer,
+  FileText,
 } from "lucide-react";
 import { MOCK_CUSTOMERS } from "@/lib/mock-data";
 import { HotelCustomer } from "@/types";
 import { formatFCFA } from "@/lib/utils";
+import { CustomerAttestationModal } from "@/components/shared/CustomerAttestationModal";
+import { createClient } from "@/lib/supabase/client";
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<HotelCustomer[]>(MOCK_CUSTOMERS);
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedCustomerForAttestation, setSelectedCustomerForAttestation] = useState<HotelCustomer | null>(null);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("avenida_custom_customers");
+      if (stored) {
+        const parsed = JSON.parse(stored) as HotelCustomer[];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const customIds = new Set(parsed.map((c) => c.id));
+          const filteredMocks = MOCK_CUSTOMERS.filter((m) => !customIds.has(m.id));
+          setCustomers([...parsed, ...filteredMocks]);
+        }
+      }
+    } catch (e) {
+      console.warn("Erreur chargement clients localStorage:", e);
+    }
+  }, []);
 
   const [newCust, setNewCust] = useState({
     full_name: "",
@@ -62,8 +83,42 @@ export default function CustomersPage() {
       created_at: new Date().toISOString().split("T")[0],
     };
 
+    // 1. Sauvegarde locale immédiate
+    try {
+      const stored = localStorage.getItem("avenida_custom_customers");
+      const list = stored ? JSON.parse(stored) : [];
+      localStorage.setItem("avenida_custom_customers", JSON.stringify([added, ...list]));
+    } catch (e) {
+      console.warn("Erreur localStorage clients:", e);
+    }
+
+    // 2. Sauvegarde Supabase
+    try {
+      const supabase = createClient();
+      const parts = newCust.full_name.trim().split(" ");
+      const lastName = parts.pop() || "";
+      const firstName = parts.join(" ") || lastName;
+      (async () => {
+        try {
+          await supabase.from("hotel_customers").insert({
+            first_name: firstName,
+            last_name: lastName,
+            phone: added.phone,
+            email: added.email,
+            nationality: added.nationality,
+            id_card_or_passport: added.id_card_or_passport,
+          });
+        } catch {
+          // ignore background fallback
+        }
+      })();
+    } catch (err) {
+      console.warn("Supabase hotel_customers insert fallback:", err);
+    }
+
     setCustomers([added, ...customers]);
     setIsModalOpen(false);
+    setSelectedCustomerForAttestation(added);
   };
 
   return (
@@ -170,6 +225,7 @@ export default function CustomersPage() {
                 <th className="py-3.5 px-4">Séjours</th>
                 <th className="py-3.5 px-4">Total Dépensé</th>
                 <th className="py-3.5 px-4">Statut</th>
+                <th className="py-3.5 px-4 text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -212,6 +268,16 @@ export default function CustomersPage() {
                         Standard
                       </span>
                     )}
+                  </td>
+                  <td className="py-3 px-4 text-right">
+                    <button
+                      onClick={() => setSelectedCustomerForAttestation(cust)}
+                      className="px-2.5 py-1.5 bg-red-50 hover:bg-[#DC2626] hover:text-white text-[#DC2626] font-bold rounded-xl text-[11px] transition-all inline-flex items-center gap-1 shadow-2xs border border-red-200 active:scale-95 cursor-pointer ml-auto"
+                      title="Générer et télécharger la Fiche Client Officielle (PDF)"
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      <span>Fiche Client</span>
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -330,6 +396,14 @@ export default function CustomersPage() {
             </form>
           </div>
         </div>
+      )}
+      {/* Modal Attestation & Fiche Client Imprimable A4 */}
+      {selectedCustomerForAttestation && (
+        <CustomerAttestationModal
+          customer={selectedCustomerForAttestation}
+          isOpen={!!selectedCustomerForAttestation}
+          onClose={() => setSelectedCustomerForAttestation(null)}
+        />
       )}
     </div>
   );

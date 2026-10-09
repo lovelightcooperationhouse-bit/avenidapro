@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import {
   Users,
@@ -22,12 +22,15 @@ import {
   MapPin,
   Award,
   Sparkles,
+  FileText,
+  Printer,
 } from "lucide-react";
 import { MOCK_STUDENTS } from "@/lib/mock-data";
 import { formatFCFA } from "@/lib/utils";
 import { useSchoolYear } from "@/context/SchoolYearContext";
 import { Student, StudentReportCard } from "@/types";
 import { ReportCardModal } from "@/components/shared/ReportCardModal";
+import { StudentRegistrationModal } from "@/components/shared/StudentRegistrationModal";
 import {
   getReportCardsFromStorage,
   createBlankReportCardForStudent,
@@ -36,11 +39,29 @@ import {
 
 export default function StudentsPage() {
   const { selectedYearLabel, setSelectedYear } = useSchoolYear();
+  const [allStudents, setAllStudents] = useState<Student[]>(MOCK_STUDENTS);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterProgram, setFilterProgram] = useState("ALL");
   const [selectedYearTab, setSelectedYearTab] = useState<string>("ALL");
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [selectedReportCard, setSelectedReportCard] = useState<StudentReportCard | null>(null);
+  const [selectedEnrollmentStudent, setSelectedEnrollmentStudent] = useState<Student | null>(null);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("avenida_custom_students");
+      if (stored) {
+        const parsed = JSON.parse(stored) as Student[];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const customMatricules = new Set(parsed.map((s) => s.registration_number));
+          const filteredMocks = MOCK_STUDENTS.filter((m) => !customMatricules.has(m.registration_number));
+          setAllStudents([...parsed, ...filteredMocks]);
+        }
+      }
+    } catch (err) {
+      console.error("Error reading custom students", err);
+    }
+  }, []);
 
   const handleOpenStudentReport = (st: Student) => {
     const existing = getReportCardsFromStorage().find(
@@ -59,9 +80,9 @@ export default function StudentsPage() {
   // Statistiques calculées
   const stats = useMemo(() => {
     const list =
-      selectedYearTab === "ALL" || MOCK_STUDENTS.length <= 2
-        ? MOCK_STUDENTS
-        : MOCK_STUDENTS.filter((s) => s.academic_year === selectedYearTab);
+      selectedYearTab === "ALL"
+        ? allStudents
+        : allStudents.filter((s) => s.academic_year === selectedYearTab);
 
     const total = list.length;
     const girls = list.filter((s) => s.gender === "F").length;
@@ -82,15 +103,14 @@ export default function StudentsPage() {
       totalTuition,
       paidTuition,
     };
-  }, [selectedYearTab]);
+  }, [allStudents, selectedYearTab]);
 
   // Filtrage combiné par année, programme et texte
   const filteredStudents = useMemo(() => {
-    return MOCK_STUDENTS.filter((s) => {
+    return allStudents.filter((s) => {
       const matchesYear =
         selectedYearTab === "ALL" ||
-        s.academic_year === selectedYearTab ||
-        MOCK_STUDENTS.length <= 2;
+        s.academic_year === selectedYearTab;
       const matchesProgram =
         filterProgram === "ALL" || s.program_code === filterProgram;
       const q = searchTerm.toLowerCase().trim();
@@ -111,7 +131,7 @@ export default function StudentsPage() {
 
       return matchesYear && matchesProgram && matchesSearch;
     });
-  }, [selectedYearTab, filterProgram, searchTerm]);
+  }, [allStudents, selectedYearTab, filterProgram, searchTerm]);
 
   return (
     <div className="space-y-6">
@@ -391,6 +411,14 @@ export default function StudentsPage() {
                     <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="inline-flex items-center gap-1.5">
                         <button
+                          onClick={() => setSelectedEnrollmentStudent(s)}
+                          className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-400 hover:text-slate-950 text-amber-900 font-bold rounded-xl text-[11px] transition-all inline-flex items-center gap-1 shadow-2xs border border-amber-200 active:scale-95 cursor-pointer"
+                          title="Imprimer ou télécharger la Fiche d'Inscription (PDF)"
+                        >
+                          <FileText className="w-3.5 h-3.5 text-amber-700" />
+                          <span>Fiche Inscription</span>
+                        </button>
+                        <button
                           onClick={() => handleOpenStudentReport(s)}
                           className="px-2.5 py-1.5 bg-blue-50 hover:bg-[#0C356A] hover:text-white text-[#0C356A] font-bold rounded-xl text-[11px] transition-all inline-flex items-center gap-1 shadow-2xs border border-blue-200 active:scale-95"
                           title="Consulter et télécharger le bulletin officiel"
@@ -602,16 +630,25 @@ export default function StudentsPage() {
 
             {/* Footer Modal */}
             <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-between items-center rounded-b-3xl">
-              <button
-                onClick={() => window.print()}
-                className="px-4 py-2 bg-white border border-slate-300 text-slate-700 font-bold rounded-xl text-xs hover:bg-slate-100 transition-colors flex items-center gap-1.5"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Imprimer Fiche Élève</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setSelectedEnrollmentStudent(selectedStudent)}
+                  className="px-4 py-2 bg-[#DC2626] hover:bg-[#b91c1c] text-white font-bold rounded-xl text-xs transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Imprimer Fiche Officielle (PDF)</span>
+                </button>
+                <button
+                  onClick={() => window.print()}
+                  className="px-3 py-2 bg-white border border-slate-300 text-slate-700 font-bold rounded-xl text-xs hover:bg-slate-100 transition-colors flex items-center gap-1.5"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Imprimer Vue Écran</span>
+                </button>
+              </div>
               <button
                 onClick={() => setSelectedStudent(null)}
-                className="px-5 py-2 bg-[#0C356A] hover:bg-[#164E87] text-white font-bold rounded-xl text-xs transition-colors"
+                className="px-5 py-2 bg-[#0C356A] hover:bg-[#164E87] text-white font-bold rounded-xl text-xs transition-colors cursor-pointer"
               >
                 Fermer
               </button>
@@ -626,6 +663,15 @@ export default function StudentsPage() {
           reportCard={selectedReportCard}
           isOpen={!!selectedReportCard}
           onClose={() => setSelectedReportCard(null)}
+        />
+      )}
+
+      {/* MODAL OFFICIEL D'INSCRIPTION & RÉCÉPISSÉ SCOLAIRE (IMPRIMABLE A4) */}
+      {selectedEnrollmentStudent && (
+        <StudentRegistrationModal
+          student={selectedEnrollmentStudent}
+          isOpen={!!selectedEnrollmentStudent}
+          onClose={() => setSelectedEnrollmentStudent(null)}
         />
       )}
     </div>

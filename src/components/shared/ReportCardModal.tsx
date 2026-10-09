@@ -477,9 +477,9 @@ export function ReportCardModal({
             <div className="flex flex-col justify-between min-h-[90px] pl-2 relative">
               <div>
                 <p className="font-bold text-[#0C356A] uppercase text-[9px]">
-                  Le Directeur Général
+                  Le Directeur Général &bull; M. Hope d&apos;Almeida
                 </p>
-                <p className="text-[8px] text-slate-500">Hôtel École Avenida Lomé</p>
+                <p className="text-[8px] text-slate-500">Complexe Scolaire & Hôtelier Avenida Lomé</p>
               </div>
               {/* Sceau / Cachet numérique stylisé */}
               <div className="my-auto py-1">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   CalendarDays,
   BedDouble,
@@ -23,6 +23,7 @@ import { MOCK_RESERVATIONS, MOCK_ROOMS } from "@/lib/mock-data";
 import { HotelReservation } from "@/types";
 import { formatFCFA } from "@/lib/utils";
 import { HotelReceiptModal } from "@/components/shared/HotelReceiptModal";
+import { createClient } from "@/lib/supabase/client";
 
 export default function ReservationsPage() {
   const [reservations, setReservations] = useState<HotelReservation[]>(MOCK_RESERVATIONS);
@@ -30,6 +31,22 @@ export default function ReservationsPage() {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedReceiptRes, setSelectedReceiptRes] = useState<HotelReservation | null>(null);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("avenida_custom_reservations");
+      if (stored) {
+        const parsed = JSON.parse(stored) as HotelReservation[];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const customIds = new Set(parsed.map((r) => r.id));
+          const filteredMocks = MOCK_RESERVATIONS.filter((m) => !customIds.has(m.id));
+          setReservations([...parsed, ...filteredMocks]);
+        }
+      }
+    } catch (e) {
+      console.warn("Erreur chargement réservations localStorage:", e);
+    }
+  }, []);
 
   // New reservation form state
   const [newRes, setNewRes] = useState({
@@ -141,6 +158,35 @@ export default function ReservationsPage() {
       payment_method: newRes.payment_method,
       cashier_name: "Yao Richard MENSAH (Chef de Réception)",
     };
+
+    // 1. Sauvegarde locale immédiate
+    try {
+      const stored = localStorage.getItem("avenida_custom_reservations");
+      const list = stored ? JSON.parse(stored) : [];
+      localStorage.setItem("avenida_custom_reservations", JSON.stringify([added, ...list]));
+    } catch (e) {
+      console.warn("Erreur localStorage réservations:", e);
+    }
+
+    // 2. Sauvegarde Supabase
+    try {
+      const supabase = createClient();
+      (async () => {
+        try {
+          await supabase.from("reservations").insert({
+            total_price: added.total_price,
+            advance_amount: added.deposit_paid,
+            status: added.status === "payée" ? "confirmée" : "en_attente",
+            check_in_date: added.check_in,
+            check_out_date: added.check_out,
+          });
+        } catch {
+          // ignore background fallback
+        }
+      })();
+    } catch (err) {
+      console.warn("Supabase reservations insert fallback:", err);
+    }
 
     setReservations([added, ...reservations]);
     setIsModalOpen(false);

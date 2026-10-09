@@ -31,6 +31,10 @@ import {
   type DiplomeCode,
 } from "@/lib/academic-data";
 import { formatFCFA } from "@/lib/utils";
+import { StudentRegistrationModal } from "@/components/shared/StudentRegistrationModal";
+import { createClient } from "@/lib/supabase/client";
+import { Student } from "@/types";
+import { Printer } from "lucide-react";
 
 // ═══════════════════════════════════════════════════════════════
 // FORMULAIRE D'INSCRIPTION DÉTAILLÉ — Hôtel École Avenida Lomé
@@ -171,6 +175,8 @@ export default function NewStudentPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [form, setForm] = useState<FormData>(INITIAL_FORM);
   const [submitted, setSubmitted] = useState(false);
+  const [createdStudent, setCreatedStudent] = useState<Student | null>(null);
+  const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [enrollmentYear, setEnrollmentYear] = useState(selectedYear);
 
   // ── Programme sélectionné ──
@@ -202,47 +208,151 @@ export default function NewStudentPage() {
   const nextStep = () => setCurrentStep((s) => Math.min(s + 1, STEPS.length));
   const prevStep = () => setCurrentStep((s) => Math.max(s - 1, 1));
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
+    const studentData: Student = {
+      id: `std-${Date.now()}`,
+      registration_number: matriculePreview,
+      student_number: studentNumberPreview,
+      first_name: form.first_name || "Élève",
+      last_name: form.last_name || "AVENIDA",
+      gender: (form.gender || "M") as "M" | "F",
+      birth_date: form.birth_date || "2006-01-15",
+      birth_place: form.birth_place || "Lomé",
+      nationality: form.nationality || "Togolaise",
+      residence_neighborhood: form.neighborhood || form.city || "Lomé (Dékon)",
+      phone: form.phone || "+228 90 00 00 00",
+      email: form.email || `${form.first_name.toLowerCase()}.${form.last_name.toLowerCase()}@ecole-avenida.tg`,
+      boarder_status: (form.boarder_status || "externe") as "interne" | "externe",
+      emergency_contact_name: form.emergency_contact_name || form.parent_father_name || "Direction Avenida",
+      emergency_contact_phone: form.emergency_contact_phone || form.parent_father_phone || "+228 22 21 00 00",
+      program_code: (form.program_code || "BTS") as DiplomeCode,
+      class_name: className || "1ère Année Hôtellerie",
+      academic_year: availableYears.find((y) => y.value === enrollmentYear)?.label || "2024 - 2025",
+      status: "actif",
+      photo_url: form.photo_url || "/avatars/default.png",
+      total_fee: fees?.total || 370000,
+      paid_fee: fees?.registration || 50000,
+      remaining_fee: Math.max(0, (fees?.total || 370000) - (fees?.registration || 50000)),
+    };
+
+    // 1. Sauvegarde locale immédiate (réactivité instantanée garantie)
+    try {
+      const stored = localStorage.getItem("avenida_custom_students");
+      const list = stored ? JSON.parse(stored) : [];
+      localStorage.setItem("avenida_custom_students", JSON.stringify([studentData, ...list]));
+    } catch (e) {
+      console.warn("Erreur localStorage:", e);
+    }
+
+    // 2. Sauvegarde Supabase en tâche de fond si connecté
+    try {
+      const supabase = createClient();
+      await supabase.from("students").insert({
+        registration_number: studentData.registration_number,
+        student_number: studentData.student_number,
+        first_name: studentData.first_name,
+        last_name: studentData.last_name,
+        gender: studentData.gender,
+        birth_date: studentData.birth_date || null,
+        birth_place: studentData.birth_place || null,
+        nationality: studentData.nationality,
+        residence_neighborhood: studentData.residence_neighborhood,
+        phone: studentData.phone,
+        email: studentData.email,
+        boarder_status: studentData.boarder_status,
+        emergency_contact_name: studentData.emergency_contact_name,
+        emergency_contact_phone: studentData.emergency_contact_phone,
+        status: "actif",
+      });
+    } catch (err) {
+      console.warn("Synchronisation Supabase (mode déconnecté / fallback actif):", err);
+    }
+
+    setCreatedStudent(studentData);
     setSubmitted(true);
-    // TODO: Envoyer vers l'API / Supabase
   };
 
   // ═══════════════════════════════════════════════════
   // RENDU DU FORMULAIRE
   // ═══════════════════════════════════════════════════
 
-  if (submitted) {
+  if (submitted && createdStudent) {
     return (
-      <div className="min-h-[70vh] flex items-center justify-center">
-        <div className="bg-white rounded-3xl p-10 border-2 border-emerald-200 shadow-lg text-center max-w-lg space-y-5">
-          <div className="w-20 h-20 mx-auto rounded-full bg-emerald-100 flex items-center justify-center">
+      <div className="min-h-[70vh] flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl p-8 sm:p-10 border-2 border-emerald-200 shadow-xl text-center max-w-xl space-y-5 animate-in fade-in duration-300">
+          <div className="w-20 h-20 mx-auto rounded-full bg-emerald-100 flex items-center justify-center shadow-inner">
             <CheckCircle2 className="w-10 h-10 text-emerald-600" />
           </div>
-          <h2 className="text-2xl font-black text-[#0C356A] font-serif">Inscription Enregistrée !</h2>
+          <h2 className="text-2xl font-black text-[#0C356A] font-serif">
+            Inscription Validée avec Succès !
+          </h2>
           <p className="text-sm text-slate-600">
-            L&apos;élève <strong>{form.last_name} {form.first_name}</strong> a été inscrit(e) avec succès
-            sous le matricule <span className="font-mono font-bold text-[#DC2626]">{matriculePreview}</span> pour
-            l&apos;année scolaire <strong>{availableYears.find(y => y.value === enrollmentYear)?.label}</strong>.
+            L&apos;élève <strong>{createdStudent.last_name} {createdStudent.first_name}</strong> a été inscrit(e) sous le matricule{" "}
+            <span className="font-mono font-black text-[#DC2626] bg-red-50 border border-red-200 px-2 py-0.5 rounded">
+              {createdStudent.registration_number}
+            </span>{" "}
+            pour l&apos;année scolaire <strong>{createdStudent.academic_year}</strong>.
           </p>
-          <div className="text-xs text-slate-500 bg-blue-50 rounded-xl p-3 border border-blue-200">
-            <strong>Classe :</strong> {className} &bull; <strong>Régime :</strong> {form.boarder_status}
-            {fees && <> &bull; <strong>Total à payer :</strong> {formatFCFA(fees.total)}</>}
+          <div className="text-xs text-slate-600 bg-blue-50 rounded-2xl p-4 border border-blue-200 text-left space-y-1.5">
+            <div className="flex justify-between">
+              <span className="text-slate-500">Classe & Filière :</span>
+              <strong>{createdStudent.class_name} ({createdStudent.program_code})</strong>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Régime Scolaire :</span>
+              <strong className="capitalize">{createdStudent.boarder_status}</strong>
+            </div>
+            <div className="flex justify-between border-t border-blue-200 pt-1.5 font-bold">
+              <span className="text-slate-700">Total Frais Annuels :</span>
+              <span className="text-[#0C356A] font-mono text-sm">{formatFCFA(createdStudent.total_fee)}</span>
+            </div>
           </div>
-          <div className="flex items-center justify-center gap-3 pt-2">
+
+          {/* Actions d'impression & navigation */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-3">
+            <button
+              onClick={() => setIsReceiptOpen(true)}
+              className="w-full sm:w-auto px-5 py-3 bg-[#DC2626] hover:bg-[#b91c1c] text-white rounded-xl font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
+            >
+              <Printer className="w-4 h-4 text-white" />
+              <span>Imprimer la Fiche d&apos;Inscription (PDF)</span>
+            </button>
             <Link
               href="/dashboard/students"
-              className="px-5 py-2.5 bg-[#0C356A] text-white rounded-xl font-bold text-sm hover:bg-[#164E87] transition-colors"
+              className="w-full sm:w-auto px-5 py-3 bg-[#0C356A] text-white rounded-xl font-bold text-sm hover:bg-[#164E87] transition-colors flex items-center justify-center"
             >
-              Retour aux dossiers
+              Voir la Liste des Élèves
             </Link>
+          </div>
+
+          <div className="pt-2">
             <button
-              onClick={() => { setSubmitted(false); setForm(INITIAL_FORM); setCurrentStep(1); }}
-              className="px-5 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-200 transition-colors"
+              onClick={() => {
+                setSubmitted(false);
+                setCreatedStudent(null);
+                setForm(INITIAL_FORM);
+                setCurrentStep(1);
+              }}
+              className="text-xs text-slate-500 hover:text-slate-800 font-bold underline transition-colors"
             >
-              Nouvelle Inscription
+              + Inscrire un autre élève
             </button>
           </div>
         </div>
+
+        {/* Modal d'impression officielle */}
+        <StudentRegistrationModal
+          student={createdStudent}
+          isOpen={isReceiptOpen}
+          onClose={() => setIsReceiptOpen(false)}
+          enrollmentDetails={{
+            fees: fees || undefined,
+            specialty: form.specialty,
+            parentName: form.parent_father_name || form.tutor_name || form.parent_mother_name,
+            parentPhone: form.parent_father_phone || form.tutor_phone || form.parent_mother_phone,
+            bloodGroup: form.blood_group,
+          }}
+        />
       </div>
     );
   }
