@@ -44,6 +44,7 @@ import {
 } from "@/components/shared/DocumentUploadManager";
 import {
   getStoredStudents,
+  syncStudentsFromSupabase,
   broadcastDataChange,
   AVENIDA_DATA_UPDATED_EVENT,
 } from "@/lib/realtime-store";
@@ -148,6 +149,12 @@ export default function StudentsPage() {
 
   useEffect(() => {
     setAllStudents(getStoredStudents());
+    syncStudentsFromSupabase().then((list) => {
+      if (list && list.length > 0) {
+        setAllStudents(list);
+      }
+    });
+
     const handleUpdate = () => setAllStudents(getStoredStudents());
     window.addEventListener(AVENIDA_DATA_UPDATED_EVENT, handleUpdate);
     window.addEventListener("storage", handleUpdate);

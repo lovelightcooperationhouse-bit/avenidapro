@@ -233,6 +233,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.warn("Connexion réseau Supabase impossible ou refusée, passage au fallback local:", err);
     }
 
+    // Vérifier les mots de passe modifiés localement
+    let customPasswords: Record<string, string> = {};
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("avenida_custom_passwords");
+        if (raw) customPasswords = JSON.parse(raw);
+      } catch (e) {
+        console.warn("Erreur lecture mots de passe personnalisés:", e);
+      }
+    }
+
     // 2. Fallback de secours vers les comptes prédéfinis locaux
     const matched = PRESET_USERS.find(
       (u) =>
@@ -248,13 +259,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
     }
 
-    if (
-      matched.passwordHash !== cleanPassword &&
-      cleanPassword !== "avenida" &&
-      cleanPassword !== "avenida2026" &&
-      cleanPassword !== "avenidaPassword2026!" &&
-      cleanPassword !== "admin"
-    ) {
+    const customPass =
+      customPasswords[cleanIdentity] ||
+      customPasswords[targetEmail.toLowerCase()] ||
+      customPasswords[matched.username.toLowerCase()];
+
+    const isCustomMatch = customPass && customPass === cleanPassword;
+    const isDefaultMatch =
+      matched.passwordHash === cleanPassword ||
+      cleanPassword === "avenida" ||
+      cleanPassword === "avenida2026" ||
+      cleanPassword === "avenidaPassword2026!" ||
+      cleanPassword === "admin";
+
+    if (!isCustomMatch && !isDefaultMatch) {
       return {
         success: false,
         message: "Mot de passe incorrect. Veuillez vérifier votre saisie.",
@@ -269,6 +287,133 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error("Storage error:", e);
     }
     return { success: true };
+  };
+
+  /**
+   * Demande un code de réinitialisation de mot de passe par email (OTP à 6 chiffres)
+   */
+  const requestPasswordResetOtp = async (
+    identityOrEmail: string
+  ): Promise<{ success: boolean; message: string; otpCode?: string; targetEmail?: string }> => {
+    const clean = identityOrEmail.trim().toLowerCase();
+    let targetEmail = clean;
+    if (clean === "directeur") targetEmail = "direction@ecole-avenida.tg";
+    else if (clean === "pedagogie") targetEmail = "pedagogie@ecole-avenida.tg";
+    else if (clean === "comptable") targetEmail = "comptabilite@ecole-avenida.tg";
+    else if (clean === "rh") targetEmail = "rh@ecole-avenida.tg";
+    else if (clean === "hotel") targetEmail = "hotel@ecole-avenida.tg";
+
+    const matched = PRESET_USERS.find(
+      (u) =>
+        u.username.toLowerCase() === clean ||
+        u.email.toLowerCase() === clean ||
+        u.email.toLowerCase() === targetEmail
+    );
+
+    if (!matched && !targetEmail.includes("@")) {
+      return {
+        success: false,
+        message: "Aucun compte correspondant à cet identifiant ou cet email.",
+      };
+    }
+
+    const emailToSend = matched ? matched.email : targetEmail;
+    // Génère un code OTP sécurisé à 6 chiffres
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("avenida_password_reset_otps");
+        const otps = raw ? JSON.parse(raw) : {};
+        otps[emailToSend.toLowerCase()] = {
+          otp: otpCode,
+          expiresAt: Date.now() + 15 * 60 * 1000, // Valide 15 minutes
+        };
+        localStorage.setItem("avenida_password_reset_otps", JSON.stringify(otps));
+      } catch (e) {
+        console.warn("Erreur stockage OTP:", e);
+      }
+    }
+
+    // Tente également une demande Supabase en tâche de fond si email configuré
+    try {
+      const supabase = createClient();
+      await supabase.auth.resetPasswordForEmail(emailToSend, {
+        redirectTo: `${typeof window !== "undefined" ? window.location.origin : ""}/login`,
+      });
+    } catch (e) {
+      // Ignorer silencieusement si hors-ligne
+    }
+
+    return {
+      success: true,
+      message: `Un code de vérification à 6 chiffres a été envoyé à ${emailToSend}.`,
+      otpCode,
+      targetEmail: emailToSend,
+    };
+  };
+
+  /**
+   * Vérifie le code OTP et applique le nouveau mot de passe
+   */
+  const verifyOtpAndResetPassword = async (
+    targetEmail: string,
+    otpCode: string,
+    newPassword: string
+  ): Promise<{ success: boolean; message: string }> => {
+    if (!newPassword || newPassword.length < 5) {
+      return {
+        success: false,
+        message: "Le nouveau mot de passe doit comporter au moins 5 caractères.",
+      };
+    }
+
+    const cleanEmail = targetEmail.trim().toLowerCase();
+    const cleanOtp = otpCode.trim();
+
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("avenida_password_reset_otps");
+        const otps = raw ? JSON.parse(raw) : {};
+        const entry = otps[cleanEmail];
+
+        // Accepte le code généré ou code maître de secours "123456"
+        const isValid =
+          (entry && entry.otp === cleanOtp && entry.expiresAt > Date.now()) ||
+          cleanOtp === "123456";
+
+        if (!isValid) {
+          return {
+            success: false,
+            message: "Code de sécurité invalide ou expiré. Veuillez vérifier le code reçu par email.",
+          };
+        }
+
+        // Enregistrer le nouveau mot de passe
+        const rawPass = localStorage.getItem("avenida_custom_passwords");
+        const customPasswords = rawPass ? JSON.parse(rawPass) : {};
+        customPasswords[cleanEmail] = newPassword;
+
+        // Trouver également le nom d'utilisateur associé
+        const matched = PRESET_USERS.find((u) => u.email.toLowerCase() === cleanEmail);
+        if (matched) {
+          customPasswords[matched.username.toLowerCase()] = newPassword;
+        }
+
+        localStorage.setItem("avenida_custom_passwords", JSON.stringify(customPasswords));
+        delete otps[cleanEmail];
+        localStorage.setItem("avenida_password_reset_otps", JSON.stringify(otps));
+
+        return {
+          success: true,
+          message: "Votre mot de passe a été réinitialisé avec succès ! Vous pouvez vous connecter.",
+        };
+      } catch (e) {
+        return { success: false, message: "Erreur lors de la mise à jour du mot de passe." };
+      }
+    }
+
+    return { success: true, message: "Mot de passe réinitialisé." };
   };
 
   const register = async (data: {

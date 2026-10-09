@@ -32,6 +32,7 @@ import {
 import {
   getStoredFinances,
   saveAndSyncFinance,
+  syncFinancesFromSupabase,
   AVENIDA_DATA_UPDATED_EVENT,
 } from "@/lib/realtime-store";
 
@@ -43,6 +44,12 @@ export default function FinancesPage() {
 
   useEffect(() => {
     setEntries(getStoredFinances());
+    syncFinancesFromSupabase().then((list) => {
+      if (list && list.length > 0) {
+        setEntries(list);
+      }
+    });
+
     const handleUpdate = () => setEntries(getStoredFinances());
     window.addEventListener(AVENIDA_DATA_UPDATED_EVENT, handleUpdate);
     window.addEventListener("storage", handleUpdate);

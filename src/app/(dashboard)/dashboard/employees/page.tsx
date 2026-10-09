@@ -39,6 +39,7 @@ import {
 import {
   getStoredEmployees,
   saveAndSyncEmployee,
+  syncEmployeesFromSupabase,
   AVENIDA_DATA_UPDATED_EVENT,
 } from "@/lib/realtime-store";
 
@@ -92,6 +93,12 @@ export default function EmployeesPage() {
 
   useEffect(() => {
     setEmployees(getStoredEmployees());
+    syncEmployeesFromSupabase().then((list) => {
+      if (list && list.length > 0) {
+        setEmployees(list);
+      }
+    });
+
     const handleUpdate = () => setEmployees(getStoredEmployees());
     window.addEventListener(AVENIDA_DATA_UPDATED_EVENT, handleUpdate);
     window.addEventListener("storage", handleUpdate);

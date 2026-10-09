@@ -55,6 +55,105 @@ export function getCurrentAcademicYear(): string {
 
 export type DiplomeCode = "CFA" | "CAP" | "BEP" | "BT" | "BTS";
 
+export interface AcademicDepartment {
+  id: string;
+  name: string;
+  shortName: string;
+  code: "arts_culinaires" | "hebergement" | "restauration" | "management";
+  description: string;
+  icon: string;
+  badgeColor: string;
+  headOfDepartment: string;
+  associatedSpecialties: string[];
+}
+
+export const ACADEMIC_DEPARTMENTS: AcademicDepartment[] = [
+  {
+    id: "dept_culinaire",
+    code: "arts_culinaires",
+    name: "Département Arts Culinaires & Métiers de Bouche",
+    shortName: "Arts Culinaires",
+    description: "Cuisine gastronomique, pâtisserie fine, boulangerie et boucherie/charcuterie.",
+    icon: "UtensilsCrossed",
+    badgeColor: "bg-amber-100 text-amber-900 border-amber-300",
+    headOfDepartment: "Chef M. Koffi (Maître Cuisinier)",
+    associatedSpecialties: [
+      "Cuisine",
+      "Pâtisserie",
+      "Cuisine / Pâtisserie",
+      "Boucherie / Charcuterie",
+    ],
+  },
+  {
+    id: "dept_hebergement",
+    code: "hebergement",
+    name: "Département Hébergement & Accueil Hôtelier",
+    shortName: "Hébergement & Accueil",
+    description: "Réception hôtel, conciergerie, gouvernance d'étage et service lingerie/buanderie.",
+    icon: "BedDouble",
+    badgeColor: "bg-blue-100 text-[#0C356A] border-blue-300",
+    headOfDepartment: "Mme. Akofa (Gouvernante Générale)",
+    associatedSpecialties: [
+      "Hébergement",
+      "Réception / Étage",
+      "Lingerie / Buanderie",
+    ],
+  },
+  {
+    id: "dept_restauration",
+    code: "restauration",
+    name: "Département Restauration & Arts de la Table",
+    shortName: "Restauration & Salle",
+    description: "Service de salle, bar contemporain, mixologie, œnologie et sommellerie.",
+    icon: "Wine",
+    badgeColor: "bg-rose-100 text-rose-900 border-rose-300",
+    headOfDepartment: "M. Mensah (Maître d'Hôtel)",
+    associatedSpecialties: [
+      "Restauration",
+      "Restaurant / Bar",
+      "Sommellerie",
+    ],
+  },
+  {
+    id: "dept_management",
+    code: "management",
+    name: "Département Management, Gestion & Tourisme",
+    shortName: "Management & Tourisme",
+    description: "Gestion hôtelière avancée, yield management, économie du tourisme et marketing.",
+    icon: "Briefcase",
+    badgeColor: "bg-emerald-100 text-emerald-900 border-emerald-300",
+    headOfDepartment: "Dr. Lawson (Directeur des Études)",
+    associatedSpecialties: [
+      "Gestion Hôtelière",
+      "Tourisme & Loisirs",
+      "Management Hôtelier",
+    ],
+  },
+];
+
+/**
+ * Détermine automatiquement le département académique d'une spécialité
+ */
+export function getDepartmentForSpecialty(specialty?: string): AcademicDepartment {
+  if (!specialty) return ACADEMIC_DEPARTMENTS[0];
+  const specLower = specialty.toLowerCase().trim();
+
+  if (specLower.includes("cuis") || specLower.includes("pâtiss") || specLower.includes("patiss") || specLower.includes("bouch")) {
+    return ACADEMIC_DEPARTMENTS[0];
+  }
+  if (specLower.includes("héberg") || specLower.includes("heberg") || specLower.includes("récept") || specLower.includes("recept") || specLower.includes("étage") || specLower.includes("etage") || specLower.includes("linge")) {
+    return ACADEMIC_DEPARTMENTS[1];
+  }
+  if (specLower.includes("restau") || specLower.includes("bar") || specLower.includes("service") || specLower.includes("sommel")) {
+    return ACADEMIC_DEPARTMENTS[2];
+  }
+  if (specLower.includes("gest") || specLower.includes("touris") || specLower.includes("manag")) {
+    return ACADEMIC_DEPARTMENTS[3];
+  }
+
+  return ACADEMIC_DEPARTMENTS[0];
+}
+
 export interface ProgramLevel {
   code: DiplomeCode;
   name: string;
@@ -257,3 +356,20 @@ export function generateStudentNumber(sequence: number, year: string): string {
   const startYear = year.split("-")[0]; // "2026-2027" → "2026"
   return `ETU-${startYear}-${String(sequence).padStart(5, "0")}`;
 }
+
+/** Calcule dynamiquement le prochain numéro de séquence pour un nouvel élève */
+export function getNextStudentSequence(existingMatricules: string[]): number {
+  let maxSeq = 800;
+  for (const mat of existingMatricules) {
+    if (!mat) continue;
+    const match = mat.match(/^(\d+)AVN/i);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (!isNaN(num) && num > maxSeq) {
+        maxSeq = num;
+      }
+    }
+  }
+  return maxSeq + 1;
+}
+

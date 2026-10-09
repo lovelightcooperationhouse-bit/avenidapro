@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -37,6 +37,7 @@ import {
   calculateTotalFees,
   generateMatricule,
   generateStudentNumber,
+  getNextStudentSequence,
   type DiplomeCode,
 } from "@/lib/academic-data";
 import { formatFCFA } from "@/lib/utils";
@@ -53,6 +54,7 @@ import {
 import {
   saveAndSyncStudent,
   broadcastDataChange,
+  getStoredStudents,
 } from "@/lib/realtime-store";
 
 export type UploadedFileMeta = UploadedFileItem;
@@ -244,6 +246,42 @@ export default function NewStudentPage() {
   const [createdStudent, setCreatedStudent] = useState<Student | null>(null);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [enrollmentYear, setEnrollmentYear] = useState(selectedYear);
+  const [refreshSeqKey, setRefreshSeqKey] = useState(0);
+
+  // ── Validation & Erreurs ──
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [stepValidationError, setStepValidationError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // ── Restauration du brouillon local ──
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = sessionStorage.getItem("avenida_student_new_draft");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed && typeof parsed === "object") {
+            setForm((prev) => ({ ...prev, ...parsed }));
+          }
+        }
+      } catch (err) {
+        console.warn("Erreur lecture brouillon:", err);
+      }
+    }
+  }, []);
+
+  // ── Sauvegarde automatique du brouillon ──
+  useEffect(() => {
+    if (typeof window !== "undefined" && !submitted) {
+      try {
+        if (form.last_name || form.first_name || form.phone) {
+          sessionStorage.setItem("avenida_student_new_draft", JSON.stringify(form));
+        }
+      } catch {
+        // storage fallback
+      }
+    }
+  }, [form, submitted]);
 
   // ── Fichiers & Pièces Téléversées ──
   const [uploadedFiles, setUploadedFiles] = useState<Record<string, UploadedFileMeta>>({});
@@ -267,17 +305,106 @@ export default function NewStudentPage() {
     ? `${form.year_level} - ${form.specialty}`
     : "";
 
-  // ── Matricule preview ──
-  const matriculePreview = generateMatricule(818, enrollmentYear);
-  const studentNumberPreview = generateStudentNumber(818, enrollmentYear);
+  // ── Matricule séquentiel dynamique garanti UNIQUE ──
+  const existingStudents = useMemo(() => {
+    return getStoredStudents();
+  }, [refreshSeqKey, submitted]);
 
-  // ── Helpers ──
-  const updateField = <K extends keyof FormData>(key: K, value: FormData[K]) => {
-    setForm((prev) => ({ ...prev, [key]: value }));
+  const nextSequence = useMemo(() => {
+    return getNextStudentSequence(existingStudents.map((s) => s.registration_number));
+  }, [existingStudents]);
+
+  const matriculePreview = useMemo(() => {
+    return generateMatricule(nextSequence, enrollmentYear);
+  }, [nextSequence, enrollmentYear]);
+
+  const studentNumberPreview = useMemo(() => {
+    return generateStudentNumber(nextSequence, enrollmentYear);
+  }, [nextSequence, enrollmentYear]);
+
+  // ── Validation stricte des étapes obligatoires ──
+  const validateStep = (stepNumber: number): boolean => {
+    const errs: Record<string, string> = {};
+
+    if (stepNumber === 1) {
+      if (!form.last_name?.trim()) errs.last_name = "Le nom de famille est obligatoire.";
+      if (!form.first_name?.trim()) errs.first_name = "Le prénom est obligatoire.";
+      if (!form.gender) errs.gender = "Veuillez choisir le genre (M/F).";
+      if (!form.birth_date) errs.birth_date = "La date de naissance est obligatoire.";
+      if (!form.birth_place?.trim()) errs.birth_place = "Le lieu de naissance est obligatoire.";
+      if (!form.nationality?.trim()) errs.nationality = "La nationalité est obligatoire.";
+    } else if (stepNumber === 2) {
+      if (!form.address?.trim()) errs.address = "L'adresse complète est obligatoire.";
+      if (!form.neighborhood?.trim()) errs.neighborhood = "Le quartier est obligatoire.";
+      if (!form.city?.trim()) errs.city = "La ville est obligatoire.";
+      if (!form.phone?.trim()) errs.phone = "Le numéro de téléphone principal est obligatoire.";
+    } else if (stepNumber === 4) {
+      if (!form.program_code) errs.program_code = "Veuillez choisir le diplôme.";
+      if (!form.year_level) errs.year_level = "Veuillez choisir le niveau d'année.";
+      if (!form.specialty) errs.specialty = "Veuillez choisir la spécialité.";
+      if (!form.boarder_status) errs.boarder_status = "Veuillez choisir le régime (Interne/Externe).";
+    } else if (stepNumber === 5) {
+      const hasEmergencyName = Boolean(form.emergency_contact_name?.trim() || form.parent_father_name?.trim() || form.tutor_name?.trim());
+      const hasEmergencyPhone = Boolean(form.emergency_contact_phone?.trim() || form.parent_father_phone?.trim() || form.tutor_phone?.trim());
+      if (!hasEmergencyName) {
+        errs.emergency_contact_name = "Nom d'urgence ou d'un parent obligatoire.";
+      }
+      if (!hasEmergencyPhone) {
+        errs.emergency_contact_phone = "Téléphone d'urgence obligatoire.";
+      }
+    }
+
+    setFormErrors(errs);
+
+    if (Object.keys(errs).length > 0) {
+      setStepValidationError(
+        "Veuillez remplir tous les champs obligatoires (*) de cette étape avant d'accéder à la suite."
+      );
+      return false;
+    }
+
+    setStepValidationError(null);
+    return true;
   };
 
-  const nextStep = () => setCurrentStep((s) => Math.min(s + 1, STEPS.length));
-  const prevStep = () => setCurrentStep((s) => Math.max(s - 1, 1));
+  // ── Helpers de mise à jour ──
+  const updateField = <K extends keyof FormData>(key: K, value: FormData[K]) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
+    if (formErrors[key as string]) {
+      setFormErrors((prev) => {
+        const copy = { ...prev };
+        delete copy[key as string];
+        return copy;
+      });
+    }
+    if (stepValidationError) setStepValidationError(null);
+  };
+
+  const nextStep = () => {
+    if (!validateStep(currentStep)) return;
+    setCurrentStep((s) => Math.min(s + 1, STEPS.length));
+  };
+
+  const prevStep = () => {
+    setStepValidationError(null);
+    setCurrentStep((s) => Math.max(s - 1, 1));
+  };
+
+  const handleStepClick = (targetStep: number) => {
+    if (targetStep < currentStep) {
+      setStepValidationError(null);
+      setCurrentStep(targetStep);
+      return;
+    }
+    // Pour avancer, vérifier que chaque étape précédente est valide
+    for (let s = currentStep; s < targetStep; s++) {
+      if (!validateStep(s)) {
+        setCurrentStep(s);
+        return;
+      }
+    }
+    setCurrentStep(targetStep);
+  };
 
   // ── Gestion Téléversement Photo d'Identité (Exigences : JPG/PNG/WEBP • Max 3 Mo) ──
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -400,22 +527,38 @@ export default function NewStudentPage() {
   };
 
   const handleSubmit = async () => {
+    // 1. Validation intégrale de toutes les étapes obligatoires
+    for (const stepNum of [1, 2, 4, 5]) {
+      if (!validateStep(stepNum)) {
+        setCurrentStep(stepNum);
+        return;
+      }
+    }
+
+    setIsSubmitting(true);
+
+    // 2. Calcul du matricule unique en temps réel
+    const currentList = getStoredStudents();
+    const finalSequence = getNextStudentSequence(currentList.map((s) => s.registration_number));
+    const finalMatricule = generateMatricule(finalSequence, enrollmentYear);
+    const finalStudentNumber = generateStudentNumber(finalSequence, enrollmentYear);
+
     const studentData: Student = {
       id: `std-${Date.now()}`,
-      registration_number: matriculePreview,
-      student_number: studentNumberPreview,
-      first_name: form.first_name || "Élève",
-      last_name: form.last_name || "AVENIDA",
+      registration_number: finalMatricule,
+      student_number: finalStudentNumber,
+      first_name: form.first_name.trim(),
+      last_name: form.last_name.trim(),
       gender: (form.gender || "M") as "M" | "F",
-      birth_date: form.birth_date || "2006-01-15",
-      birth_place: form.birth_place || "Lomé",
+      birth_date: form.birth_date,
+      birth_place: form.birth_place,
       nationality: form.nationality || "Togolaise",
       residence_neighborhood: form.neighborhood || form.city || "Lomé (Dékon)",
-      phone: form.phone || "+228 90 00 00 00",
-      email: form.email || `${form.first_name.toLowerCase()}.${form.last_name.toLowerCase()}@ecole-avenida.tg`,
+      phone: form.phone,
+      email: form.email || `${form.first_name.toLowerCase().replace(/\s+/g, '')}.${form.last_name.toLowerCase().replace(/\s+/g, '')}@ecole-avenida.tg`,
       boarder_status: (form.boarder_status || "externe") as "interne" | "externe",
-      emergency_contact_name: form.emergency_contact_name || form.parent_father_name || "Direction Avenida",
-      emergency_contact_phone: form.emergency_contact_phone || form.parent_father_phone || "+228 22 21 00 00",
+      emergency_contact_name: form.emergency_contact_name || form.parent_father_name || form.tutor_name || "Direction Avenida",
+      emergency_contact_phone: form.emergency_contact_phone || form.parent_father_phone || form.tutor_phone || "+228 22 21 00 00",
       program_code: (form.program_code || "BTS") as DiplomeCode,
       class_name: className || "1ère Année Hôtellerie",
       academic_year: availableYears.find((y) => y.value === enrollmentYear)?.label || "2024 - 2025",
@@ -427,36 +570,25 @@ export default function NewStudentPage() {
       uploaded_documents: uploadedFiles,
     };
 
-    // 1. Sauvegarde locale et synchronisation Supabase immédiate
-    saveAndSyncStudent(studentData);
-    broadcastDataChange();
-
-    // 2. Sauvegarde Supabase en tâche de fond si connecté
     try {
-      const supabase = createClient();
-      await supabase.from("students").insert({
-        registration_number: studentData.registration_number,
-        student_number: studentData.student_number,
-        first_name: studentData.first_name,
-        last_name: studentData.last_name,
-        gender: studentData.gender,
-        birth_date: studentData.birth_date || null,
-        birth_place: studentData.birth_place || null,
-        nationality: studentData.nationality,
-        residence_neighborhood: studentData.residence_neighborhood,
-        phone: studentData.phone,
-        email: studentData.email,
-        boarder_status: studentData.boarder_status,
-        emergency_contact_name: studentData.emergency_contact_name,
-        emergency_contact_phone: studentData.emergency_contact_phone,
-        status: "actif",
-      });
-    } catch (err) {
-      console.warn("Synchronisation Supabase (mode déconnecté / fallback actif):", err);
-    }
+      // Sauvegarde locale + synchronisation Supabase avec retour
+      await saveAndSyncStudent(studentData);
+      broadcastDataChange();
 
-    setCreatedStudent(studentData);
-    setSubmitted(true);
+      // Nettoyer le brouillon
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem("avenida_student_new_draft");
+      }
+
+      setCreatedStudent(studentData);
+      setSubmitted(true);
+      setRefreshSeqKey((k) => k + 1);
+    } catch (err) {
+      console.error("Erreur enregistrement élève:", err);
+      setStepValidationError("Une erreur est survenue lors de l'enregistrement de l'élève. Veuillez réessayer.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // ═══════════════════════════════════════════════════
@@ -537,11 +669,18 @@ export default function NewStudentPage() {
                 setSubmitted(false);
                 setCreatedStudent(null);
                 setForm(INITIAL_FORM);
+                setUploadedFiles({});
+                setFormErrors({});
+                setStepValidationError(null);
                 setCurrentStep(1);
+                setRefreshSeqKey((k) => k + 1);
+                if (typeof window !== "undefined") {
+                  sessionStorage.removeItem("avenida_student_new_draft");
+                }
               }}
-              className="text-xs text-slate-500 hover:text-slate-800 font-bold underline transition-colors"
+              className="text-xs text-[#0C356A] hover:text-[#DC2626] font-bold underline transition-colors cursor-pointer"
             >
-              + Inscrire un autre élève
+              + Inscrire un autre élève (Nouveau Matricule Garanti)
             </button>
           </div>
         </div>
@@ -625,8 +764,8 @@ export default function NewStudentPage() {
             return (
               <button
                 key={step.id}
-                onClick={() => setCurrentStep(step.id)}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold transition-all duration-200 whitespace-nowrap ${
+                onClick={() => handleStepClick(step.id)}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-bold transition-all duration-200 whitespace-nowrap cursor-pointer ${
                   isActive
                     ? "bg-[#0C356A] text-white shadow-sm scale-105"
                     : isCompleted
@@ -656,36 +795,64 @@ export default function NewStudentPage() {
             <SectionHeader icon={User} title="État Civil de l'Élève" subtitle="Informations d'identité officielles" />
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              <FormField label="Nom de famille *" required>
-                <input type="text" value={form.last_name} onChange={(e) => updateField("last_name", e.target.value.toUpperCase())}
-                  placeholder="Ex: PINHEIRO" className="form-input-avenida" />
+              <FormField label="Nom de famille *" required error={formErrors.last_name}>
+                <input
+                  type="text"
+                  value={form.last_name}
+                  onChange={(e) => updateField("last_name", e.target.value.toUpperCase())}
+                  placeholder="Ex: PINHEIRO"
+                  className={`form-input-avenida ${formErrors.last_name ? "border-red-500 bg-red-50/30 ring-2 ring-red-400/20" : ""}`}
+                />
               </FormField>
 
-              <FormField label="Prénom(s) *" required>
-                <input type="text" value={form.first_name} onChange={(e) => updateField("first_name", e.target.value)}
-                  placeholder="Ex: Oswaldo Sam-will" className="form-input-avenida" />
+              <FormField label="Prénom(s) *" required error={formErrors.first_name}>
+                <input
+                  type="text"
+                  value={form.first_name}
+                  onChange={(e) => updateField("first_name", e.target.value)}
+                  placeholder="Ex: Oswaldo Sam-will"
+                  className={`form-input-avenida ${formErrors.first_name ? "border-red-500 bg-red-50/30 ring-2 ring-red-400/20" : ""}`}
+                />
               </FormField>
 
-              <FormField label="Genre *" required>
-                <select value={form.gender} onChange={(e) => updateField("gender", e.target.value as "M" | "F")} className="form-input-avenida">
+              <FormField label="Genre *" required error={formErrors.gender}>
+                <select
+                  value={form.gender}
+                  onChange={(e) => updateField("gender", e.target.value as "M" | "F")}
+                  className={`form-input-avenida ${formErrors.gender ? "border-red-500 bg-red-50/30 ring-2 ring-red-400/20" : ""}`}
+                >
                   <option value="">-- Sélectionner --</option>
                   <option value="M">Masculin</option>
                   <option value="F">Féminin</option>
                 </select>
               </FormField>
 
-              <FormField label="Date de naissance *" required>
-                <input type="date" value={form.birth_date} onChange={(e) => updateField("birth_date", e.target.value)}
-                  className="form-input-avenida" />
+              <FormField label="Date de naissance *" required error={formErrors.birth_date}>
+                <input
+                  type="date"
+                  value={form.birth_date}
+                  onChange={(e) => updateField("birth_date", e.target.value)}
+                  className={`form-input-avenida ${formErrors.birth_date ? "border-red-500 bg-red-50/30 ring-2 ring-red-400/20" : ""}`}
+                />
               </FormField>
 
-              <FormField label="Lieu de naissance *" required>
-                <input type="text" value={form.birth_place} onChange={(e) => updateField("birth_place", e.target.value)}
-                  placeholder="Ex: Lomé, Kpalimé, Aného..." className="form-input-avenida" />
+              <FormField label="Lieu de naissance *" required error={formErrors.birth_place}>
+                <input
+                  type="text"
+                  value={form.birth_place}
+                  onChange={(e) => updateField("birth_place", e.target.value)}
+                  placeholder="Ex: Lomé, Kpalimé, Aného..."
+                  className={`form-input-avenida ${formErrors.birth_place ? "border-red-500 bg-red-50/30 ring-2 ring-red-400/20" : ""}`}
+                />
               </FormField>
 
-              <FormField label="Nationalité *" required>
-                <select value={form.nationality} onChange={(e) => updateField("nationality", e.target.value)} className="form-input-avenida">
+              <FormField label="Nationalité *" required error={formErrors.nationality}>
+                <select
+                  value={form.nationality}
+                  onChange={(e) => updateField("nationality", e.target.value)}
+                  className={`form-input-avenida ${formErrors.nationality ? "border-red-500 bg-red-50/30 ring-2 ring-red-400/20" : ""}`}
+                >
+                  <option value="">-- Sélectionner la nationalité --</option>
                   {NATIONALITIES.map((n) => (
                     <option key={n} value={n}>{n}</option>
                   ))}
@@ -693,8 +860,13 @@ export default function NewStudentPage() {
               </FormField>
 
               <FormField label="N° Pièce d'identité (CNI / Passeport)">
-                <input type="text" value={form.id_card_number} onChange={(e) => updateField("id_card_number", e.target.value)}
-                  placeholder="Ex: TG-LOM-2022-8941" className="form-input-avenida" />
+                <input
+                  type="text"
+                  value={form.id_card_number}
+                  onChange={(e) => updateField("id_card_number", e.target.value)}
+                  placeholder="Ex: TG-LOM-2022-8941"
+                  className="form-input-avenida"
+                />
               </FormField>
 
               <div className="md:col-span-2 lg:col-span-3">
@@ -728,13 +900,22 @@ export default function NewStudentPage() {
             <SectionHeader icon={MapPin} title="Coordonnées & Résidence" subtitle="Adresse et moyens de contact de l'élève" />
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              <FormField label="Adresse complète *" required className="lg:col-span-2">
-                <input type="text" value={form.address} onChange={(e) => updateField("address", e.target.value)}
-                  placeholder="Ex: 30, Rue d'Almeida Leopold" className="form-input-avenida" />
+              <FormField label="Adresse complète *" required error={formErrors.address} className="lg:col-span-2">
+                <input
+                  type="text"
+                  value={form.address}
+                  onChange={(e) => updateField("address", e.target.value)}
+                  placeholder="Ex: 30, Rue d'Almeida Leopold"
+                  className={`form-input-avenida ${formErrors.address ? "border-red-500 bg-red-50/30 ring-2 ring-red-400/20" : ""}`}
+                />
               </FormField>
 
-              <FormField label="Quartier *" required>
-                <select value={form.neighborhood} onChange={(e) => updateField("neighborhood", e.target.value)} className="form-input-avenida">
+              <FormField label="Quartier *" required error={formErrors.neighborhood}>
+                <select
+                  value={form.neighborhood}
+                  onChange={(e) => updateField("neighborhood", e.target.value)}
+                  className={`form-input-avenida ${formErrors.neighborhood ? "border-red-500 bg-red-50/30 ring-2 ring-red-400/20" : ""}`}
+                >
                   <option value="">-- Sélectionner le quartier --</option>
                   {NEIGHBORHOODS.map((n) => (
                     <option key={n} value={n}>{n}</option>
@@ -742,14 +923,24 @@ export default function NewStudentPage() {
                 </select>
               </FormField>
 
-              <FormField label="Ville *" required>
-                <input type="text" value={form.city} onChange={(e) => updateField("city", e.target.value)}
-                  placeholder="Lomé" className="form-input-avenida" />
+              <FormField label="Ville *" required error={formErrors.city}>
+                <input
+                  type="text"
+                  value={form.city}
+                  onChange={(e) => updateField("city", e.target.value)}
+                  placeholder="Lomé"
+                  className={`form-input-avenida ${formErrors.city ? "border-red-500 bg-red-50/30 ring-2 ring-red-400/20" : ""}`}
+                />
               </FormField>
 
-              <FormField label="Téléphone principal *" required>
-                <input type="tel" value={form.phone} onChange={(e) => updateField("phone", e.target.value)}
-                  placeholder="Ex: 91 42 46 45" className="form-input-avenida" />
+              <FormField label="Téléphone principal *" required error={formErrors.phone}>
+                <input
+                  type="tel"
+                  value={form.phone}
+                  onChange={(e) => updateField("phone", e.target.value)}
+                  placeholder="Ex: 91 42 46 45"
+                  className={`form-input-avenida ${formErrors.phone ? "border-red-500 bg-red-50/30 ring-2 ring-red-400/20" : ""}`}
+                />
               </FormField>
 
               <FormField label="Téléphone secondaire">
@@ -816,7 +1007,7 @@ export default function NewStudentPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {/* Diplôme */}
-              <FormField label="Diplôme visé *" required>
+              <FormField label="Diplôme visé *" required error={formErrors.program_code}>
                 <select
                   value={form.program_code}
                   onChange={(e) => {
@@ -825,7 +1016,7 @@ export default function NewStudentPage() {
                     updateField("year_level", "");
                     updateField("specialty", "");
                   }}
-                  className="form-input-avenida"
+                  className={`form-input-avenida ${formErrors.program_code ? "border-red-500 bg-red-50/30 ring-2 ring-red-400/20" : ""}`}
                 >
                   <option value="">-- Choisir le diplôme --</option>
                   {PROGRAMS.map((p) => (
@@ -837,12 +1028,12 @@ export default function NewStudentPage() {
               </FormField>
 
               {/* Niveau d'année */}
-              <FormField label="Niveau / Année *" required>
+              <FormField label="Niveau / Année *" required error={formErrors.year_level}>
                 <select
                   value={form.year_level}
                   onChange={(e) => updateField("year_level", e.target.value)}
                   disabled={!selectedProgram}
-                  className="form-input-avenida"
+                  className={`form-input-avenida ${formErrors.year_level ? "border-red-500 bg-red-50/30 ring-2 ring-red-400/20" : ""}`}
                 >
                   <option value="">-- Choisir le niveau --</option>
                   {selectedProgram?.yearLevels.map((yl) => (
@@ -852,12 +1043,12 @@ export default function NewStudentPage() {
               </FormField>
 
               {/* Spécialité */}
-              <FormField label="Spécialité *" required>
+              <FormField label="Spécialité *" required error={formErrors.specialty}>
                 <select
                   value={form.specialty}
                   onChange={(e) => updateField("specialty", e.target.value)}
                   disabled={!selectedProgram}
-                  className="form-input-avenida"
+                  className={`form-input-avenida ${formErrors.specialty ? "border-red-500 bg-red-50/30 ring-2 ring-red-400/20" : ""}`}
                 >
                   <option value="">-- Choisir la spécialité --</option>
                   {selectedProgram?.specialties.map((sp) => (
@@ -867,11 +1058,11 @@ export default function NewStudentPage() {
               </FormField>
 
               {/* Régime */}
-              <FormField label="Régime (Interne / Externe) *" required>
+              <FormField label="Régime (Interne / Externe) *" required error={formErrors.boarder_status}>
                 <select
                   value={form.boarder_status}
                   onChange={(e) => updateField("boarder_status", e.target.value as "interne" | "externe")}
-                  className="form-input-avenida"
+                  className={`form-input-avenida ${formErrors.boarder_status ? "border-red-500 bg-red-50/30 ring-2 ring-red-400/20" : ""}`}
                 >
                   <option value="">-- Sélectionner --</option>
                   <option value="externe">Externe (sans hébergement)</option>
@@ -986,13 +1177,23 @@ export default function NewStudentPage() {
                 <AlertCircle className="w-4 h-4" /> Personne à contacter en cas d&apos;urgence *
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <FormField label="Nom complet *" required>
-                  <input type="text" value={form.emergency_contact_name} onChange={(e) => updateField("emergency_contact_name", e.target.value)}
-                    className="form-input-avenida" />
+                <FormField label="Nom complet *" required error={formErrors.emergency_contact_name}>
+                  <input
+                    type="text"
+                    value={form.emergency_contact_name}
+                    onChange={(e) => updateField("emergency_contact_name", e.target.value)}
+                    placeholder="Ex: PINHEIRO Jean"
+                    className={`form-input-avenida ${formErrors.emergency_contact_name ? "border-red-500 bg-red-50/30 ring-2 ring-red-400/20" : ""}`}
+                  />
                 </FormField>
-                <FormField label="Téléphone *" required>
-                  <input type="tel" value={form.emergency_contact_phone} onChange={(e) => updateField("emergency_contact_phone", e.target.value)}
-                    className="form-input-avenida" />
+                <FormField label="Téléphone *" required error={formErrors.emergency_contact_phone}>
+                  <input
+                    type="tel"
+                    value={form.emergency_contact_phone}
+                    onChange={(e) => updateField("emergency_contact_phone", e.target.value)}
+                    placeholder="Ex: 90 00 00 00"
+                    className={`form-input-avenida ${formErrors.emergency_contact_phone ? "border-red-500 bg-red-50/30 ring-2 ring-red-400/20" : ""}`}
+                  />
                 </FormField>
                 <FormField label="Relation">
                   <input type="text" value={form.emergency_relation} onChange={(e) => updateField("emergency_relation", e.target.value)}
@@ -1230,6 +1431,19 @@ export default function NewStudentPage() {
           </div>
         )}
 
+        {/* ══════ BANNIÈRE D'ERREUR DE VALIDATION D'ÉTAPE ══════ */}
+        {stepValidationError && (
+          <div className="mt-6 p-4 bg-red-50 border-2 border-red-300 rounded-2xl flex items-center gap-3 text-xs text-red-900 font-bold animate-in fade-in slide-in-from-bottom-2">
+            <AlertTriangle className="w-5 h-5 text-red-600 shrink-0" />
+            <div className="flex-1">
+              <p>{stepValidationError}</p>
+              <p className="text-[11px] font-normal text-red-600 mt-0.5">
+                Remplissez les champs encadrés en rouge ci-dessus pour pouvoir continuer.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* ══════ NAVIGATION STEPS ══════ */}
         <div className="flex items-center justify-between mt-8 pt-6 border-t border-slate-200">
           <button
@@ -1238,7 +1452,7 @@ export default function NewStudentPage() {
             className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm transition-all ${
               currentStep === 1
                 ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-                : "bg-slate-100 text-slate-700 hover:bg-slate-200 active:scale-95"
+                : "bg-slate-100 text-slate-700 hover:bg-slate-200 active:scale-95 cursor-pointer"
             }`}
           >
             <ArrowLeft className="w-4 h-4" />
@@ -1252,7 +1466,7 @@ export default function NewStudentPage() {
           {currentStep < STEPS.length ? (
             <button
               onClick={nextStep}
-              className="flex items-center gap-2 px-5 py-2.5 bg-[#0C356A] text-white rounded-xl font-bold text-sm hover:bg-[#164E87] active:scale-95 transition-all shadow-sm"
+              className="flex items-center gap-2 px-5 py-2.5 bg-[#0C356A] text-white rounded-xl font-bold text-sm hover:bg-[#164E87] active:scale-95 transition-all shadow-sm cursor-pointer"
             >
               Suivant
               <ArrowRight className="w-4 h-4" />
@@ -1260,10 +1474,17 @@ export default function NewStudentPage() {
           ) : (
             <button
               onClick={handleSubmit}
-              className="flex items-center gap-2 px-6 py-2.5 bg-[#DC2626] text-white rounded-xl font-bold text-sm hover:bg-[#b91c1c] active:scale-95 transition-all shadow-md shadow-red-900/20"
+              disabled={isSubmitting}
+              className={`flex items-center gap-2 px-6 py-2.5 bg-[#DC2626] text-white rounded-xl font-bold text-sm hover:bg-[#b91c1c] active:scale-95 transition-all shadow-md shadow-red-900/20 cursor-pointer ${
+                isSubmitting ? "opacity-75 cursor-wait" : ""
+              }`}
             >
-              <Save className="w-4 h-4" />
-              Valider l&apos;Inscription
+              {isSubmitting ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              {isSubmitting ? "Enregistrement en cours..." : "Valider l'Inscription"}
             </button>
           )}
         </div>
@@ -1294,14 +1515,32 @@ function SectionHeader({ icon: Icon, title, subtitle, color = "blue" }: {
   );
 }
 
-function FormField({ label, required, children, className = "" }: {
-  label: string; required?: boolean; children: React.ReactNode; className?: string;
+function FormField({
+  label,
+  required,
+  error,
+  children,
+  className = "",
+}: {
+  label: string;
+  required?: boolean;
+  error?: string;
+  children: React.ReactNode;
+  className?: string;
 }) {
   return (
     <div className={`space-y-1.5 ${className}`}>
-      <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
-        {label}
-        {required && <span className="text-[#DC2626]">*</span>}
+      <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
+        <span className="flex items-center gap-1">
+          {label}
+          {required && <span className="text-[#DC2626] font-black">*</span>}
+        </span>
+        {error && (
+          <span className="text-[10px] text-red-600 font-bold flex items-center gap-1 animate-in fade-in">
+            <AlertCircle className="w-3 h-3 text-red-600 inline shrink-0" />
+            {error}
+          </span>
+        )}
       </label>
       {children}
     </div>

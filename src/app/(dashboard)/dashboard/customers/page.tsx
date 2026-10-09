@@ -33,6 +33,7 @@ import {
 import {
   getStoredCustomers,
   saveAndSyncCustomer,
+  syncCustomersFromSupabase,
   AVENIDA_DATA_UPDATED_EVENT,
   broadcastDataChange,
 } from "@/lib/realtime-store";
@@ -46,6 +47,12 @@ export default function CustomersPage() {
 
   useEffect(() => {
     setCustomers(getStoredCustomers());
+    syncCustomersFromSupabase().then((list) => {
+      if (list && list.length > 0) {
+        setCustomers(list);
+      }
+    });
+
     const handleUpdate = () => setCustomers(getStoredCustomers());
     window.addEventListener(AVENIDA_DATA_UPDATED_EVENT, handleUpdate);
     window.addEventListener("storage", handleUpdate);
@@ -149,39 +156,6 @@ export default function CustomersPage() {
       created_at: new Date().toISOString().split("T")[0],
       id_card_document: idDocument || undefined,
     };
-
-    // 1. Sauvegarde locale immédiate
-    try {
-      const stored = localStorage.getItem("avenida_custom_customers");
-      const list = stored ? JSON.parse(stored) : [];
-      localStorage.setItem("avenida_custom_customers", JSON.stringify([added, ...list]));
-    } catch (e) {
-      console.warn("Erreur localStorage clients:", e);
-    }
-
-    // 2. Sauvegarde Supabase
-    try {
-      const supabase = createClient();
-      const parts = newCust.full_name.trim().split(" ");
-      const lastName = parts.pop() || "";
-      const firstName = parts.join(" ") || lastName;
-      (async () => {
-        try {
-          await supabase.from("hotel_customers").insert({
-            first_name: firstName,
-            last_name: lastName,
-            phone: added.phone,
-            email: added.email,
-            nationality: added.nationality,
-            id_card_or_passport: added.id_card_or_passport,
-          });
-        } catch {
-          // ignore background fallback
-        }
-      })();
-    } catch (err) {
-      console.warn("Supabase hotel_customers insert fallback:", err);
-    }
 
     setCustomers([added, ...customers]);
     saveAndSyncCustomer(added);
