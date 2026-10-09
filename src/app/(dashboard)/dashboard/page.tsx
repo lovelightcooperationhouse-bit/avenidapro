@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Users,
@@ -33,20 +33,59 @@ import {
   MOCK_ABSENCES,
   MOCK_LATES,
   MOCK_PROGRAMS,
+  MOCK_EMPLOYEES,
+  MOCK_FINANCES,
 } from "@/lib/mock-data";
 import { formatFCFA } from "@/lib/utils";
+import {
+  getStoredStudents,
+  getStoredEmployees,
+  getStoredFinances,
+  getStoredRooms,
+  getStoredReceipts,
+  AVENIDA_DATA_UPDATED_EVENT,
+} from "@/lib/realtime-store";
 
 type ActiveSpace = "all" | "school" | "hotel";
 
 export default function DashboardPage() {
   const [activeSpace, setActiveSpace] = useState<ActiveSpace>("all");
+  const [studentsList, setStudentsList] = useState(MOCK_STUDENTS);
+  const [receiptsList, setReceiptsList] = useState(MOCK_RECEIPTS);
+  const [roomsList, setRoomsList] = useState(MOCK_ROOMS);
+  const [employeesList, setEmployeesList] = useState(MOCK_EMPLOYEES);
+  const [financesList, setFinancesList] = useState(MOCK_FINANCES);
 
-  // Key metrics
-  const totalStudents = MOCK_STUDENTS.length;
-  const totalFeesCollected = MOCK_RECEIPTS.reduce((sum, r) => sum + r.amount_paid, 0);
-  const totalOccupiedRooms = MOCK_ROOMS.filter((r) => r.status === "occupée").length;
-  const totalAvailableRooms = MOCK_ROOMS.filter((r) => r.status === "disponible").length;
-  const occupancyRate = Math.round((totalOccupiedRooms / MOCK_ROOMS.length) * 100);
+  const refreshAllStats = () => {
+    setStudentsList(getStoredStudents());
+    setReceiptsList(getStoredReceipts());
+    setRoomsList(getStoredRooms());
+    setEmployeesList(getStoredEmployees());
+    setFinancesList(getStoredFinances());
+  };
+
+  useEffect(() => {
+    refreshAllStats();
+    window.addEventListener(AVENIDA_DATA_UPDATED_EVENT, refreshAllStats);
+    window.addEventListener("storage", refreshAllStats);
+    return () => {
+      window.removeEventListener(AVENIDA_DATA_UPDATED_EVENT, refreshAllStats);
+      window.removeEventListener("storage", refreshAllStats);
+    };
+  }, []);
+
+  // Key metrics calculées en direct
+  const totalStudents = studentsList.length;
+  const totalFeesCollected = receiptsList.reduce((sum, r) => sum + r.amount_paid, 0);
+  const totalOccupiedRooms = roomsList.filter((r) => r.status === "occupée").length;
+  const totalAvailableRooms = roomsList.filter((r) => r.status === "disponible").length;
+  const occupancyRate = roomsList.length > 0 ? Math.round((totalOccupiedRooms / roomsList.length) * 100) : 0;
+  const activeEmployeesCount = employeesList.filter((e) => e.status === "actif").length;
+
+  const totalHotelRevenue = financesList
+    .filter((f) => f.category === "Hébergement Hôtel" || f.category === "Restauration & Bar")
+    .filter((f) => f.type === "recette")
+    .reduce((sum, f) => sum + f.amount, 0) || 180000;
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -199,8 +238,8 @@ export default function DashboardPage() {
         {(activeSpace === "all" || activeSpace === "hotel") && (
           <StatsCard
             title="Recettes Hôtel du Jour"
-            value={formatFCFA(180000)}
-            subtitle="Séjours & prestations chambres"
+            value={formatFCFA(totalHotelRevenue)}
+            subtitle="Séjours, bar & restaurant"
             icon={TrendingUp}
             variant="hotel"
             trend={{ value: "+12% ce mois", isPositive: true }}
@@ -211,8 +250,8 @@ export default function DashboardPage() {
         {activeSpace === "all" && (
           <StatsCard
             title="Personnel & Profs"
-            value="18 actifs"
-            subtitle="16 présents aujourd'hui au pointage"
+            value={`${activeEmployeesCount} actifs`}
+            subtitle={`${employeesList.length} collaborateurs enregistrés`}
             icon={Briefcase}
             variant="default"
             badge="Direction & RH"

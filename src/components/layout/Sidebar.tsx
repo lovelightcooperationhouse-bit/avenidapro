@@ -22,6 +22,9 @@ import {
   LogOut,
   X,
   Building,
+  Compass,
+  Activity,
+  Layers,
 } from "lucide-react";
 import { AvenidaLogo } from "@/components/shared/AvenidaLogo";
 import { useSchoolYear } from "@/context/SchoolYearContext";
@@ -39,10 +42,112 @@ interface NavItem {
 
 interface NavSection {
   title: string;
-  color: "blue" | "red" | "emerald" | "amber" | "indigo" | "neutral";
+  color: "cyan" | "blue" | "red" | "emerald" | "amber" | "indigo" | "neutral";
+  icon?: any;
   items: NavItem[];
   allowedRoles?: string[];
 }
+
+const SECTION_THEMES: Record<
+  string,
+  {
+    text: string;
+    dot: string;
+    badge: string;
+    line: string;
+    iconColor: string;
+    iconBg: string;
+    border: string;
+    activeBorder: string;
+    activeBg: string;
+    activeText: string;
+  }
+> = {
+  cyan: {
+    text: "text-cyan-100",
+    dot: "bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,1)] ring-2 ring-cyan-400/40",
+    badge: "bg-gradient-to-r from-cyan-500/30 via-cyan-600/20 to-sky-950/40 border-cyan-400/70 shadow-[0_0_14px_rgba(6,182,212,0.3)]",
+    line: "from-cyan-400/90 via-cyan-500/40 to-transparent",
+    iconColor: "text-cyan-300",
+    iconBg: "bg-cyan-500/25 border-cyan-400/50",
+    border: "border-cyan-400/60",
+    activeBorder: "border-cyan-400",
+    activeBg: "bg-cyan-500/20",
+    activeText: "text-cyan-200",
+  },
+  blue: {
+    text: "text-sky-100",
+    dot: "bg-sky-400 shadow-[0_0_10px_rgba(56,189,248,1)] ring-2 ring-sky-400/40",
+    badge: "bg-gradient-to-r from-blue-500/35 via-indigo-600/25 to-sky-950/40 border-sky-400/70 shadow-[0_0_14px_rgba(56,189,248,0.3)]",
+    line: "from-sky-400/90 via-sky-500/40 to-transparent",
+    iconColor: "text-sky-300",
+    iconBg: "bg-sky-500/25 border-sky-400/50",
+    border: "border-sky-400/60",
+    activeBorder: "border-sky-400",
+    activeBg: "bg-sky-500/20",
+    activeText: "text-sky-200",
+  },
+  red: {
+    text: "text-rose-100",
+    dot: "bg-rose-400 shadow-[0_0_10px_rgba(251,113,133,1)] ring-2 ring-rose-400/40",
+    badge: "bg-gradient-to-r from-rose-500/35 via-red-600/25 to-rose-950/40 border-rose-400/70 shadow-[0_0_14px_rgba(251,113,133,0.3)]",
+    line: "from-rose-400/90 via-rose-500/40 to-transparent",
+    iconColor: "text-rose-300",
+    iconBg: "bg-rose-500/25 border-rose-400/50",
+    border: "border-rose-400/60",
+    activeBorder: "border-rose-400",
+    activeBg: "bg-rose-500/20",
+    activeText: "text-rose-200",
+  },
+  emerald: {
+    text: "text-emerald-100",
+    dot: "bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,1)] ring-2 ring-emerald-400/40",
+    badge: "bg-gradient-to-r from-emerald-500/35 via-teal-600/25 to-emerald-950/40 border-emerald-400/70 shadow-[0_0_14px_rgba(52,211,153,0.3)]",
+    line: "from-emerald-400/90 via-emerald-500/40 to-transparent",
+    iconColor: "text-emerald-300",
+    iconBg: "bg-emerald-500/25 border-emerald-400/50",
+    border: "border-emerald-400/60",
+    activeBorder: "border-emerald-400",
+    activeBg: "bg-emerald-500/20",
+    activeText: "text-emerald-200",
+  },
+  amber: {
+    text: "text-amber-100",
+    dot: "bg-amber-400 shadow-[0_0_10px_rgba(251,191,36,1)] ring-2 ring-amber-400/40",
+    badge: "bg-gradient-to-r from-amber-500/35 via-orange-600/25 to-amber-950/40 border-amber-400/70 shadow-[0_0_14px_rgba(251,191,36,0.3)]",
+    line: "from-amber-400/90 via-amber-500/40 to-transparent",
+    iconColor: "text-amber-300",
+    iconBg: "bg-amber-500/25 border-amber-400/50",
+    border: "border-amber-400/60",
+    activeBorder: "border-amber-400",
+    activeBg: "bg-amber-500/20",
+    activeText: "text-amber-200",
+  },
+  indigo: {
+    text: "text-violet-100",
+    dot: "bg-violet-400 shadow-[0_0_10px_rgba(167,139,250,1)] ring-2 ring-violet-400/40",
+    badge: "bg-gradient-to-r from-violet-500/35 via-purple-600/25 to-violet-950/40 border-violet-400/70 shadow-[0_0_14px_rgba(167,139,250,0.3)]",
+    line: "from-violet-400/90 via-violet-500/40 to-transparent",
+    iconColor: "text-violet-300",
+    iconBg: "bg-violet-500/25 border-violet-400/50",
+    border: "border-violet-400/60",
+    activeBorder: "border-violet-400",
+    activeBg: "bg-violet-500/20",
+    activeText: "text-violet-200",
+  },
+  neutral: {
+    text: "text-slate-100",
+    dot: "bg-slate-300 shadow-[0_0_8px_rgba(203,213,225,0.9)] ring-2 ring-slate-400/40",
+    badge: "bg-slate-400/20 border-slate-400/40",
+    line: "from-slate-300/50 via-slate-400/20 to-transparent",
+    iconColor: "text-slate-200",
+    iconBg: "bg-slate-500/25 border-slate-400/40",
+    border: "border-slate-400/50",
+    activeBorder: "border-slate-300",
+    activeBg: "bg-slate-500/20",
+    activeText: "text-slate-100",
+  },
+};
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -56,7 +161,8 @@ export function Sidebar() {
   const allSections: NavSection[] = [
     {
       title: "PILOTAGE & VUE GLOBALE",
-      color: "neutral",
+      color: "cyan",
+      icon: Compass,
       allowedRoles: [
         "directeur_general",
         "directeur_pedagogique",
@@ -82,6 +188,7 @@ export function Sidebar() {
     {
       title: "PÔLE ACADÉMIQUE & SCOLARITÉ",
       color: "blue",
+      icon: GraduationCap,
       allowedRoles: ["directeur_general", "directeur_pedagogique"],
       items: [
         {
@@ -121,6 +228,7 @@ export function Sidebar() {
     {
       title: "PÔLE HÔTELLERIE & HÉBERGEMENT",
       color: "red",
+      icon: BedDouble,
       allowedRoles: ["directeur_general", "responsable_hotel"],
       items: [
         {
@@ -152,6 +260,7 @@ export function Sidebar() {
     {
       title: "COMPTABILITÉ & TRÉSORERIE",
       color: "emerald",
+      icon: CreditCard,
       allowedRoles: ["directeur_general", "comptable"],
       items: [
         {
@@ -183,6 +292,7 @@ export function Sidebar() {
     {
       title: "RESSOURCES HUMAINES & STOCKS",
       color: "amber",
+      icon: Briefcase,
       allowedRoles: ["directeur_general", "ressources_humaines", "comptable"],
       items: [
         {
@@ -212,6 +322,7 @@ export function Sidebar() {
     {
       title: "ADMINISTRATION & CONTRÔLE",
       color: "indigo",
+      icon: ShieldCheck,
       allowedRoles: ["directeur_general"],
       items: [
         {
@@ -283,16 +394,34 @@ export function Sidebar() {
         </div>
       </div>
 
-      {/* Navigation List — Aérée, Élégante & Lisible */}
+      {/* Navigation List — Aérée, Élégante & Lisible avec Couleurs Distinctes par Pôle */}
       <nav className="flex-1 overflow-y-auto px-3.5 py-3 space-y-4 text-xs sidebar-scrollbar">
         {visibleSections.map((sec, idx) => {
+          const theme = SECTION_THEMES[sec.color] || SECTION_THEMES.neutral;
+          const SectionIcon = sec.icon;
+
           return (
-            <div key={idx} className="space-y-1">
-              {/* Titre de Section Épuré & Aéré */}
-              <div className="px-3 pt-2 pb-1 flex items-center justify-between">
-                <span className="text-[10.5px] font-bold tracking-widest uppercase text-blue-200/60 font-sans">
-                  {sec.title}
-                </span>
+            <div key={idx} className="space-y-1.5">
+              {/* Grand Titre de Section Différencié par Couleur, Esthétique & Bien Visible */}
+              <div className="px-1 pt-3 pb-1 flex items-center justify-between gap-2">
+                <div
+                  className={`flex items-center gap-2 px-2.5 py-1.5 rounded-xl ${theme.badge} border shadow-md backdrop-blur-xs min-w-0 transition-transform duration-150 hover:scale-[1.01]`}
+                >
+                  {SectionIcon && (
+                    <div
+                      className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 ${theme.iconBg} border`}
+                    >
+                      <SectionIcon className={`w-3 h-3 ${theme.iconColor}`} />
+                    </div>
+                  )}
+                  <span className={`w-2 h-2 rounded-full ${theme.dot} shrink-0 animate-pulse`} />
+                  <span
+                    className={`text-[10px] font-black tracking-wider uppercase ${theme.text} font-sans truncate drop-shadow-sm`}
+                  >
+                    {sec.title}
+                  </span>
+                </div>
+                <div className={`h-[1.5px] flex-1 bg-gradient-to-r ${theme.line} ml-1 rounded-full shadow-xs`} />
               </div>
 
               {/* Menu Items avec espacement confortable */}
@@ -310,7 +439,7 @@ export function Sidebar() {
                       onClick={() => isMobile && close()}
                       className={`group relative flex items-center justify-between px-3 py-2 rounded-xl text-[12.5px] font-medium transition-all duration-150 ease-out active:scale-[0.99] ${
                         isActive
-                          ? "bg-white/15 text-white font-bold border-l-[3px] border-amber-400 shadow-xs"
+                          ? `bg-white/15 text-white font-bold border-l-[3.5px] ${theme.activeBorder} shadow-xs`
                           : "text-blue-100/75 hover:text-white hover:bg-white/10"
                       }`}
                     >
@@ -318,7 +447,7 @@ export function Sidebar() {
                         <div
                           className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-150 shrink-0 ${
                             isActive
-                              ? "bg-amber-400/20 text-amber-300"
+                              ? `${theme.activeBg} ${theme.activeText}`
                               : "bg-white/5 text-blue-200/70 group-hover:bg-white/15 group-hover:text-white"
                           }`}
                         >
@@ -342,7 +471,7 @@ export function Sidebar() {
                           </span>
                         )}
                         {isActive && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-xs"></span>
+                          <span className={`w-1.5 h-1.5 rounded-full ${theme.dot} shadow-xs`}></span>
                         )}
                       </div>
                     </Link>

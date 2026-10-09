@@ -19,6 +19,15 @@ import {
   Camera,
   Info,
   Sparkles,
+  UploadCloud,
+  Trash2,
+  X,
+  Printer,
+  FileCheck,
+  AlertTriangle,
+  Paperclip,
+  Eye,
+  RefreshCw,
 } from "lucide-react";
 import { useSchoolYear } from "@/context/SchoolYearContext";
 import {
@@ -34,7 +43,64 @@ import { formatFCFA } from "@/lib/utils";
 import { StudentRegistrationModal } from "@/components/shared/StudentRegistrationModal";
 import { createClient } from "@/lib/supabase/client";
 import { Student } from "@/types";
-import { Printer } from "lucide-react";
+import {
+  PhotoUploadZone,
+  DocumentUploadManager,
+  formatBytes,
+  type UploadedFileItem,
+  type RequiredDocDef,
+} from "@/components/shared/DocumentUploadManager";
+import {
+  saveAndSyncStudent,
+  broadcastDataChange,
+} from "@/lib/realtime-store";
+
+export type UploadedFileMeta = UploadedFileItem;
+
+const REQUIRED_DOCS: RequiredDocDef[] = [
+  {
+    key: "doc_birth_certificate",
+    label: "Extrait d'Acte de Naissance",
+    description: "Original ou copie légalisée certifiée conforme",
+    required: true,
+  },
+  {
+    key: "doc_id_card",
+    label: "Pièce d'Identité / CNI ou Passeport",
+    description: "Copie recto-verso de la carte d'identité togolaise ou passeport",
+    required: true,
+  },
+  {
+    key: "doc_photos",
+    label: "Photos d'Identité 4x4",
+    description: "Planche ou photo numérique récente sur fond blanc",
+    required: false,
+  },
+  {
+    key: "doc_last_report",
+    label: "Dernier Bulletin de Notes / Relevé Scolaire",
+    description: "Relevé officiel de l'année précédente pour validation pédagogique",
+    required: false,
+  },
+  {
+    key: "doc_medical_certificate",
+    label: "Certificat Médical d'Aptitude",
+    description: "Certificat d'aptitude médicale aux métiers de l'hôtellerie",
+    required: false,
+  },
+  {
+    key: "doc_diploma_copy",
+    label: "Copie du Dernier Diplôme Obtenu",
+    description: "Attestation ou diplôme (BEPC, BAC, CAP ou équivalent)",
+    required: false,
+  },
+  {
+    key: "doc_enrollment_form",
+    label: "Fiche d'Inscription Remplie & Signée",
+    description: "Exemplaire papier ou PDF portant l'émargement du tuteur",
+    required: false,
+  },
+];
 
 // ═══════════════════════════════════════════════════════════════
 // FORMULAIRE D'INSCRIPTION DÉTAILLÉ — Hôtel École Avenida Lomé
@@ -179,6 +245,11 @@ export default function NewStudentPage() {
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const [enrollmentYear, setEnrollmentYear] = useState(selectedYear);
 
+  // ── Fichiers & Pièces Téléversées ──
+  const [uploadedFiles, setUploadedFiles] = useState<Record<string, UploadedFileMeta>>({});
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [docErrors, setDocErrors] = useState<Record<string, string>>({});
+
   // ── Programme sélectionné ──
   const selectedProgram = useMemo(
     () => PROGRAMS.find((p) => p.code === form.program_code),
@@ -208,6 +279,126 @@ export default function NewStudentPage() {
   const nextStep = () => setCurrentStep((s) => Math.min(s + 1, STEPS.length));
   const prevStep = () => setCurrentStep((s) => Math.max(s - 1, 1));
 
+  // ── Gestion Téléversement Photo d'Identité (Exigences : JPG/PNG/WEBP • Max 3 Mo) ──
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setPhotoError(null);
+
+    // 1. Exigence Format
+    const validFormats = ["image/jpeg", "image/png", "image/webp"];
+    if (!validFormats.includes(file.type)) {
+      setPhotoError("Format non supporté. Formats exigés : JPG, PNG ou WEBP.");
+      return;
+    }
+
+    // 2. Exigence Débit / Taille (Max 3 Mo)
+    const maxBytes = 3 * 1024 * 1024;
+    if (file.size > maxBytes) {
+      setPhotoError(
+        `Fichier trop volumineux (${(file.size / (1024 * 1024)).toFixed(1)} Mo). Le débit maximal autorisé est de 3 Mo.`
+      );
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        updateField("photo_url", reader.result);
+        setUploadedFiles((prev) => ({
+          ...prev,
+          photo: {
+            key: "photo",
+            name: file.name,
+            size: file.size,
+            formattedSize: formatBytes(file.size),
+            type: file.type,
+            dataUrl: reader.result as string,
+          },
+        }));
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemovePhoto = () => {
+    updateField("photo_url", "");
+    setPhotoError(null);
+    setUploadedFiles((prev) => {
+      const copy = { ...prev };
+      delete copy.photo;
+      return copy;
+    });
+  };
+
+  // ── Gestion Téléversement Documents Requis (Exigences : PDF/JPG/PNG/DOCX • Max 5 Mo) ──
+  const handleDocumentUpload = (docKey: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setDocErrors((prev) => ({ ...prev, [docKey]: "" }));
+
+    // 1. Exigence Formats
+    const validExtensions = [".pdf", ".jpg", ".jpeg", ".png", ".webp", ".docx"];
+    const fileExt = "." + (file.name.split(".").pop() || "").toLowerCase();
+    const validMimes = [
+      "application/pdf",
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "application/msword",
+    ];
+
+    if (!validMimes.includes(file.type) && !validExtensions.includes(fileExt)) {
+      setDocErrors((prev) => ({
+        ...prev,
+        [docKey]: `Format "${fileExt}" non supporté. Exigences : PDF, JPG, PNG, WEBP, DOCX.`,
+      }));
+      return;
+    }
+
+    // 2. Exigence Débit / Taille (Max 5 Mo)
+    const maxBytes = 5 * 1024 * 1024;
+    if (file.size > maxBytes) {
+      setDocErrors((prev) => ({
+        ...prev,
+        [docKey]: `Débit dépassé : ${(file.size / (1024 * 1024)).toFixed(1)} Mo. Le débit maximal autorisé est de 5 Mo par document.`,
+      }));
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = typeof reader.result === "string" ? reader.result : undefined;
+      setUploadedFiles((prev) => ({
+        ...prev,
+        [docKey]: {
+          key: docKey,
+          name: file.name,
+          size: file.size,
+          formattedSize: formatBytes(file.size),
+          type: file.type || fileExt,
+          dataUrl,
+        },
+      }));
+      // Coche automatiquement le document comme fourni
+      updateField(docKey as any, true);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveDocument = (docKey: string) => {
+    setUploadedFiles((prev) => {
+      const copy = { ...prev };
+      delete copy[docKey];
+      return copy;
+    });
+    setDocErrors((prev) => ({ ...prev, [docKey]: "" }));
+    updateField(docKey as any, false);
+  };
+
   const handleSubmit = async () => {
     const studentData: Student = {
       id: `std-${Date.now()}`,
@@ -233,16 +424,12 @@ export default function NewStudentPage() {
       total_fee: fees?.total || 370000,
       paid_fee: fees?.registration || 50000,
       remaining_fee: Math.max(0, (fees?.total || 370000) - (fees?.registration || 50000)),
+      uploaded_documents: uploadedFiles,
     };
 
-    // 1. Sauvegarde locale immédiate (réactivité instantanée garantie)
-    try {
-      const stored = localStorage.getItem("avenida_custom_students");
-      const list = stored ? JSON.parse(stored) : [];
-      localStorage.setItem("avenida_custom_students", JSON.stringify([studentData, ...list]));
-    } catch (e) {
-      console.warn("Erreur localStorage:", e);
-    }
+    // 1. Sauvegarde locale et synchronisation Supabase immédiate
+    saveAndSyncStudent(studentData);
+    broadcastDataChange();
 
     // 2. Sauvegarde Supabase en tâche de fond si connecté
     try {
@@ -280,9 +467,22 @@ export default function NewStudentPage() {
     return (
       <div className="min-h-[70vh] flex items-center justify-center p-4">
         <div className="bg-white rounded-3xl p-8 sm:p-10 border-2 border-emerald-200 shadow-xl text-center max-w-xl space-y-5 animate-in fade-in duration-300">
-          <div className="w-20 h-20 mx-auto rounded-full bg-emerald-100 flex items-center justify-center shadow-inner">
-            <CheckCircle2 className="w-10 h-10 text-emerald-600" />
-          </div>
+          {createdStudent.photo_url && createdStudent.photo_url !== "/avatars/default.png" ? (
+            <div className="w-24 h-28 mx-auto rounded-2xl overflow-hidden border-2 border-emerald-400 shadow-md relative bg-slate-100">
+              <img
+                src={createdStudent.photo_url}
+                alt={`${createdStudent.first_name} ${createdStudent.last_name}`}
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute top-1 right-1 bg-emerald-600 text-white rounded-full p-1 shadow">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+              </div>
+            </div>
+          ) : (
+            <div className="w-20 h-20 mx-auto rounded-full bg-emerald-100 flex items-center justify-center shadow-inner">
+              <CheckCircle2 className="w-10 h-10 text-emerald-600" />
+            </div>
+          )}
           <h2 className="text-2xl font-black text-[#0C356A] font-serif">
             Inscription Validée avec Succès !
           </h2>
@@ -301,6 +501,12 @@ export default function NewStudentPage() {
             <div className="flex justify-between">
               <span className="text-slate-500">Régime Scolaire :</span>
               <strong className="capitalize">{createdStudent.boarder_status}</strong>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Pièces Justificatives :</span>
+              <strong className="text-emerald-700">
+                {Object.keys(uploadedFiles).filter((k) => k !== "photo").length} document(s) numérisé(s) & joint(s)
+              </strong>
             </div>
             <div className="flex justify-between border-t border-blue-200 pt-1.5 font-bold">
               <span className="text-slate-700">Total Frais Annuels :</span>
@@ -491,19 +697,27 @@ export default function NewStudentPage() {
                   placeholder="Ex: TG-LOM-2022-8941" className="form-input-avenida" />
               </FormField>
 
-              <FormField label="Photo d'identité (URL)">
-                <div className="flex items-center gap-2">
-                  <input type="text" value={form.photo_url} onChange={(e) => updateField("photo_url", e.target.value)}
-                    placeholder="URL de la photo ou glisser-déposer" className="form-input-avenida flex-1" />
-                  <div className="w-12 h-12 rounded-xl bg-slate-100 border-2 border-dashed border-slate-300 flex items-center justify-center shrink-0">
-                    {form.photo_url ? (
-                      <img src={form.photo_url} alt="Photo" className="w-full h-full rounded-xl object-cover" />
-                    ) : (
-                      <Camera className="w-5 h-5 text-slate-400" />
-                    )}
-                  </div>
-                </div>
-              </FormField>
+              <div className="md:col-span-2 lg:col-span-3">
+                <PhotoUploadZone
+                  currentPhotoUrl={form.photo_url}
+                  onPhotoChange={(url, meta) => {
+                    updateField("photo_url", url);
+                    if (meta) {
+                      setUploadedFiles((prev) => ({ ...prev, photo: meta as any }));
+                    } else {
+                      setUploadedFiles((prev) => {
+                        const next = { ...prev };
+                        delete next.photo;
+                        return next;
+                      });
+                    }
+                  }}
+                  label="Photo d'Identité Officielle de l'Élève (Format 4x4)"
+                  sublabel="Photo récente sur fond blanc pour badge, relevé et fiche d'inscription officielle"
+                  required={false}
+                  shape="portrait"
+                />
+              </div>
             </div>
           </div>
         )}
@@ -827,47 +1041,39 @@ export default function NewStudentPage() {
           </div>
         )}
 
-        {/* ─── ÉTAPE 7 : DOCUMENTS FOURNIS ─── */}
+        {/* ─── ÉTAPE 7 : DOCUMENTS FOURNIS & TÉLÉVERSEMENT ─── */}
         {currentStep === 7 && (
           <div className="space-y-6">
-            <SectionHeader icon={FileText} title="Pièces du Dossier" subtitle="Documents nécessaires pour valider l'inscription" />
+            <SectionHeader
+              icon={FileText}
+              title="Pièces Justificatives & Dossier d'Inscription"
+              subtitle="Téléversez les documents numériques demandés ou confirmez leur remise physique"
+            />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {[
-                { key: "doc_birth_certificate" as keyof FormData, label: "Extrait d'acte de naissance (original + copie)" },
-                { key: "doc_id_card" as keyof FormData, label: "Copie de la pièce d'identité / carte scolaire" },
-                { key: "doc_photos" as keyof FormData, label: "4 photos d'identité récentes (format passeport)" },
-                { key: "doc_last_report" as keyof FormData, label: "Dernier bulletin de notes / relevé" },
-                { key: "doc_medical_certificate" as keyof FormData, label: "Certificat médical d'aptitude" },
-                { key: "doc_diploma_copy" as keyof FormData, label: "Copie du dernier diplôme obtenu" },
-                { key: "doc_enrollment_form" as keyof FormData, label: "Fiche d'inscription remplie et signée" },
-              ].map((doc) => (
-                <label
-                  key={doc.key}
-                  className={`flex items-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
-                    form[doc.key]
-                      ? "bg-emerald-50 border-emerald-300 shadow-sm"
-                      : "bg-white border-slate-200 hover:border-blue-300 hover:bg-blue-50/30"
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={form[doc.key] as boolean}
-                    onChange={(e) => updateField(doc.key, e.target.checked as any)}
-                    className="w-5 h-5 rounded-md accent-emerald-600"
-                  />
-                  <span className={`text-sm font-medium ${form[doc.key] ? "text-emerald-800" : "text-slate-700"}`}>
-                    {doc.label}
-                  </span>
-                  {form[doc.key] && <CheckCircle2 className="w-4 h-4 text-emerald-600 ml-auto" />}
-                </label>
-              ))}
-            </div>
+            {/* Gestionnaire Officiel des Pièces Justificatives avec Exigences de Format & Débit */}
+            <DocumentUploadManager
+              requiredDefs={REQUIRED_DOCS}
+              uploadedFiles={uploadedFiles}
+              onFilesChange={(files) => {
+                setUploadedFiles(files);
+                REQUIRED_DOCS.forEach((d) => {
+                  if (files[d.key]) {
+                    updateField(d.key as any, true);
+                  }
+                });
+              }}
+              title="Pièces Justificatives & Dossier Numérisé"
+              subtitle="Contrôle de conformité officiel : Formats PDF, JPG, PNG, WEBP, DOCX • Débit max 5 Mo par document"
+              allowCustomDocs={true}
+            />
 
-            <FormField label="Observations / Remarques">
-              <textarea value={form.observations} onChange={(e) => updateField("observations", e.target.value)}
-                placeholder="Notes complémentaires, conditions particulières, etc."
-                className="form-input-avenida min-h-[100px] resize-none" />
+            <FormField label="Observations Administratives / Remarques sur le Dossier">
+              <textarea
+                value={form.observations}
+                onChange={(e) => updateField("observations", e.target.value)}
+                placeholder="Ex: Acte de naissance original vérifié et restitué aux parents, dispense médicale temporaire..."
+                className="form-input-avenida min-h-[90px] resize-none"
+              />
             </FormField>
           </div>
         )}
@@ -879,7 +1085,24 @@ export default function NewStudentPage() {
 
             {/* Résumé identité */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <RecapCard title="Identité">
+              <RecapCard title="Identité de l'Élève">
+                {form.photo_url && (
+                  <div className="flex items-center gap-3 pb-3 mb-2 border-b border-slate-100">
+                    <div className="w-14 h-16 rounded-xl overflow-hidden border-2 border-emerald-400 shadow-sm shrink-0 bg-slate-100">
+                      <img src={form.photo_url} alt="Photo élève" className="w-full h-full object-cover" />
+                    </div>
+                    <div className="text-xs space-y-0.5">
+                      <span className="inline-flex items-center gap-1 font-bold text-emerald-700">
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Photo 4x4 validée
+                      </span>
+                      {uploadedFiles.photo && (
+                        <p className="text-[10px] text-slate-500 font-mono">
+                          {uploadedFiles.photo.name} ({uploadedFiles.photo.formattedSize})
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
                 <RecapLine label="Nom" value={`${form.last_name} ${form.first_name}`} />
                 <RecapLine label="Genre" value={form.gender === "M" ? "Masculin" : form.gender === "F" ? "Féminin" : "—"} />
                 <RecapLine label="Né(e) le" value={form.birth_date || "—"} />
@@ -936,20 +1159,72 @@ export default function NewStudentPage() {
               </div>
             )}
 
-            {/* Documents fournis */}
-            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
-              <h3 className="text-sm font-bold text-slate-700 mb-2">Documents fournis</h3>
-              <div className="flex flex-wrap gap-2">
-                {form.doc_birth_certificate && <DocBadge>Acte de naissance</DocBadge>}
-                {form.doc_id_card && <DocBadge>Pièce d&apos;identité</DocBadge>}
-                {form.doc_photos && <DocBadge>Photos</DocBadge>}
-                {form.doc_last_report && <DocBadge>Bulletin</DocBadge>}
-                {form.doc_medical_certificate && <DocBadge>Certificat médical</DocBadge>}
-                {form.doc_diploma_copy && <DocBadge>Diplôme</DocBadge>}
-                {form.doc_enrollment_form && <DocBadge>Fiche signée</DocBadge>}
-                {!form.doc_birth_certificate && !form.doc_id_card && !form.doc_photos && (
-                  <span className="text-xs text-slate-400 italic">Aucun document coché</span>
-                )}
+            {/* Documents & Pièces Jointes */}
+            <div className="p-5 bg-white rounded-2xl border-2 border-slate-200 shadow-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-black text-[#0C356A] flex items-center gap-2">
+                  <FileCheck className="w-4 h-4 text-emerald-600" />
+                  État du Dossier & Pièces Justificatives
+                </h3>
+                <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg">
+                  {Object.keys(uploadedFiles).filter((k) => k !== "photo").length} pièce(s) numérique(s) rattachée(s)
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 pt-1">
+                {REQUIRED_DOCS.map((doc) => {
+                  const uploaded = uploadedFiles[doc.key];
+                  const isPaper = form[doc.key as keyof FormData];
+
+                  if (uploaded) {
+                    return (
+                      <div
+                        key={doc.key}
+                        className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-950"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <div className="min-w-0">
+                            <p className="font-bold truncate">{doc.label}</p>
+                            <p className="text-[10px] text-emerald-700 truncate">{uploaded.name}</p>
+                          </div>
+                        </div>
+                        <span className="font-mono text-[10px] bg-emerald-200/80 px-1.5 py-0.5 rounded font-bold shrink-0">
+                          {uploaded.formattedSize}
+                        </span>
+                      </div>
+                    );
+                  }
+
+                  if (isPaper) {
+                    return (
+                      <div
+                        key={doc.key}
+                        className="flex items-center justify-between p-2.5 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-950"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />
+                          <p className="font-bold truncate">{doc.label}</p>
+                        </div>
+                        <span className="text-[10px] bg-blue-200/80 px-1.5 py-0.5 rounded font-semibold shrink-0">
+                          Version papier
+                        </span>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div
+                      key={doc.key}
+                      className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-400"
+                    >
+                      <span className="truncate">{doc.label}</span>
+                      <span className="text-[10px] text-slate-400 italic">
+                        {doc.required ? "Manquant (À fournir)" : "Non fourni"}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>

@@ -59,6 +59,21 @@ export interface Student {
   total_fee: number;
   paid_fee: number;
   remaining_fee: number;
+  uploaded_documents?: Record<
+    string,
+    {
+      key?: string;
+      id?: string;
+      name: string;
+      size: number;
+      formattedSize: string;
+      type: string;
+      dataUrl?: string;
+      category?: string;
+      uploadedAt?: string;
+    }
+  >;
+  id_card_or_passport_url?: string;
 }
 
 export type RoomStatus =
@@ -152,6 +167,22 @@ export interface Employee {
   highest_degree: string; // Diplôme le plus élevé (ex: "Master Management Hôtelier", "BTS Cuisine & Arts de la Table", "Licence Pro Tourisme")
   experience_years: number;
   status: "actif" | "congé" | "formation" | "inactif";
+  uploaded_documents?: Record<
+    string,
+    {
+      key?: string;
+      id?: string;
+      name: string;
+      size: number;
+      formattedSize: string;
+      type: string;
+      dataUrl?: string;
+      uploadedAt?: string;
+      label?: string;
+      category?: string;
+    }
+  >;
+  id_card_or_passport_url?: string;
 }
 
 export interface GradeRecord {
@@ -257,6 +288,13 @@ export interface HotelCustomer {
   total_spent: number;
   is_vip: boolean;
   created_at: string;
+  id_card_document?: {
+    name: string;
+    size: number;
+    formattedSize: string;
+    type: string;
+    dataUrl?: string;
+  };
 }
 
 export interface SalaryRecord {
@@ -302,5 +340,8 @@ export interface FinancialEntry {
   recorded_by: string;
   payment_mode: "Espèces" | "Chèque" | "Virement" | "Mobile Money";
   receipt_number?: string;
+  receipt_document_url?: string;
+  receipt_document_name?: string;
+  receipt_document_size?: string;
 }
 

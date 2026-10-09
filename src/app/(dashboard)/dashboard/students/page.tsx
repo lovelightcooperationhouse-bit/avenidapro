@@ -22,8 +22,13 @@ import {
   MapPin,
   Award,
   Sparkles,
-  FileText,
   Printer,
+  Paperclip,
+  Plus,
+  FileText,
+  AlertCircle,
+  UploadCloud,
+  Trash2,
 } from "lucide-react";
 import { MOCK_STUDENTS } from "@/lib/mock-data";
 import { formatFCFA } from "@/lib/utils";
@@ -31,6 +36,17 @@ import { useSchoolYear } from "@/context/SchoolYearContext";
 import { Student, StudentReportCard } from "@/types";
 import { ReportCardModal } from "@/components/shared/ReportCardModal";
 import { StudentRegistrationModal } from "@/components/shared/StudentRegistrationModal";
+import {
+  DocumentViewerModal,
+  DEFAULT_DOCUMENT_REQUIREMENTS,
+  formatBytes,
+  type UploadedFileItem,
+} from "@/components/shared/DocumentUploadManager";
+import {
+  getStoredStudents,
+  broadcastDataChange,
+  AVENIDA_DATA_UPDATED_EVENT,
+} from "@/lib/realtime-store";
 import {
   getReportCardsFromStorage,
   createBlankReportCardForStudent,
@@ -46,21 +62,99 @@ export default function StudentsPage() {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [selectedReportCard, setSelectedReportCard] = useState<StudentReportCard | null>(null);
   const [selectedEnrollmentStudent, setSelectedEnrollmentStudent] = useState<Student | null>(null);
+  const [activeDocPreview, setActiveDocPreview] = useState<UploadedFileItem | null>(null);
+  const [docUploadError, setDocUploadError] = useState<string | null>(null);
+  const [newDocTitle, setNewDocTitle] = useState("");
+  const [newDocCategory, setNewDocCategory] = useState("Dossier Scolaire");
+
+  const handleAttachStudentDocument = (file: File) => {
+    if (!selectedStudent) return;
+    setDocUploadError(null);
+    const ext = "." + (file.name.split(".").pop()?.toLowerCase() || "");
+    const allowed = DEFAULT_DOCUMENT_REQUIREMENTS.allowedExtensions;
+    if (!allowed.includes(ext.toLowerCase())) {
+      setDocUploadError(
+        `Format "${ext}" refusé. Seuls les formats ${allowed.join(", ").toUpperCase()} sont autorisés.`
+      );
+      return;
+    }
+    if (file.size > DEFAULT_DOCUMENT_REQUIREMENTS.maxSizeBytes) {
+      setDocUploadError(
+        `Débit/Taille dépassé(e) : ${formatBytes(file.size)}. Le débit maximal autorisé est de ${formatBytes(
+          DEFAULT_DOCUMENT_REQUIREMENTS.maxSizeBytes
+        )}.`
+      );
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const docKey = `doc_${Date.now()}`;
+      const item: UploadedFileItem = {
+        key: docKey,
+        id: docKey,
+        name: newDocTitle.trim() || file.name,
+        size: file.size,
+        formattedSize: formatBytes(file.size),
+        type: file.type || ext,
+        dataUrl: typeof reader.result === "string" ? reader.result : undefined,
+        uploadedAt: new Date().toISOString(),
+        category: newDocCategory,
+      };
+
+      const updatedDocs = {
+        ...(selectedStudent.uploaded_documents || {}),
+        [docKey]: item,
+      };
+
+      const updatedStudent: Student = {
+        ...selectedStudent,
+        uploaded_documents: updatedDocs,
+      };
+
+      setSelectedStudent(updatedStudent);
+      const updatedList = allStudents.map((s) => (s.id === updatedStudent.id ? updatedStudent : s));
+      setAllStudents(updatedList);
+      try {
+        localStorage.setItem("avenida_custom_students", JSON.stringify(updatedList));
+      } catch (e) {
+        console.warn("Storage full", e);
+      }
+      broadcastDataChange();
+      setNewDocTitle("");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveStudentDocument = (docKey: string) => {
+    if (!selectedStudent || !selectedStudent.uploaded_documents) return;
+    const remainingDocs = { ...selectedStudent.uploaded_documents };
+    delete remainingDocs[docKey];
+
+    const updatedStudent: Student = {
+      ...selectedStudent,
+      uploaded_documents: remainingDocs,
+    };
+    setSelectedStudent(updatedStudent);
+    const updatedList = allStudents.map((s) => (s.id === updatedStudent.id ? updatedStudent : s));
+    setAllStudents(updatedList);
+    try {
+      localStorage.setItem("avenida_custom_students", JSON.stringify(updatedList));
+    } catch (e) {
+      console.warn("Storage error", e);
+    }
+    broadcastDataChange();
+  };
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem("avenida_custom_students");
-      if (stored) {
-        const parsed = JSON.parse(stored) as Student[];
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const customMatricules = new Set(parsed.map((s) => s.registration_number));
-          const filteredMocks = MOCK_STUDENTS.filter((m) => !customMatricules.has(m.registration_number));
-          setAllStudents([...parsed, ...filteredMocks]);
-        }
-      }
-    } catch (err) {
-      console.error("Error reading custom students", err);
-    }
+    setAllStudents(getStoredStudents());
+    const handleUpdate = () => setAllStudents(getStoredStudents());
+    window.addEventListener(AVENIDA_DATA_UPDATED_EVENT, handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+    return () => {
+      window.removeEventListener(AVENIDA_DATA_UPDATED_EVENT, handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
+    };
   }, []);
 
   const handleOpenStudentReport = (st: Student) => {
@@ -338,14 +432,24 @@ export default function StudentsPage() {
                   >
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-3">
-                        <div
-                          className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs text-white shadow-xs ${
-                            s.gender === "F" ? "bg-rose-600" : "bg-[#0C356A]"
-                          }`}
-                        >
-                          {s.last_name[0]}
-                          {s.first_name[0]}
-                        </div>
+                        {s.photo_url && !s.photo_url.includes("default.png") ? (
+                          <div className="w-10 h-10 rounded-xl overflow-hidden border border-slate-300 shadow-xs shrink-0 bg-slate-100">
+                            <img
+                              src={s.photo_url}
+                              alt={`${s.first_name}`}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        ) : (
+                          <div
+                            className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs text-white shadow-xs shrink-0 ${
+                              s.gender === "F" ? "bg-rose-600" : "bg-[#0C356A]"
+                            }`}
+                          >
+                            {s.last_name[0]}
+                            {s.first_name[0]}
+                          </div>
+                        )}
                         <div>
                           <div className="font-extrabold text-slate-900 group-hover:text-[#0C356A] transition-colors text-sm">
                             {s.last_name} {s.first_name}
@@ -358,9 +462,20 @@ export default function StudentsPage() {
                     </td>
 
                     <td className="py-3 px-4">
-                      <span className="font-mono font-black text-[#0C356A] bg-blue-50 border border-blue-200 px-2 py-0.5 rounded text-[11px]">
-                        {s.registration_number}
-                      </span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-mono font-black text-[#0C356A] bg-blue-50 border border-blue-200 px-2 py-0.5 rounded text-[11px]">
+                          {s.registration_number}
+                        </span>
+                        {s.uploaded_documents && Object.keys(s.uploaded_documents).length > 0 && (
+                          <span
+                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200"
+                            title={`${Object.keys(s.uploaded_documents).filter((k) => k !== "photo").length} pièces jointes`}
+                          >
+                            <Paperclip className="w-2.5 h-2.5" />
+                            {Object.keys(s.uploaded_documents).filter((k) => k !== "photo").length} pièces
+                          </span>
+                        )}
+                      </div>
                       <div className="text-[10px] text-slate-500 mt-1">
                         {s.phone} &bull; Lomé ({s.residence_neighborhood})
                       </div>
@@ -465,10 +580,20 @@ export default function StudentsPage() {
               </button>
 
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-2xl bg-white/20 border-2 border-white/40 flex items-center justify-center text-2xl font-black shadow-md">
-                  {selectedStudent.last_name[0]}
-                  {selectedStudent.first_name[0]}
-                </div>
+                {selectedStudent.photo_url && !selectedStudent.photo_url.includes("default.png") ? (
+                  <div className="w-16 h-20 rounded-2xl overflow-hidden border-2 border-white/60 shadow-md shrink-0 bg-white">
+                    <img
+                      src={selectedStudent.photo_url}
+                      alt={`${selectedStudent.first_name}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div className="w-16 h-16 rounded-2xl bg-white/20 border-2 border-white/40 flex items-center justify-center text-2xl font-black shadow-md shrink-0">
+                    {selectedStudent.last_name[0]}
+                    {selectedStudent.first_name[0]}
+                  </div>
+                )}
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-black uppercase tracking-wider bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full font-mono">
@@ -609,6 +734,132 @@ export default function StudentsPage() {
                 </div>
               </div>
 
+              {/* Pièces Justificatives Numérisées & Ajout de documents requis */}
+              <div>
+                <div className="flex items-center justify-between border-b pb-1.5 mb-2.5">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-[#0C356A] flex items-center gap-1.5">
+                    <Paperclip className="w-3.5 h-3.5 text-[#0C356A]" />
+                    <span>Pièces Justificatives & Documents Requis</span>
+                  </h3>
+                  <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                    {Object.keys(selectedStudent.uploaded_documents || {}).filter((k) => k !== "photo").length} document(s) classé(s)
+                  </span>
+                </div>
+
+                {/* Exigence de format et débit */}
+                <div className="p-2.5 mb-3 rounded-xl bg-blue-50/70 border border-blue-200 text-[11px] text-blue-900 flex items-start gap-2">
+                  <Sparkles className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                  <div>
+                    <div className="font-bold">Exigences Numériques Avenida Lomé :</div>
+                    <div className="text-blue-800 text-[10px]">
+                      Formats autorisés : <strong>PDF, JPG, PNG, WEBP, DOCX</strong> • Débit max autorisé : <strong>5 Mo par fichier</strong>
+                    </div>
+                  </div>
+                </div>
+
+                {docUploadError && (
+                  <div className="p-2.5 mb-3 rounded-xl bg-red-50 border border-red-200 text-[11px] text-red-800 flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                    <span className="font-medium">{docUploadError}</span>
+                  </div>
+                )}
+
+                {/* Liste des documents déjà joints */}
+                {selectedStudent.uploaded_documents && Object.keys(selectedStudent.uploaded_documents).filter((k) => k !== "photo").length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+                    {Object.entries(selectedStudent.uploaded_documents)
+                      .filter(([key]) => key !== "photo")
+                      .map(([key, doc]) => (
+                        <div
+                          key={key}
+                          className="flex items-center justify-between p-2.5 bg-slate-50 hover:bg-blue-50/40 rounded-xl border border-slate-200 text-xs transition-colors"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className="w-7 h-7 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
+                              <FileText className="w-3.5 h-3.5" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-bold text-slate-800 truncate">{doc.name}</p>
+                              <div className="flex items-center gap-1.5 text-[10px]">
+                                {doc.category && (
+                                  <span className="text-blue-700 font-semibold">{doc.category}</span>
+                                )}
+                                <span className="font-mono text-slate-500 font-bold">{doc.formattedSize}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => setActiveDocPreview(doc)}
+                              className="p-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-600 hover:text-white transition-colors"
+                              title="Visualiser le document"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveStudentDocument(key)}
+                              className="p-1.5 rounded-lg bg-slate-100 text-red-500 hover:bg-red-50 hover:text-red-700 transition-colors"
+                              title="Supprimer la pièce"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                ) : (
+                  <div className="p-3 mb-3 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-center text-[11px] text-slate-500">
+                    Aucun document complémentaire numérisé pour le moment.
+                  </div>
+                )}
+
+                {/* Formulaire d'ajout rapide d'un document requis */}
+                <div className="p-3 bg-slate-50/80 rounded-2xl border border-slate-200">
+                  <span className="text-[11px] font-black uppercase text-slate-700 block mb-2 flex items-center gap-1.5">
+                    <Plus className="w-3.5 h-3.5 text-blue-600" />
+                    Ajouter un document requis demandé
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
+                    <input
+                      type="text"
+                      placeholder="Libellé (ex: Certificat Médical, Casier...)"
+                      value={newDocTitle}
+                      onChange={(e) => setNewDocTitle(e.target.value)}
+                      className="px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                    <select
+                      value={newDocCategory}
+                      onChange={(e) => setNewDocCategory(e.target.value)}
+                      className="px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500"
+                    >
+                      <option value="Dossier Scolaire">Dossier Scolaire</option>
+                      <option value="État Civil / CNI">État Civil / CNI</option>
+                      <option value="Médical">Certificat Médical</option>
+                      <option value="Financier">Justificatif Écolage</option>
+                      <option value="Autre Requis">Autre Document Requis</option>
+                    </select>
+                  </div>
+                  <label className="flex items-center justify-center gap-2 p-2 rounded-xl border-2 border-dashed border-blue-300 hover:border-blue-500 bg-white hover:bg-blue-50/30 cursor-pointer text-blue-800 transition-colors">
+                    <UploadCloud className="w-4 h-4 text-blue-600" />
+                    <span className="font-bold text-[11px]">
+                      Choisir le fichier requis (PDF ou Image, Max 5 Mo)
+                    </span>
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png,.webp,.docx"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleAttachStudentDocument(file);
+                        e.target.value = "";
+                      }}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+              </div>
+
               {/* Responsable Légal */}
               <div>
                 <h3 className="text-xs font-black uppercase tracking-wider text-[#0C356A] border-b pb-1 mb-2.5">
@@ -674,6 +925,13 @@ export default function StudentsPage() {
           onClose={() => setSelectedEnrollmentStudent(null)}
         />
       )}
+
+      {/* Visionneuse de document intégrée */}
+      <DocumentViewerModal
+        document={activeDocPreview}
+        isOpen={!!activeDocPreview}
+        onClose={() => setActiveDocPreview(null)}
+      />
     </div>
   );
 }

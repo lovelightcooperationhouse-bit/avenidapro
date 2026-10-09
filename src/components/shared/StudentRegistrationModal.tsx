@@ -190,13 +190,23 @@ export function StudentRegistrationModal({
             </div>
 
             {/* Cadre Photo 4x4 */}
-            <div className="col-span-1 flex flex-col items-center justify-center border-2 border-dashed border-slate-300 rounded-xl bg-white p-2 text-center">
-              <span className="text-[8px] font-bold text-slate-400 uppercase leading-tight">
-                PHOTO D&apos;IDENTITÉ<br />4 x 4
+            <div className="col-span-1 flex flex-col items-center justify-center border-2 border-dashed border-slate-300 rounded-xl bg-white p-2 text-center overflow-hidden">
+              <span className="text-[8px] font-bold text-slate-400 uppercase leading-tight mb-1">
+                PHOTO 4 x 4
               </span>
-              <div className="w-12 h-14 bg-slate-100 rounded border border-slate-200 mt-1 flex items-center justify-center text-slate-300">
-                <User className="w-6 h-6" />
-              </div>
+              {student.photo_url && !student.photo_url.includes("default.png") ? (
+                <div className="w-14 h-16 rounded-lg overflow-hidden border border-slate-300 shadow-2xs">
+                  <img
+                    src={student.photo_url}
+                    alt={`${student.first_name} ${student.last_name}`}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="w-14 h-16 bg-slate-100 rounded border border-slate-200 flex items-center justify-center text-slate-300">
+                  <User className="w-6 h-6" />
+                </div>
+              )}
             </div>
           </div>
 

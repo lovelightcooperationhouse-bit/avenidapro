@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Briefcase,
   GraduationCap,
@@ -23,11 +23,63 @@ import {
   Building,
   Sparkles,
   Download,
+  FileCheck,
 } from "lucide-react";
 import { MOCK_EMPLOYEES } from "@/lib/mock-data";
 import { Employee, EmployeeSector } from "@/types";
 import { formatFCFA } from "@/lib/utils";
 import { NEIGHBORHOODS } from "@/lib/academic-data";
+import {
+  PhotoUploadZone,
+  DocumentUploadManager,
+  DocumentViewerModal,
+  type UploadedFileItem,
+  type RequiredDocDef,
+} from "@/components/shared/DocumentUploadManager";
+import {
+  getStoredEmployees,
+  saveAndSyncEmployee,
+  AVENIDA_DATA_UPDATED_EVENT,
+} from "@/lib/realtime-store";
+
+const REQUIRED_EMPLOYEE_DOCS: RequiredDocDef[] = [
+  {
+    key: "doc_cv",
+    label: "Curriculum Vitae (CV) Récent & Détaillé",
+    description: "Parcours professionnel complet, expériences antérieures et références",
+    required: true,
+  },
+  {
+    key: "doc_diploma",
+    label: "Copie Certifiée du Diplôme le Plus Élevé",
+    description: "Diplôme d'État ou certification professionnelle hôtelière / pédagogique",
+    required: true,
+  },
+  {
+    key: "doc_id_card",
+    label: "Pièce d'Identité / CNI ou Passeport",
+    description: "Copie recto-verso de la carte d'identité ou passeport togolais valide",
+    required: true,
+  },
+  {
+    key: "doc_contract",
+    label: "Contrat de Travail Avenida Paraphé & Signé",
+    description: "Contrat de travail portant visa de la direction générale et émargement",
+    required: false,
+  },
+  {
+    key: "doc_medical",
+    label: "Certificat Médical d'Aptitude au Travail",
+    description: "Certificat médical d'aptitude aux métiers de l'hôtellerie ou de l'enseignement",
+    required: false,
+  },
+  {
+    key: "doc_police_record",
+    label: "Extrait de Casier Judiciaire (Bulletin N°3)",
+    description: "Bulletin n°3 délivré par les autorités judiciaires togolaises",
+    required: false,
+  },
+];
 
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState<Employee[]>(MOCK_EMPLOYEES);
@@ -36,8 +88,19 @@ export default function EmployeesPage() {
   const [contractFilter, setContractFilter] = useState("ALL");
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [selectedDocForViewer, setSelectedDocForViewer] = useState<UploadedFileItem | null>(null);
 
-  // Formulaire de recrutement
+  useEffect(() => {
+    setEmployees(getStoredEmployees());
+    const handleUpdate = () => setEmployees(getStoredEmployees());
+    window.addEventListener(AVENIDA_DATA_UPDATED_EVENT, handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+    return () => {
+      window.removeEventListener(AVENIDA_DATA_UPDATED_EVENT, handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
+    };
+  }, []);
+
   const [newEmp, setNewEmp] = useState({
     first_name: "",
     last_name: "",
@@ -60,6 +123,8 @@ export default function EmployeesPage() {
     highest_degree: "",
     experience_years: 5,
     cv_summary: "",
+    photo_url: "",
+    uploaded_documents: {} as Record<string, UploadedFileItem>,
   });
 
   // Statistiques calculées dynamiquement
@@ -118,6 +183,8 @@ export default function EmployeesPage() {
       phone: newEmp.phone || "+228 90 00 00 00",
       email: newEmp.email || `${newEmp.first_name.toLowerCase()}.${newEmp.last_name.toLowerCase()}@avenida-lome.tg`,
       neighborhood: newEmp.neighborhood,
+      photo_url: newEmp.photo_url || undefined,
+      uploaded_documents: newEmp.uploaded_documents,
       sector: newEmp.sector,
       role_title: newEmp.role_title,
       department: newEmp.department || (newEmp.sector === "ecole" ? "Pédagogie" : "Hébergement"),
@@ -135,6 +202,7 @@ export default function EmployeesPage() {
     };
 
     setEmployees([created, ...employees]);
+    saveAndSyncEmployee(created);
     setIsCreateModalOpen(false);
     setSelectedEmployee(created); // Ouvre directement la fiche du nouvel employé
   };
@@ -423,10 +491,20 @@ export default function EmployeesPage() {
               </button>
 
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-2xl bg-white/20 border-2 border-white/40 flex items-center justify-center text-2xl font-black shadow-md">
-                  {selectedEmployee.first_name[0]}
-                  {selectedEmployee.last_name[0]}
-                </div>
+                {selectedEmployee.photo_url ? (
+                  <div className="w-16 h-20 rounded-2xl overflow-hidden border-2 border-white/60 shadow-md shrink-0 bg-white">
+                    <img
+                      src={selectedEmployee.photo_url}
+                      alt={`${selectedEmployee.first_name} ${selectedEmployee.last_name}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div className="w-16 h-16 rounded-2xl bg-white/20 border-2 border-white/40 flex items-center justify-center text-2xl font-black shadow-md shrink-0">
+                    {selectedEmployee.first_name[0]}
+                    {selectedEmployee.last_name[0]}
+                  </div>
+                )}
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-black uppercase tracking-wider bg-white/20 px-2.5 py-0.5 rounded-full border border-white/30">
@@ -577,6 +655,67 @@ export default function EmployeesPage() {
                   )}
                 </div>
               </div>
+
+              {/* Bloc 5 : Documents Numérisés & Pièces Justificatives */}
+              <div>
+                <div className="flex items-center justify-between border-b pb-1.5 mb-3">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-[#0C356A] flex items-center gap-1.5">
+                    <FileCheck className="w-3.5 h-3.5 text-emerald-600" />
+                    Documents Numérisés & Dossier Collaborateur
+                  </h3>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-[#0C356A] border border-blue-200">
+                    {selectedEmployee.uploaded_documents
+                      ? Object.keys(selectedEmployee.uploaded_documents).length
+                      : 0}{" "}
+                    pièce(s)
+                  </span>
+                </div>
+
+                {selectedEmployee.uploaded_documents &&
+                Object.keys(selectedEmployee.uploaded_documents).length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {Object.entries(selectedEmployee.uploaded_documents).map(([k, doc]) => (
+                      <div
+                        key={k}
+                        className="p-3 bg-emerald-50/50 rounded-xl border border-emerald-200 shadow-2xs flex items-center justify-between gap-2"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+                            <FileText className="w-4 h-4 text-emerald-700" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="font-bold text-xs text-slate-900 truncate" title={doc.label || doc.name}>
+                              {doc.label || doc.name}
+                            </div>
+                            <div className="text-[10px] text-emerald-700 font-mono">
+                              Débit : {doc.formattedSize || "Fichier conforme"}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedDocForViewer(doc as any)}
+                            className="p-1.5 rounded-lg bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition-colors cursor-pointer"
+                            title="Aperçu du document"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-300 text-center text-xs text-slate-500 space-y-1">
+                    <FileText className="w-6 h-6 text-slate-400 mx-auto" />
+                    <p className="font-bold text-slate-700">Aucun document numérique rattaché</p>
+                    <p className="text-[11px] text-slate-500">
+                      Exigences Avenida : Formats PDF, JPG, PNG, WEBP, DOCX • Débit max 5 Mo
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Footer Modal */}
@@ -612,7 +751,7 @@ export default function EmployeesPage() {
               </div>
               <button
                 onClick={() => setIsCreateModalOpen(false)}
-                className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+                className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5 text-white" />
               </button>
@@ -865,18 +1004,45 @@ export default function EmployeesPage() {
                 </div>
               </div>
 
+              {/* 5. Photo & Pièces Justificatives Demandées */}
+              <div className="space-y-4 pt-3 border-t border-slate-200">
+                <label className="block text-xs font-black uppercase text-slate-700">
+                  5. Photo d&apos;Identité & Documents Requis du Collaborateur
+                </label>
+
+                {/* Photo Upload Zone */}
+                <PhotoUploadZone
+                  currentPhotoUrl={newEmp.photo_url}
+                  onPhotoChange={(url) => setNewEmp({ ...newEmp, photo_url: url })}
+                  label="Photo d'Identité Officielle (Badge & Dossier)"
+                  sublabel="Photo récente de face sur fond clair (Exigence Format : JPG, PNG, WEBP • Débit Max : 3 Mo)"
+                  required={false}
+                  shape="portrait"
+                />
+
+                {/* Document Upload Manager avec exigences de format et débit */}
+                <DocumentUploadManager
+                  requiredDefs={REQUIRED_EMPLOYEE_DOCS}
+                  uploadedFiles={newEmp.uploaded_documents}
+                  onFilesChange={(files) => setNewEmp({ ...newEmp, uploaded_documents: files })}
+                  title="Documents & Justificatifs Requis du Personnel"
+                  subtitle="Téléversement certifié conforme : CV, Diplômes, CNI, Casier judiciaire, Certificat médical..."
+                  allowCustomDocs={true}
+                />
+              </div>
+
               {/* Boutons d'Action */}
               <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-slate-600 font-bold hover:bg-slate-100"
+                  className="px-4 py-2 rounded-xl text-slate-600 font-bold hover:bg-slate-100 cursor-pointer"
                 >
                   Annuler
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-[#0C356A] hover:bg-[#164E87] text-white font-bold rounded-xl shadow-md transition-colors"
+                  className="px-6 py-2 bg-[#0C356A] hover:bg-[#164E87] text-white font-bold rounded-xl shadow-md transition-colors cursor-pointer"
                 >
                   Valider le Recrutement
                 </button>
@@ -885,6 +1051,13 @@ export default function EmployeesPage() {
           </div>
         </div>
       )}
+
+      {/* Modal Prévisualisation Document */}
+      <DocumentViewerModal
+        document={selectedDocForViewer}
+        isOpen={!!selectedDocForViewer}
+        onClose={() => setSelectedDocForViewer(null)}
+      />
     </div>
   );
 }

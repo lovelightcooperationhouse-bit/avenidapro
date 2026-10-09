@@ -14,33 +14,45 @@ import {
   Award,
   Printer,
   FileText,
+  UploadCloud,
+  CheckCircle2,
+  AlertCircle,
+  Trash2,
+  Paperclip,
+  Eye,
 } from "lucide-react";
 import { MOCK_CUSTOMERS } from "@/lib/mock-data";
 import { HotelCustomer } from "@/types";
 import { formatFCFA } from "@/lib/utils";
 import { CustomerAttestationModal } from "@/components/shared/CustomerAttestationModal";
 import { createClient } from "@/lib/supabase/client";
+import {
+  DocumentViewerModal,
+  type UploadedFileItem,
+} from "@/components/shared/DocumentUploadManager";
+import {
+  getStoredCustomers,
+  saveAndSyncCustomer,
+  AVENIDA_DATA_UPDATED_EVENT,
+  broadcastDataChange,
+} from "@/lib/realtime-store";
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<HotelCustomer[]>(MOCK_CUSTOMERS);
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCustomerForAttestation, setSelectedCustomerForAttestation] = useState<HotelCustomer | null>(null);
+  const [activeDocPreview, setActiveDocPreview] = useState<UploadedFileItem | null>(null);
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem("avenida_custom_customers");
-      if (stored) {
-        const parsed = JSON.parse(stored) as HotelCustomer[];
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const customIds = new Set(parsed.map((c) => c.id));
-          const filteredMocks = MOCK_CUSTOMERS.filter((m) => !customIds.has(m.id));
-          setCustomers([...parsed, ...filteredMocks]);
-        }
-      }
-    } catch (e) {
-      console.warn("Erreur chargement clients localStorage:", e);
-    }
+    setCustomers(getStoredCustomers());
+    const handleUpdate = () => setCustomers(getStoredCustomers());
+    window.addEventListener(AVENIDA_DATA_UPDATED_EVENT, handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+    return () => {
+      window.removeEventListener(AVENIDA_DATA_UPDATED_EVENT, handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
+    };
   }, []);
 
   const [newCust, setNewCust] = useState({
@@ -52,6 +64,60 @@ export default function CustomersPage() {
     id_card_or_passport: "",
     is_vip: false,
   });
+
+  const [idDocument, setIdDocument] = useState<{
+    name: string;
+    size: number;
+    formattedSize: string;
+    type: string;
+    dataUrl?: string;
+  } | null>(null);
+  const [idDocError, setIdDocError] = useState<string | null>(null);
+
+  const handleIdDocUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIdDocError(null);
+
+    // Formats acceptés : PDF, JPG, PNG, WEBP
+    const validFormats = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
+    const ext = "." + (file.name.split(".").pop() || "").toLowerCase();
+    if (!validFormats.includes(file.type) && ![".pdf", ".jpg", ".jpeg", ".png", ".webp"].includes(ext)) {
+      setIdDocError("Format non supporté. Formats autorisés : PDF, JPG, PNG, WEBP.");
+      return;
+    }
+
+    // Débit / Taille max : 5 Mo
+    const maxBytes = 5 * 1024 * 1024;
+    if (file.size > maxBytes) {
+      setIdDocError(
+        `Débit dépassé (${(file.size / (1024 * 1024)).toFixed(1)} Mo). Le débit maximal autorisé est de 5 Mo.`
+      );
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = typeof reader.result === "string" ? reader.result : undefined;
+      const formattedSize =
+        file.size < 1024 * 1024
+          ? `${(file.size / 1024).toFixed(1)} Ko`
+          : `${(file.size / (1024 * 1024)).toFixed(1)} Mo`;
+      setIdDocument({
+        name: file.name,
+        size: file.size,
+        formattedSize,
+        type: file.type || ext,
+        dataUrl,
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveIdDoc = () => {
+    setIdDocument(null);
+    setIdDocError(null);
+  };
 
   const totalSpentAll = customers.reduce((acc, c) => acc + c.total_spent, 0);
   const vipCount = customers.filter((c) => c.is_vip).length;
@@ -81,6 +147,7 @@ export default function CustomersPage() {
       total_spent: 0,
       is_vip: newCust.is_vip,
       created_at: new Date().toISOString().split("T")[0],
+      id_card_document: idDocument || undefined,
     };
 
     // 1. Sauvegarde locale immédiate
@@ -117,6 +184,10 @@ export default function CustomersPage() {
     }
 
     setCustomers([added, ...customers]);
+    saveAndSyncCustomer(added);
+    broadcastDataChange();
+    setIdDocument(null);
+    setIdDocError(null);
     setIsModalOpen(false);
     setSelectedCustomerForAttestation(added);
   };
@@ -251,7 +322,31 @@ export default function CustomersPage() {
                   </td>
                   <td className="py-3 px-4">
                     <div className="font-semibold text-slate-800">{cust.nationality}</div>
-                    <div className="text-[10px] font-mono text-slate-500">{cust.id_card_or_passport}</div>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[10px] font-mono text-slate-500">{cust.id_card_or_passport}</span>
+                      {cust.id_card_document && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setActiveDocPreview({
+                              key: `cust-${cust.id}-id`,
+                              id: `cust-${cust.id}-id`,
+                              name: cust.id_card_document?.name || `Pièce ${cust.full_name}`,
+                              size: cust.id_card_document?.size || 0,
+                              formattedSize: cust.id_card_document?.formattedSize || "",
+                              type: cust.id_card_document?.type || "application/pdf",
+                              dataUrl: cust.id_card_document?.dataUrl,
+                              uploadedAt: new Date().toISOString(),
+                              category: "Pièce d'Identité Client",
+                            })
+                          }
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-100 hover:bg-emerald-200 text-emerald-800 border border-emerald-300 transition-colors cursor-pointer"
+                          title="Cliquer pour prévisualiser la pièce d'identité"
+                        >
+                          <Eye className="w-2.5 h-2.5" /> Pièce ({cust.id_card_document.formattedSize})
+                        </button>
+                      )}
+                    </div>
                   </td>
                   <td className="py-3 px-4 font-bold text-slate-800">{cust.total_stays} séjour(s)</td>
                   <td className="py-3 px-4 font-mono font-black text-emerald-800">
@@ -365,6 +460,93 @@ export default function CustomersPage() {
                 </div>
               </div>
 
+              {/* Téléversement Pièce d'identité / Passeport */}
+              <div className="space-y-1.5 pt-1">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-slate-700 block text-xs">
+                    Pièce d&apos;Identité / Passeport Scanné (Facultatif)
+                  </label>
+                  <span className="text-[10px] text-slate-500 font-semibold bg-slate-100 px-2 py-0.5 rounded">
+                    Max 5 Mo
+                  </span>
+                </div>
+
+                {/* Exigences de format et débit */}
+                <div className="p-2 rounded-lg bg-blue-50/70 border border-blue-200/70 text-[11px] text-blue-900 flex items-center justify-between gap-2">
+                  <span>
+                    Exigences : Formats <strong>PDF, JPG, PNG, WEBP</strong> • Débit max <strong>5 Mo</strong>
+                  </span>
+                </div>
+
+                {idDocError && (
+                  <div className="p-2 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-1.5">
+                    <AlertCircle className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                    <span>{idDocError}</span>
+                  </div>
+                )}
+
+                {idDocument ? (
+                  <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-300 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-bold text-slate-800 text-xs truncate">{idDocument.name}</p>
+                        <span className="text-[10px] text-emerald-700 font-mono font-bold bg-white px-1.5 py-0.5 rounded border border-emerald-200">
+                          {idDocument.formattedSize}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {idDocument.dataUrl && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setActiveDocPreview({
+                              key: "cust-id-preview",
+                              id: "cust-id-preview",
+                              name: idDocument.name,
+                              size: idDocument.size,
+                              formattedSize: idDocument.formattedSize,
+                              type: idDocument.type,
+                              dataUrl: idDocument.dataUrl,
+                              uploadedAt: new Date().toISOString(),
+                              category: "Pièce d'Identité Client",
+                            })
+                          }
+                          className="p-1 rounded-md text-blue-600 hover:text-blue-800 hover:bg-blue-100/50"
+                          title="Aperçu de la pièce"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={handleRemoveIdDoc}
+                        className="p-1 rounded-md text-red-500 hover:text-red-700 hover:bg-red-100/50"
+                        title="Supprimer la pièce"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <label className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border-2 border-dashed border-slate-300 hover:border-red-400 bg-slate-50 hover:bg-red-50/20 cursor-pointer text-slate-600 transition-colors">
+                    <UploadCloud className="w-4 h-4 text-slate-400" />
+                    <span className="font-bold text-xs text-slate-700">
+                      Téléverser la pièce d&apos;identité (PDF ou Image)
+                    </span>
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*"
+                      onChange={handleIdDocUpload}
+                      className="hidden"
+                    />
+                  </label>
+                )}
+              </div>
+
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
@@ -405,6 +587,13 @@ export default function CustomersPage() {
           onClose={() => setSelectedCustomerForAttestation(null)}
         />
       )}
+
+      {/* Visionneuse de document d'identité client */}
+      <DocumentViewerModal
+        document={activeDocPreview}
+        isOpen={!!activeDocPreview}
+        onClose={() => setActiveDocPreview(null)}
+      />
     </div>
   );
 }

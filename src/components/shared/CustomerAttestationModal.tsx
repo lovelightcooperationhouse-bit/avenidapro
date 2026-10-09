@@ -153,6 +153,11 @@ export function CustomerAttestationModal({
               <p className="text-slate-700">
                 N° Pièce / Passeport : <strong className="font-mono">{customer.id_card_or_passport}</strong>
               </p>
+              {customer.id_card_document && (
+                <p className="text-[10px] text-emerald-800 font-semibold flex items-center justify-end gap-1">
+                  <span>✓ Pièce jointe archivée ({customer.id_card_document.formattedSize})</span>
+                </p>
+              )}
               <div className="pt-2">
                 {customer.is_vip ? (
                   <span className="inline-flex items-center gap-1 px-3 py-1 bg-amber-100 text-amber-900 border border-amber-300 rounded-full font-black text-xs">

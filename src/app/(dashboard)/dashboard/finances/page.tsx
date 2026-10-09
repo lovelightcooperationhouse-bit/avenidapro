@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   TrendingUp,
   CreditCard,
@@ -14,16 +14,52 @@ import {
   FileText,
   DollarSign,
   Building,
+  UploadCloud,
+  AlertCircle,
+  Eye,
+  Trash2,
+  Paperclip,
 } from "lucide-react";
 import { MOCK_FINANCES } from "@/lib/mock-data";
 import { FinancialEntry } from "@/types";
 import { formatFCFA } from "@/lib/utils";
+import {
+  DocumentViewerModal,
+  DEFAULT_DOCUMENT_REQUIREMENTS,
+  formatBytes,
+  type UploadedFileItem,
+} from "@/components/shared/DocumentUploadManager";
+import {
+  getStoredFinances,
+  saveAndSyncFinance,
+  AVENIDA_DATA_UPDATED_EVENT,
+} from "@/lib/realtime-store";
 
 export default function FinancesPage() {
   const [entries, setEntries] = useState<FinancialEntry[]>(MOCK_FINANCES);
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState("ALL");
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  useEffect(() => {
+    setEntries(getStoredFinances());
+    const handleUpdate = () => setEntries(getStoredFinances());
+    window.addEventListener(AVENIDA_DATA_UPDATED_EVENT, handleUpdate);
+    window.addEventListener("storage", handleUpdate);
+    return () => {
+      window.removeEventListener(AVENIDA_DATA_UPDATED_EVENT, handleUpdate);
+      window.removeEventListener("storage", handleUpdate);
+    };
+  }, []);
+  const [receiptDoc, setReceiptDoc] = useState<{
+    name: string;
+    size: number;
+    formattedSize: string;
+    type: string;
+    dataUrl?: string;
+  } | null>(null);
+  const [receiptDocError, setReceiptDocError] = useState<string | null>(null);
+  const [activeDocPreview, setActiveDocPreview] = useState<UploadedFileItem | null>(null);
 
   const [newEntry, setNewEntry] = useState({
     type: "depense" as "recette" | "depense",
@@ -33,6 +69,38 @@ export default function FinancesPage() {
     payment_mode: "Espèces" as any,
     receipt_number: "",
   });
+
+  const handleReceiptDocChange = (file: File) => {
+    setReceiptDocError(null);
+    const ext = "." + (file.name.split(".").pop()?.toLowerCase() || "");
+    const allowed = DEFAULT_DOCUMENT_REQUIREMENTS.allowedExtensions;
+    if (!allowed.includes(ext.toLowerCase())) {
+      setReceiptDocError(
+        `Format "${ext}" refusé. Seuls les formats ${allowed.join(", ").toUpperCase()} sont autorisés.`
+      );
+      return;
+    }
+    if (file.size > DEFAULT_DOCUMENT_REQUIREMENTS.maxSizeBytes) {
+      setReceiptDocError(
+        `Débit/Taille dépassé(e) : ${formatBytes(file.size)}. Le débit maximum autorisé est de ${formatBytes(
+          DEFAULT_DOCUMENT_REQUIREMENTS.maxSizeBytes
+        )}.`
+      );
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setReceiptDoc({
+        name: file.name,
+        size: file.size,
+        formattedSize: formatBytes(file.size),
+        type: file.type || ext,
+        dataUrl: typeof reader.result === "string" ? reader.result : undefined,
+      });
+    };
+    reader.readAsDataURL(file);
+  };
 
   const totalRecettes = entries
     .filter((e) => e.type === "recette")
@@ -68,9 +136,15 @@ export default function FinancesPage() {
       recorded_by: "Comptable Caisse Lomé",
       payment_mode: newEntry.payment_mode,
       receipt_number: newEntry.receipt_number || `PJ-${Date.now().toString().slice(-4)}`,
+      receipt_document_url: receiptDoc?.dataUrl,
+      receipt_document_name: receiptDoc?.name,
+      receipt_document_size: receiptDoc?.formattedSize,
     };
 
     setEntries([added, ...entries]);
+    saveAndSyncFinance(added);
+    setReceiptDoc(null);
+    setReceiptDocError(null);
     setIsModalOpen(false);
   };
 
@@ -221,6 +295,28 @@ export default function FinancesPage() {
                     <td className="py-3 px-4 text-slate-600">
                       <div className="font-bold">{item.payment_mode}</div>
                       <div className="text-[10px] font-mono text-slate-400">{item.receipt_number}</div>
+                      {item.receipt_document_url && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setActiveDocPreview({
+                              key: item.id,
+                              id: item.id,
+                              name: item.receipt_document_name || `Justificatif ${item.reference}`,
+                              size: 0,
+                              formattedSize: item.receipt_document_size || "",
+                              type: "application/pdf",
+                              dataUrl: item.receipt_document_url,
+                              uploadedAt: item.date,
+                              category: "Pièce Comptable",
+                            })
+                          }
+                          className="mt-1 flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded-md border border-blue-200 transition-colors cursor-pointer w-fit"
+                        >
+                          <Eye className="w-3 h-3 text-blue-600" />
+                          <span>Voir PJ ({item.receipt_document_size})</span>
+                        </button>
+                      )}
                     </td>
                     <td className="py-3 px-4 text-slate-600">{item.recorded_by}</td>
                   </tr>
@@ -338,10 +434,99 @@ export default function FinancesPage() {
                 />
               </div>
 
+              {/* Téléversement de la pièce justificative */}
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">
+                  Pièce Justificative Numérisée (Facture, Reçu, Bon de caisse)
+                </label>
+                <div className="text-[10px] text-slate-500 mb-2">
+                  Exigences : Formats <strong>PDF, JPG, PNG, WEBP, DOCX</strong> &bull; Débit max <strong>5 Mo</strong>
+                </div>
+
+                {receiptDocError && (
+                  <div className="p-2 mb-2 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs flex items-center gap-1.5">
+                    <AlertCircle className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                    <span>{receiptDocError}</span>
+                  </div>
+                )}
+
+                {receiptDoc ? (
+                  <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-300 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-bold text-slate-800 text-xs truncate">{receiptDoc.name}</p>
+                        <span className="text-[10px] text-emerald-700 font-mono font-bold bg-white px-1.5 py-0.5 rounded border border-emerald-200">
+                          {receiptDoc.formattedSize}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {receiptDoc.dataUrl && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setActiveDocPreview({
+                              key: "temp-receipt",
+                              id: "temp-receipt",
+                              name: receiptDoc.name,
+                              size: receiptDoc.size,
+                              formattedSize: receiptDoc.formattedSize,
+                              type: receiptDoc.type,
+                              dataUrl: receiptDoc.dataUrl,
+                              uploadedAt: new Date().toISOString(),
+                              category: "Pièce Comptable",
+                            })
+                          }
+                          className="p-1 rounded-md text-blue-600 hover:text-blue-800 hover:bg-blue-100/50"
+                          title="Aperçu"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setReceiptDoc(null);
+                          setReceiptDocError(null);
+                        }}
+                        className="p-1 rounded-md text-red-500 hover:text-red-700 hover:bg-red-100/50"
+                        title="Supprimer la pièce"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <label className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border-2 border-dashed border-slate-300 hover:border-blue-400 bg-slate-50 hover:bg-blue-50/20 cursor-pointer text-slate-600 transition-colors">
+                    <UploadCloud className="w-4 h-4 text-slate-400" />
+                    <span className="font-bold text-xs text-slate-700">
+                      Téléverser le justificatif (PDF ou Image, max 5 Mo)
+                    </span>
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png,.webp,.docx"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleReceiptDocChange(file);
+                        e.target.value = "";
+                      }}
+                      className="hidden"
+                    />
+                  </label>
+                )}
+              </div>
+
               <div className="flex justify-end gap-2 pt-3 border-t">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    setReceiptDoc(null);
+                    setReceiptDocError(null);
+                  }}
                   className="px-4 py-2 rounded-xl text-slate-600 font-bold hover:bg-slate-100"
                 >
                   Annuler
@@ -357,6 +542,13 @@ export default function FinancesPage() {
           </div>
         </div>
       )}
+
+      {/* Visionneuse de document justificatif */}
+      <DocumentViewerModal
+        document={activeDocPreview}
+        isOpen={!!activeDocPreview}
+        onClose={() => setActiveDocPreview(null)}
+      />
     </div>
   );
 }
