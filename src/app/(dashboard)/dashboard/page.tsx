@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { StatsCard } from "@/components/shared/StatsCard";
 import { AvenidaLogo } from "@/components/shared/AvenidaLogo";
+import { DirectorPendingApprovalsBanner } from "@/components/shared/DirectorPendingApprovalsBanner";
 import {
   MOCK_STUDENTS,
   MOCK_RECEIPTS,
@@ -89,6 +90,8 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8 animate-fade-in">
+      <DirectorPendingApprovalsBanner />
+
       {/* 1. Official Header & Institution Banner */}
       <div className="bg-white rounded-2xl sm:rounded-3xl border-2 border-slate-200 p-4 sm:p-6 md:p-8 shadow-sm relative overflow-hidden">
         {/* Tricolore Top Accent Bar: Blue - White - Red */}
@@ -177,7 +180,7 @@ export default function DashboardPage() {
           <GraduationCap className="w-4 h-4 text-blue-300 transition-transform duration-200 group-hover:scale-110 group-hover:rotate-6" />
           <span>ESPACE 1 : ÉCOLE & FORMATION (Bleu)</span>
           <span className="text-[10px] bg-white/20 text-white px-2 py-0.5 rounded-full font-bold transition-transform duration-200 group-hover:scale-105">
-            {totalStudents} élèves
+            {totalStudents} élève{totalStudents > 1 ? "s" : ""}
           </span>
         </button>
 
@@ -227,7 +230,7 @@ export default function DashboardPage() {
           <StatsCard
             title="Taux Occupation Hôtel"
             value={`${occupancyRate}%`}
-            subtitle={`${totalOccupiedRooms} occupées / ${MOCK_ROOMS.length} ch.`}
+            subtitle={`${totalOccupiedRooms} occupées / ${roomsList.length} ch.`}
             icon={BedDouble}
             variant="hotel"
             trend={{ value: `${totalAvailableRooms} chambres libres`, isPositive: true }}

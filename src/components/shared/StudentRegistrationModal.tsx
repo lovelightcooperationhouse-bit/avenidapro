@@ -58,6 +58,17 @@ export function StudentRegistrationModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto print:p-0 print:bg-white print:static">
+      <style jsx global>{`
+        @media print {
+          @page {
+            size: A4 portrait;
+            margin: 8mm;
+          }
+          body {
+            background: white !important;
+          }
+        }
+      `}</style>
       <div className="bg-white rounded-3xl max-w-3xl w-full shadow-2xl border border-slate-200 overflow-hidden relative my-auto print:border-none print:shadow-none print:rounded-none print:max-w-none print:w-full">
         {/* Barre de contrôle supérieure (Masquée à l'impression) */}
         <div className="bg-[#0C356A] text-white px-6 py-3.5 flex items-center justify-between print:hidden">

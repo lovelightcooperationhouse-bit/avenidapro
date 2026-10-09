@@ -20,11 +20,14 @@ import {
   Trash2,
   Paperclip,
   Eye,
+  Edit3,
 } from "lucide-react";
 import { MOCK_CUSTOMERS } from "@/lib/mock-data";
 import { HotelCustomer } from "@/types";
 import { formatFCFA } from "@/lib/utils";
 import { CustomerAttestationModal } from "@/components/shared/CustomerAttestationModal";
+import { DirectorPendingApprovalsBanner } from "@/components/shared/DirectorPendingApprovalsBanner";
+import { EditWithDirectorApprovalModal } from "@/components/shared/EditWithDirectorApprovalModal";
 import { createClient } from "@/lib/supabase/client";
 import {
   DocumentViewerModal,
@@ -42,6 +45,7 @@ export default function CustomersPage() {
   const [customers, setCustomers] = useState<HotelCustomer[]>(MOCK_CUSTOMERS);
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [customerToEdit, setCustomerToEdit] = useState<HotelCustomer | null>(null);
   const [selectedCustomerForAttestation, setSelectedCustomerForAttestation] = useState<HotelCustomer | null>(null);
   const [activeDocPreview, setActiveDocPreview] = useState<UploadedFileItem | null>(null);
 
@@ -168,6 +172,8 @@ export default function CustomersPage() {
 
   return (
     <div className="space-y-6">
+      <DirectorPendingApprovalsBanner />
+
       {/* En-tête */}
       <div className="bg-white p-6 rounded-3xl border-2 border-red-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
@@ -339,14 +345,24 @@ export default function CustomersPage() {
                     )}
                   </td>
                   <td className="py-3 px-4 text-right">
-                    <button
-                      onClick={() => setSelectedCustomerForAttestation(cust)}
-                      className="px-2.5 py-1.5 bg-red-50 hover:bg-[#DC2626] hover:text-white text-[#DC2626] font-bold rounded-xl text-[11px] transition-all inline-flex items-center gap-1 shadow-2xs border border-red-200 active:scale-95 cursor-pointer ml-auto"
-                      title="Générer et télécharger la Fiche Client Officielle (PDF)"
-                    >
-                      <Printer className="w-3.5 h-3.5" />
-                      <span>Fiche Client</span>
-                    </button>
+                    <div className="inline-flex items-center gap-1.5 justify-end">
+                      <button
+                        onClick={() => setCustomerToEdit(cust)}
+                        className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-500 hover:text-slate-950 text-amber-900 border border-amber-300 font-bold rounded-xl text-[11px] transition-all inline-flex items-center gap-1 shadow-2xs active:scale-95 cursor-pointer"
+                        title="Modifier les données du client (Visa du Directeur Général requis)"
+                      >
+                        <Edit3 className="w-3.5 h-3.5 text-amber-700" />
+                        <span>Modifier</span>
+                      </button>
+                      <button
+                        onClick={() => setSelectedCustomerForAttestation(cust)}
+                        className="px-2.5 py-1.5 bg-red-50 hover:bg-[#DC2626] hover:text-white text-[#DC2626] font-bold rounded-xl text-[11px] transition-all inline-flex items-center gap-1 shadow-2xs border border-red-200 active:scale-95 cursor-pointer"
+                        title="Générer et télécharger la Fiche Client Officielle (PDF)"
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                        <span>Fiche Client</span>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -568,6 +584,23 @@ export default function CustomersPage() {
         isOpen={!!activeDocPreview}
         onClose={() => setActiveDocPreview(null)}
       />
+
+      {/* Modal Modification d'informations sous autorisation du Directeur */}
+      {customerToEdit && (
+        <EditWithDirectorApprovalModal
+          entityType="customer"
+          entityData={customerToEdit}
+          isOpen={!!customerToEdit}
+          onClose={() => setCustomerToEdit(null)}
+          onSuccess={() => {
+            setCustomers(getStoredCustomers());
+            if (selectedCustomerForAttestation?.id === customerToEdit.id) {
+              const fresh = getStoredCustomers().find((c) => c.id === customerToEdit.id);
+              if (fresh) setSelectedCustomerForAttestation(fresh);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

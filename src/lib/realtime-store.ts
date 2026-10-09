@@ -8,6 +8,8 @@ import {
   MOCK_ROOMS,
   MOCK_RECEIPTS,
   MOCK_RESERVATIONS,
+  MOCK_ABSENCES,
+  MOCK_LATES,
 } from "@/lib/mock-data";
 import {
   Student,
@@ -18,6 +20,8 @@ import {
   PaymentReceipt,
   HotelReservation,
   DiplomeCode,
+  AbsenceTicket,
+  LateTicket,
 } from "@/types";
 import { createClient } from "@/lib/supabase/client";
 import { notifyDirector } from "@/lib/notifications";
@@ -650,7 +654,10 @@ export function getStoredRooms(): HotelRoom[] {
 
 export async function saveAndSyncRoom(room: HotelRoom): Promise<HotelRoom[]> {
   const current = getStoredRooms();
-  const updatedList = current.map((r) => (r.id === room.id ? room : r));
+  const exists = current.some((r) => r.id === room.id || r.room_number === room.room_number);
+  const updatedList = exists
+    ? current.map((r) => (r.id === room.id || r.room_number === room.room_number ? room : r))
+    : [...current, room];
 
   safeSetStorage("avenida_custom_rooms", updatedList);
 
@@ -730,6 +737,75 @@ export async function saveAndSyncReceipt(receipt: PaymentReceipt): Promise<Payme
   } catch (err) {
     console.warn("Sync Supabase encaissement non bloquante:", err);
   }
+
+  broadcastDataChange();
+  return updatedList;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 8. VIE SCOLAIRE : ABSENCES & RETARDS ÉLÈVES
+// ─────────────────────────────────────────────────────────────────────────────
+export function getStoredAbsences(): AbsenceTicket[] {
+  if (typeof window === "undefined") return MOCK_ABSENCES;
+  try {
+    const raw = localStorage.getItem("avenida_custom_absences");
+    if (!raw) return MOCK_ABSENCES;
+    const parsed = JSON.parse(raw) as AbsenceTicket[];
+    if (!Array.isArray(parsed) || parsed.length === 0) return MOCK_ABSENCES;
+    const customIds = new Set(parsed.map((a) => a.id));
+    const mocks = MOCK_ABSENCES.filter((m) => !customIds.has(m.id));
+    return [...parsed, ...mocks];
+  } catch (err) {
+    console.warn("Erreur lecture absences locales:", err);
+    return MOCK_ABSENCES;
+  }
+}
+
+export async function saveAndSyncAbsence(ticket: AbsenceTicket): Promise<AbsenceTicket[]> {
+  const current = getStoredAbsences();
+  const filtered = current.filter((a) => a.id !== ticket.id);
+  const updatedList = [ticket, ...filtered];
+
+  safeSetStorage("avenida_custom_absences", updatedList);
+
+  notifyDirector(
+    "student",
+    `Billet d'Absence Enregistré : ${ticket.student_name}`,
+    `Classe : ${ticket.class_name} • Motif : ${ticket.reason} • Justifié : ${ticket.parent_justified ? "Oui" : "Non"}`
+  );
+
+  broadcastDataChange();
+  return updatedList;
+}
+
+export function getStoredLates(): LateTicket[] {
+  if (typeof window === "undefined") return MOCK_LATES;
+  try {
+    const raw = localStorage.getItem("avenida_custom_lates");
+    if (!raw) return MOCK_LATES;
+    const parsed = JSON.parse(raw) as LateTicket[];
+    if (!Array.isArray(parsed) || parsed.length === 0) return MOCK_LATES;
+    const customIds = new Set(parsed.map((l) => l.id));
+    const mocks = MOCK_LATES.filter((m) => !customIds.has(m.id));
+    return [...parsed, ...mocks];
+  } catch (err) {
+    console.warn("Erreur lecture retards locaux:", err);
+    return MOCK_LATES;
+  }
+}
+
+export async function saveAndSyncLate(ticket: LateTicket): Promise<LateTicket[]> {
+  const current = getStoredLates();
+  const filtered = current.filter((l) => l.id !== ticket.id);
+  const updatedList = [ticket, ...filtered];
+
+  safeSetStorage("avenida_custom_lates", updatedList);
+
+  notifyDirector(
+    "student",
+    `Billet de Retard : ${ticket.student_name} (${ticket.duration_minutes} min)`,
+    `Classe : ${ticket.class_name} • Motif : ${ticket.reason}`
+  );
 
   broadcastDataChange();
   return updatedList;

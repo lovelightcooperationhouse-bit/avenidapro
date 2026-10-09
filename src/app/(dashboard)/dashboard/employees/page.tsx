@@ -24,11 +24,14 @@ import {
   Sparkles,
   Download,
   FileCheck,
+  Edit3,
 } from "lucide-react";
 import { MOCK_EMPLOYEES } from "@/lib/mock-data";
 import { Employee, EmployeeSector } from "@/types";
 import { formatFCFA } from "@/lib/utils";
 import { NEIGHBORHOODS } from "@/lib/academic-data";
+import { DirectorPendingApprovalsBanner } from "@/components/shared/DirectorPendingApprovalsBanner";
+import { EditWithDirectorApprovalModal } from "@/components/shared/EditWithDirectorApprovalModal";
 import {
   PhotoUploadZone,
   DocumentUploadManager,
@@ -88,6 +91,7 @@ export default function EmployeesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [contractFilter, setContractFilter] = useState("ALL");
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [employeeToEdit, setEmployeeToEdit] = useState<Employee | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedDocForViewer, setSelectedDocForViewer] = useState<UploadedFileItem | null>(null);
 
@@ -216,6 +220,8 @@ export default function EmployeesPage() {
 
   return (
     <div className="space-y-6">
+      <DirectorPendingApprovalsBanner />
+
       {/* 1. EN-TÊTE DE SECTION AVEC STATISTIQUES À CHAQUE NIVEAU */}
       <div className="bg-white p-6 rounded-3xl border-2 border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
@@ -454,13 +460,23 @@ export default function EmployeesPage() {
                     </td>
 
                     <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        onClick={() => setSelectedEmployee(emp)}
-                        className="px-3 py-1.5 bg-slate-100 hover:bg-[#0C356A] hover:text-white text-slate-700 font-bold rounded-xl text-[11px] transition-all inline-flex items-center gap-1.5 shadow-2xs"
-                      >
-                        <Eye className="w-3 h-3" />
-                        <span>Fiche CV</span>
-                      </button>
+                      <div className="inline-flex items-center gap-1.5">
+                        <button
+                          onClick={() => setEmployeeToEdit(emp)}
+                          className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-500 hover:text-slate-950 text-amber-900 border border-amber-300 font-bold rounded-xl text-[11px] transition-all inline-flex items-center gap-1 shadow-2xs active:scale-95 cursor-pointer"
+                          title="Modifier les données du collaborateur (Visa du Directeur requis)"
+                        >
+                          <Edit3 className="w-3.5 h-3.5 text-amber-700" />
+                          <span>Modifier</span>
+                        </button>
+                        <button
+                          onClick={() => setSelectedEmployee(emp)}
+                          className="px-3 py-1.5 bg-slate-100 hover:bg-[#0C356A] hover:text-white text-slate-700 font-bold rounded-xl text-[11px] transition-all inline-flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                        >
+                          <Eye className="w-3 h-3" />
+                          <span>Fiche CV</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -727,16 +743,30 @@ export default function EmployeesPage() {
 
             {/* Footer Modal */}
             <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-between items-center rounded-b-3xl">
-              <button
-                onClick={() => window.print()}
-                className="px-4 py-2 bg-white border border-slate-300 text-slate-700 font-bold rounded-xl text-xs hover:bg-slate-100 transition-colors flex items-center gap-1.5"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Imprimer Fiche Individuelle</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    const emp = selectedEmployee;
+                    setSelectedEmployee(null);
+                    setEmployeeToEdit(emp);
+                  }}
+                  className="px-4 py-2 bg-amber-50 hover:bg-amber-400 text-amber-950 border border-amber-300 font-bold rounded-xl text-xs transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                  title="Modifier les données sous visa du Directeur Général"
+                >
+                  <Edit3 className="w-3.5 h-3.5 text-amber-700" />
+                  <span>Modifier (Visa Direction)</span>
+                </button>
+                <button
+                  onClick={() => window.print()}
+                  className="px-4 py-2 bg-white border border-slate-300 text-slate-700 font-bold rounded-xl text-xs hover:bg-slate-100 transition-colors flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Imprimer Fiche Individuelle</span>
+                </button>
+              </div>
               <button
                 onClick={() => setSelectedEmployee(null)}
-                className="px-5 py-2 bg-[#0C356A] hover:bg-[#164E87] text-white font-bold rounded-xl text-xs transition-colors"
+                className="px-5 py-2 bg-[#0C356A] hover:bg-[#164E87] text-white font-bold rounded-xl text-xs transition-colors cursor-pointer"
               >
                 Fermer
               </button>
@@ -1065,6 +1095,23 @@ export default function EmployeesPage() {
         isOpen={!!selectedDocForViewer}
         onClose={() => setSelectedDocForViewer(null)}
       />
+
+      {/* Modal Modification d'informations sous autorisation du Directeur */}
+      {employeeToEdit && (
+        <EditWithDirectorApprovalModal
+          entityType="employee"
+          entityData={employeeToEdit}
+          isOpen={!!employeeToEdit}
+          onClose={() => setEmployeeToEdit(null)}
+          onSuccess={() => {
+            setEmployees(getStoredEmployees());
+            if (selectedEmployee?.id === employeeToEdit.id) {
+              const fresh = getStoredEmployees().find((e) => e.id === employeeToEdit.id);
+              if (fresh) setSelectedEmployee(fresh);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

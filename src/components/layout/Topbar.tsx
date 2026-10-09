@@ -272,7 +272,7 @@ export function Topbar() {
                         isSchool ? "text-blue-200" : "text-slate-500 group-hover:text-[#0C356A]"
                       }`}
                     >
-                      Pôle Académique &bull; 2 Élèves
+                      Pôle Académique
                     </p>
                   </div>
                 </div>
@@ -287,13 +287,6 @@ export function Topbar() {
                     }`}
                   >
                     {isSchool ? "Pôle Actif" : "Accéder"}
-                  </span>
-                  <span
-                    className={`text-[10px] font-bold mt-0.5 ${
-                      isSchool ? "text-blue-200" : "text-slate-400"
-                    }`}
-                  >
-                    BTS &bull; CAP
                   </span>
                 </div>
               </Link>
@@ -342,7 +335,7 @@ export function Topbar() {
                         isHotel ? "text-red-200" : "text-slate-500 group-hover:text-[#DC2626]"
                       }`}
                     >
-                      Pôle Hébergement &bull; 2 Chambres
+                      Pôle Hébergement
                     </p>
                   </div>
                 </div>
@@ -357,13 +350,6 @@ export function Topbar() {
                     }`}
                   >
                     {isHotel ? "Pôle Actif" : "Accéder"}
-                  </span>
-                  <span
-                    className={`text-[10px] font-bold mt-0.5 ${
-                      isHotel ? "text-red-200" : "text-slate-400"
-                    }`}
-                  >
-                    Planning &bull; Clients
                   </span>
                 </div>
               </Link>

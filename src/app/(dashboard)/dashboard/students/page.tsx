@@ -29,6 +29,9 @@ import {
   AlertCircle,
   UploadCloud,
   Trash2,
+  FolderOpen,
+  Edit3,
+  ShieldCheck,
 } from "lucide-react";
 import { MOCK_STUDENTS } from "@/lib/mock-data";
 import { formatFCFA } from "@/lib/utils";
@@ -36,6 +39,9 @@ import { useSchoolYear } from "@/context/SchoolYearContext";
 import { Student, StudentReportCard } from "@/types";
 import { ReportCardModal } from "@/components/shared/ReportCardModal";
 import { StudentRegistrationModal } from "@/components/shared/StudentRegistrationModal";
+import { DirectorPendingApprovalsBanner } from "@/components/shared/DirectorPendingApprovalsBanner";
+import { EditWithDirectorApprovalModal } from "@/components/shared/EditWithDirectorApprovalModal";
+import { StudentDocumentsModal } from "@/components/shared/StudentDocumentsModal";
 import {
   DocumentViewerModal,
   DEFAULT_DOCUMENT_REQUIREMENTS,
@@ -63,6 +69,8 @@ export default function StudentsPage() {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [selectedReportCard, setSelectedReportCard] = useState<StudentReportCard | null>(null);
   const [selectedEnrollmentStudent, setSelectedEnrollmentStudent] = useState<Student | null>(null);
+  const [studentToEdit, setStudentToEdit] = useState<Student | null>(null);
+  const [studentForDocs, setStudentForDocs] = useState<Student | null>(null);
   const [activeDocPreview, setActiveDocPreview] = useState<UploadedFileItem | null>(null);
   const [docUploadError, setDocUploadError] = useState<string | null>(null);
   const [newDocTitle, setNewDocTitle] = useState("");
@@ -236,6 +244,8 @@ export default function StudentsPage() {
 
   return (
     <div className="space-y-6">
+      <DirectorPendingApprovalsBanner />
+
       {/* 1. EN-TÊTE OFFICIEL DE LA SCOLARITÉ */}
       <div className="bg-white p-6 rounded-3xl border-2 border-blue-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
@@ -346,7 +356,7 @@ export default function StudentsPage() {
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            Toutes les Promotions ({MOCK_STUDENTS.length})
+            Toutes les Promotions ({allStudents.length})
           </button>
 
           <button
@@ -358,7 +368,7 @@ export default function StudentsPage() {
             }`}
           >
             <Calendar className="w-3.5 h-3.5" />
-            <span>Année 2024 – 2025 (2 élèves)</span>
+            <span>Année 2024 – 2025</span>
           </button>
 
           <button
@@ -370,7 +380,7 @@ export default function StudentsPage() {
             }`}
           >
             <Calendar className="w-3.5 h-3.5" />
-            <span>Année 2025 – 2026 (2 élèves)</span>
+            <span>Année 2025 – 2026</span>
           </button>
 
           <button
@@ -382,7 +392,7 @@ export default function StudentsPage() {
             }`}
           >
             <Calendar className="w-3.5 h-3.5" />
-            <span>Année 2026 – 2027 (2 élèves)</span>
+            <span>Année 2026 – 2027</span>
           </button>
         </div>
 
@@ -405,9 +415,11 @@ export default function StudentsPage() {
             className="text-xs bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 font-bold focus:outline-none"
           >
             <option value="ALL">Tous diplômes</option>
-            <option value="BTS">BTS</option>
-            <option value="CAP">CAP</option>
             <option value="CFA">CFA</option>
+            <option value="CAP">CAP</option>
+            <option value="BEP">BEP</option>
+            <option value="BT">BT</option>
+            <option value="BTS">BTS</option>
           </select>
         </div>
       </div>
@@ -549,8 +561,24 @@ export default function StudentsPage() {
                           <span>Bulletin</span>
                         </button>
                         <button
+                          onClick={() => setStudentForDocs(s)}
+                          className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-600 hover:text-white text-emerald-800 font-bold rounded-xl text-[11px] transition-all inline-flex items-center gap-1 shadow-2xs border border-emerald-200 active:scale-95 cursor-pointer"
+                          title="Dossier d'accès aux documents enregistrés"
+                        >
+                          <FolderOpen className="w-3.5 h-3.5" />
+                          <span>Documents</span>
+                        </button>
+                        <button
+                          onClick={() => setStudentToEdit(s)}
+                          className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-500 hover:text-slate-950 text-amber-900 font-bold rounded-xl text-[11px] transition-all inline-flex items-center gap-1 shadow-2xs border border-amber-300 active:scale-95 cursor-pointer"
+                          title="Modifier les informations de l'élève (Visa du Directeur Général requis)"
+                        >
+                          <Edit3 className="w-3.5 h-3.5 text-amber-700" />
+                          <span>Modifier</span>
+                        </button>
+                        <button
                           onClick={() => setSelectedStudent(s)}
-                          className="px-2.5 py-1.5 bg-slate-100 hover:bg-[#0C356A] hover:text-white text-slate-700 font-bold rounded-xl text-[11px] transition-all inline-flex items-center gap-1 shadow-2xs active:scale-95"
+                          className="px-2.5 py-1.5 bg-slate-100 hover:bg-[#0C356A] hover:text-white text-slate-700 font-bold rounded-xl text-[11px] transition-all inline-flex items-center gap-1 shadow-2xs active:scale-95 cursor-pointer"
                         >
                           <Eye className="w-3 h-3" />
                           <span>Fiche 360°</span>
@@ -939,6 +967,36 @@ export default function StudentsPage() {
         isOpen={!!activeDocPreview}
         onClose={() => setActiveDocPreview(null)}
       />
+
+      {/* Modal Dossier d'accès aux documents enregistrés pour l'élève */}
+      {studentForDocs && (
+        <StudentDocumentsModal
+          student={studentForDocs}
+          isOpen={!!studentForDocs}
+          onClose={() => setStudentForDocs(null)}
+          onUpdateStudent={(upd) => {
+            setAllStudents(getStoredStudents());
+            if (selectedStudent?.id === upd.id) setSelectedStudent(upd);
+          }}
+        />
+      )}
+
+      {/* Modal Modification d'informations sous autorisation du Directeur */}
+      {studentToEdit && (
+        <EditWithDirectorApprovalModal
+          entityType="student"
+          entityData={studentToEdit}
+          isOpen={!!studentToEdit}
+          onClose={() => setStudentToEdit(null)}
+          onSuccess={() => {
+            setAllStudents(getStoredStudents());
+            if (selectedStudent?.id === studentToEdit.id) {
+              const fresh = getStoredStudents().find((s) => s.id === studentToEdit.id);
+              if (fresh) setSelectedStudent(fresh);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

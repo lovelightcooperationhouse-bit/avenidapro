@@ -16,6 +16,7 @@ import {
   CheckCircle2,
   Award,
   GraduationCap,
+  Edit3,
 } from "lucide-react";
 import {
   MOCK_STUDENTS,
@@ -24,8 +25,17 @@ import {
   MOCK_LATES,
 } from "@/lib/mock-data";
 import { formatFCFA } from "@/lib/utils";
-import { StudentReportCard } from "@/types";
+import { StudentReportCard, Student } from "@/types";
 import { ReportCardModal } from "@/components/shared/ReportCardModal";
+import { StudentRegistrationModal } from "@/components/shared/StudentRegistrationModal";
+import { EditWithDirectorApprovalModal } from "@/components/shared/EditWithDirectorApprovalModal";
+import {
+  getStoredStudents,
+  getStoredReceipts,
+  getStoredAbsences,
+  getStoredLates,
+  AVENIDA_DATA_UPDATED_EVENT,
+} from "@/lib/realtime-store";
 import {
   getReportCardsFromStorage,
   createBlankReportCardForStudent,
@@ -38,13 +48,40 @@ export default function StudentDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const unwrappedParams = use(params);
+  const [allStudents, setAllStudents] = useState<Student[]>(getStoredStudents());
+  const [allReceipts, setAllReceipts] = useState(getStoredReceipts());
+  const [allAbsences, setAllAbsences] = useState(getStoredAbsences());
+  const [allLates, setAllLates] = useState(getStoredLates());
+  const [isEnrollmentModalOpen, setIsEnrollmentModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
   const student =
-    MOCK_STUDENTS.find((s) => s.id === unwrappedParams.id) || MOCK_STUDENTS[0];
+    allStudents.find(
+      (s) => s.id === unwrappedParams.id || s.registration_number === unwrappedParams.id
+    ) || allStudents[0];
 
   const [reportCard, setReportCard] = useState<StudentReportCard | null>(null);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
+  const refreshData = () => {
+    setAllStudents(getStoredStudents());
+    setAllReceipts(getStoredReceipts());
+    setAllAbsences(getStoredAbsences());
+    setAllLates(getStoredLates());
+  };
+
   useEffect(() => {
+    refreshData();
+    window.addEventListener(AVENIDA_DATA_UPDATED_EVENT, refreshData);
+    window.addEventListener("storage", refreshData);
+    return () => {
+      window.removeEventListener(AVENIDA_DATA_UPDATED_EVENT, refreshData);
+      window.removeEventListener("storage", refreshData);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!student) return;
     const list = getReportCardsFromStorage();
     const existing = list.find((c) => c.student_matricule === student.registration_number);
     if (existing) {
@@ -57,14 +94,20 @@ export default function StudentDetailPage({
     }
   }, [student]);
 
-  const studentReceipts = MOCK_RECEIPTS.filter(
-    (r) => r.student_matricule === student.registration_number
+  const studentReceipts = allReceipts.filter(
+    (r) => r.student_matricule === student?.registration_number
   );
-  const studentAbsences = MOCK_ABSENCES.filter(
-    (a) => a.student_name.includes(student.last_name)
+  const studentAbsences = allAbsences.filter(
+    (a) =>
+      student &&
+      (a.student_name.toLowerCase().includes(student.last_name.toLowerCase()) ||
+        a.student_name.toLowerCase().includes(student.first_name.toLowerCase()))
   );
-  const studentLates = MOCK_LATES.filter((l) =>
-    l.student_name.includes(student.last_name)
+  const studentLates = allLates.filter(
+    (l) =>
+      student &&
+      (l.student_name.toLowerCase().includes(student.last_name.toLowerCase()) ||
+        l.student_name.toLowerCase().includes(student.first_name.toLowerCase()))
   );
 
   return (
@@ -79,20 +122,37 @@ export default function StudentDetailPage({
           <span>Retour à l&apos;Espace École</span>
         </Link>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => setIsEnrollmentModalOpen(true)}
+            className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-black rounded-xl flex items-center gap-1.5 transition-colors shadow-xs active:scale-95 cursor-pointer"
+          >
+            <FileText className="w-3.5 h-3.5 text-slate-950" />
+            <span>Fiche Inscription A4 (PDF)</span>
+          </button>
+
+          <button
+            onClick={() => setIsEditModalOpen(true)}
+            className="px-3.5 py-1.5 bg-amber-50 hover:bg-amber-400 text-amber-950 border border-amber-300 text-xs font-black rounded-xl flex items-center gap-1.5 transition-colors shadow-xs active:scale-95 cursor-pointer"
+            title="Modifier les données de l'élève (Sous visa formel de la Direction Générale)"
+          >
+            <Edit3 className="w-3.5 h-3.5 text-amber-700" />
+            <span>Modifier (Visa DG)</span>
+          </button>
+
           {reportCard && (
             <button
               onClick={() => setIsReportModalOpen(true)}
-              className="px-3.5 py-1.5 bg-[#0C356A] hover:bg-[#164E87] text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors shadow-xs active:scale-95"
+              className="px-3.5 py-1.5 bg-[#0C356A] hover:bg-[#164E87] text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors shadow-xs active:scale-95 cursor-pointer"
             >
               <Award className="w-3.5 h-3.5 text-amber-300" />
-              <span>Voir & Télécharger Bulletin Officiel</span>
+              <span>Bulletin Officiel</span>
             </button>
           )}
 
           <button
             onClick={() => window.print()}
-            className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors"
+            className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer"
           >
             <Printer className="w-3.5 h-3.5 text-slate-500" />
             <span>Imprimer Fiche 360°</span>
@@ -372,6 +432,26 @@ export default function StudentDetailPage({
           reportCard={reportCard}
           isOpen={isReportModalOpen}
           onClose={() => setIsReportModalOpen(false)}
+        />
+      )}
+
+      {/* MODAL FICHE OFFICIELLE D'INSCRIPTION FORMAT A4 */}
+      {student && isEnrollmentModalOpen && (
+        <StudentRegistrationModal
+          student={student}
+          isOpen={isEnrollmentModalOpen}
+          onClose={() => setIsEnrollmentModalOpen(false)}
+        />
+      )}
+
+      {/* MODAL MODIFICATION AVEC VISA DU DIRECTEUR GÉNÉRAL */}
+      {student && isEditModalOpen && (
+        <EditWithDirectorApprovalModal
+          entityType="student"
+          entityData={student}
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          onSuccess={refreshData}
         />
       )}
     </div>

@@ -1,75 +1,116 @@
 "use client";
 
-import { useState } from "react";
-import {
-  CalendarCheck,
-  Clock,
-  AlertTriangle,
-  CheckCircle2,
-  PlusCircle,
-  Search,
-  Filter,
-  User,
-  X,
-  FileCheck,
-} from "lucide-react";
-import { MOCK_ABSENCES, MOCK_LATES, MOCK_STUDENTS } from "@/lib/mock-data";
+import { CalendarCheck, Clock, AlertTriangle, CheckCircle2, PlusCircle, Search, Filter, User, X, FileCheck } from "lucide-react";
 import { AbsenceTicket, LateTicket } from "@/types";
+import {
+  getStoredStudents,
+  getStoredAbsences,
+  saveAndSyncAbsence,
+  getStoredLates,
+  saveAndSyncLate,
+  AVENIDA_DATA_UPDATED_EVENT,
+} from "@/lib/realtime-store";
+import { useState, useEffect } from "react";
 
 export default function AttendancePage() {
-  const [absences, setAbsences] = useState<AbsenceTicket[]>(MOCK_ABSENCES);
-  const [lates, setLates] = useState<LateTicket[]>(MOCK_LATES);
+  const [allStudents, setAllStudents] = useState(getStoredStudents());
+  const [absences, setAbsences] = useState<AbsenceTicket[]>(getStoredAbsences());
+  const [lates, setLates] = useState<LateTicket[]>(getStoredLates());
   const [activeTab, setActiveTab] = useState<"absences" | "lates">("absences");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedStudentId, setSelectedStudentId] = useState("");
 
   const [formType, setFormType] = useState<"absence" | "late">("absence");
   const [formData, setFormData] = useState({
-    student_name: MOCK_STUDENTS[0]?.first_name + " " + MOCK_STUDENTS[0]?.last_name,
-    class_name: MOCK_STUDENTS[0]?.class_name || "BEP1",
+    student_name: "",
+    class_name: "",
     date: new Date().toISOString().split("T")[0],
     duration: "2 heures",
     reason: "",
     is_authorized: true,
   });
 
+  const refreshAll = () => {
+    setAllStudents(getStoredStudents());
+    setAbsences(getStoredAbsences());
+    setLates(getStoredLates());
+  };
+
+  useEffect(() => {
+    refreshAll();
+    window.addEventListener(AVENIDA_DATA_UPDATED_EVENT, refreshAll);
+    window.addEventListener("storage", refreshAll);
+    return () => {
+      window.removeEventListener(AVENIDA_DATA_UPDATED_EVENT, refreshAll);
+      window.removeEventListener("storage", refreshAll);
+    };
+  }, []);
+
   const totalAbsences = absences.length;
   const justifiedAbsences = absences.filter((a) => a.parent_justified).length;
   const totalLates = lates.length;
 
-  const handleAddTicket = (e: React.FormEvent) => {
+  const handleStudentSelect = (studentId: string) => {
+    setSelectedStudentId(studentId);
+    if (!studentId) {
+      setFormData((prev) => ({ ...prev, student_name: "", class_name: "" }));
+      return;
+    }
+    const found = allStudents.find((s) => s.id === studentId || s.registration_number === studentId);
+    if (found) {
+      setFormData((prev) => ({
+        ...prev,
+        student_name: `${found.last_name} ${found.first_name}`,
+        class_name: found.class_name || `${found.program_code} - Hôtellerie`,
+      }));
+    }
+  };
+
+  const handleAddTicket = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.student_name.trim()) return;
 
     if (formType === "absence") {
       const newAbs: AbsenceTicket = {
         id: `abs-${Date.now()}`,
         ticket_number: absences.length + 1,
-        student_name: formData.student_name,
-        class_name: formData.class_name,
+        student_name: formData.student_name.trim(),
+        class_name: formData.class_name || "Formation Hôtelière",
         start_date: `${formData.date} à 08:00`,
         end_date: `${formData.date} à 12:00`,
-        reason: formData.reason || "Motif familial",
+        reason: formData.reason || "Motif familial ou maladie",
         is_authorized: formData.is_authorized,
         parent_justified: formData.is_authorized,
         visa_vie_scolaire: true,
       };
-      setAbsences([newAbs, ...absences]);
+      await saveAndSyncAbsence(newAbs);
     } else {
       const newLate: LateTicket = {
         id: `lat-${Date.now()}`,
         ticket_number: lates.length + 1,
-        student_name: formData.student_name,
-        class_name: formData.class_name,
+        student_name: formData.student_name.trim(),
+        class_name: formData.class_name || "Formation Hôtelière",
         duration_minutes: 20,
-        reason: formData.reason || "Embouteillages",
+        reason: formData.reason || "Embouteillages Lomé",
         destination: "classe",
         visa_vie_scolaire: true,
         date: `${formData.date} 07:50`,
       };
-      setLates([newLate, ...lates]);
+      await saveAndSyncLate(newLate);
     }
 
+    refreshAll();
     setIsModalOpen(false);
+    setSelectedStudentId("");
+    setFormData({
+      student_name: "",
+      class_name: "",
+      date: new Date().toISOString().split("T")[0],
+      duration: "2 heures",
+      reason: "",
+      is_authorized: true,
+    });
   };
 
   return (
@@ -307,12 +348,29 @@ export default function AttendancePage() {
               </div>
 
               <div>
+                <label className="font-bold text-slate-700 block mb-1">
+                  Sélectionner un Élève (Base Officielle Avenida) *
+                </label>
+                <select
+                  value={selectedStudentId}
+                  onChange={(e) => handleStudentSelect(e.target.value)}
+                  className="form-input-avenida mb-2 font-semibold bg-blue-50/50 border-blue-200"
+                >
+                  <option value="">-- Choisir un élève inscrit ({allStudents.length} élèves) --</option>
+                  {allStudents.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.last_name} {s.first_name} — {s.registration_number} ({s.class_name || s.program_code})
+                    </option>
+                  ))}
+                </select>
+
                 <label className="font-bold text-slate-700 block mb-1">Nom & Prénom de l&apos;Élève</label>
                 <input
                   type="text"
                   required
                   value={formData.student_name}
                   onChange={(e) => setFormData({ ...formData, student_name: e.target.value })}
+                  placeholder="Nom et prénom..."
                   className="form-input-avenida"
                 />
               </div>
