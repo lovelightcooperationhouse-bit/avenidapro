@@ -121,6 +121,13 @@ export interface HotelRoom {
   price_per_night: number;
   status: RoomStatus;
   current_guest?: string;
+  guest_phone?: string;
+  guest_id_card?: string;
+  check_in_date?: string;
+  check_out_date?: string;
+  reservation_id?: string;
+  paid_amount?: number;
+  total_amount?: number;
 }
 
 export interface PaymentReceipt {
@@ -146,8 +153,11 @@ export interface PaymentReceipt {
 export interface AbsenceTicket {
   id: string;
   ticket_number: number;
+  student_id?: string;
   student_name: string;
+  student_matricule?: string;
   class_name: string;
+  ticket_type?: "absence" | "permission" | "dispense";
   start_date: string;
   end_date: string;
   reason: string;
@@ -159,7 +169,9 @@ export interface AbsenceTicket {
 export interface LateTicket {
   id: string;
   ticket_number: number;
+  student_id?: string;
   student_name: string;
+  student_matricule?: string;
   class_name: string;
   duration_minutes: number;
   reason: string;

@@ -32,11 +32,14 @@ import {
   FolderOpen,
   Edit3,
   ShieldCheck,
+  Clock,
+  UserX,
+  AlertTriangle,
 } from "lucide-react";
 import { MOCK_STUDENTS } from "@/lib/mock-data";
 import { formatFCFA } from "@/lib/utils";
 import { useSchoolYear } from "@/context/SchoolYearContext";
-import { Student, StudentReportCard, PaymentReceipt } from "@/types";
+import { Student, StudentReportCard, PaymentReceipt, AbsenceTicket, LateTicket } from "@/types";
 import { ReportCardModal } from "@/components/shared/ReportCardModal";
 import { StudentRegistrationModal } from "@/components/shared/StudentRegistrationModal";
 import { DirectorPendingApprovalsBanner } from "@/components/shared/DirectorPendingApprovalsBanner";
@@ -53,6 +56,11 @@ import {
   syncStudentsFromSupabase,
   saveAndSyncStudent,
   saveAndSyncReceipt,
+  getStoredAbsences,
+  syncAbsencesFromSupabase,
+  getStoredLates,
+  syncLatesFromSupabase,
+  recordStudentAttendanceIncident,
   broadcastDataChange,
   AVENIDA_DATA_UPDATED_EVENT,
 } from "@/lib/realtime-store";
@@ -78,7 +86,20 @@ export default function StudentsPage() {
   const [newDocTitle, setNewDocTitle] = useState("");
   const [newDocCategory, setNewDocCategory] = useState("Dossier Scolaire");
 
-
+  // Vie Scolaire & Assiduité Élève
+  const [allAbsences, setAllAbsences] = useState<AbsenceTicket[]>([]);
+  const [allLates, setAllLates] = useState<LateTicket[]>([]);
+  const [showIncidentModal, setShowIncidentModal] = useState(false);
+  const [isSubmittingIncident, setIsSubmittingIncident] = useState(false);
+  const [incidentForm, setIncidentForm] = useState({
+    type: "absence" as "absence" | "retard" | "permission",
+    date: new Date().toISOString().split("T")[0],
+    time: "08:00",
+    duration_minutes: 20,
+    end_date: new Date().toISOString().split("T")[0],
+    reason: "",
+    is_justified: true,
+  });
 
   const handleAttachStudentDocument = (file: File) => {
     if (!selectedStudent) return;
@@ -151,13 +172,26 @@ export default function StudentsPage() {
 
   useEffect(() => {
     setAllStudents(getStoredStudents());
-    syncStudentsFromSupabase().then((list) => {
+    setAllAbsences(getStoredAbsences());
+    setAllLates(getStoredLates());
+
+    Promise.all([
+      syncStudentsFromSupabase(),
+      syncAbsencesFromSupabase(),
+      syncLatesFromSupabase(),
+    ]).then(([list]) => {
       if (list && list.length > 0) {
         setAllStudents(list);
       }
+      setAllAbsences(getStoredAbsences());
+      setAllLates(getStoredLates());
     });
 
-    const handleUpdate = () => setAllStudents(getStoredStudents());
+    const handleUpdate = () => {
+      setAllStudents(getStoredStudents());
+      setAllAbsences(getStoredAbsences());
+      setAllLates(getStoredLates());
+    };
     window.addEventListener(AVENIDA_DATA_UPDATED_EVENT, handleUpdate);
     window.addEventListener("storage", handleUpdate);
     return () => {
@@ -177,6 +211,73 @@ export default function StudentsPage() {
       const ranked = upsertReportCard(created);
       const match = ranked.find((c) => c.student_matricule === st.registration_number) || created;
       setSelectedReportCard(match);
+    }
+  };
+
+  // Filtrage des incidents de vie scolaire pour l'élève sélectionné
+  const selectedStudentAbsences = useMemo(() => {
+    if (!selectedStudent) return [];
+    return allAbsences.filter(
+      (a) =>
+        (a.student_matricule && a.student_matricule === selectedStudent.registration_number) ||
+        (a.student_id && a.student_id === selectedStudent.id) ||
+        (a.student_name && a.student_name.toLowerCase().includes(selectedStudent.last_name.toLowerCase()))
+    );
+  }, [allAbsences, selectedStudent]);
+
+  const selectedStudentLates = useMemo(() => {
+    if (!selectedStudent) return [];
+    return allLates.filter(
+      (l) =>
+        (l.student_matricule && l.student_matricule === selectedStudent.registration_number) ||
+        (l.student_id && l.student_id === selectedStudent.id) ||
+        (l.student_name && l.student_name.toLowerCase().includes(selectedStudent.last_name.toLowerCase()))
+    );
+  }, [allLates, selectedStudent]);
+
+  const studentRegularAbsences = selectedStudentAbsences.filter((a) => a.ticket_type !== "permission");
+  const studentPermissions = selectedStudentAbsences.filter((a) => a.ticket_type === "permission");
+
+  const handleOpenIncidentModal = (type: "absence" | "retard" | "permission" = "absence") => {
+    setIncidentForm({
+      type,
+      date: new Date().toISOString().split("T")[0],
+      time: "08:00",
+      duration_minutes: 20,
+      end_date: new Date().toISOString().split("T")[0],
+      reason: "",
+      is_justified: true,
+    });
+    setShowIncidentModal(true);
+  };
+
+  const handleSaveStudentIncident = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedStudent || !incidentForm.reason.trim()) return;
+    setIsSubmittingIncident(true);
+    try {
+      await recordStudentAttendanceIncident({
+        student_id: selectedStudent.id,
+        student_matricule: selectedStudent.registration_number,
+        student_name: `${selectedStudent.last_name} ${selectedStudent.first_name}`,
+        class_name: selectedStudent.class_name || `${selectedStudent.program_code} - Hôtellerie`,
+        type: incidentForm.type,
+        date: incidentForm.date,
+        time: incidentForm.time,
+        duration_minutes: Number(incidentForm.duration_minutes) || 15,
+        end_date: incidentForm.end_date,
+        reason: incidentForm.reason.trim(),
+        is_justified: incidentForm.is_justified,
+        visa_vie_scolaire: true,
+      });
+
+      setAllAbsences(getStoredAbsences());
+      setAllLates(getStoredLates());
+      setShowIncidentModal(false);
+    } catch (err) {
+      console.error("Erreur enregistrement vie scolaire:", err);
+    } finally {
+      setIsSubmittingIncident(false);
     }
   };
 

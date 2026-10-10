@@ -784,6 +784,239 @@ export async function saveAndSyncRoom(room: HotelRoom): Promise<HotelRoom[]> {
   return updatedList;
 }
 
+/**
+ * Attribue directement une chambre physique existante à un client qui arrive (Walk-in immédiat)
+ * ou sous réservation préalable (avec demande enregistrée).
+ * La caisse et la trésorerie gèrent immédiatement leur part si un paiement est effectué.
+ */
+export async function assignRoomToGuest(params: {
+  room_number: string;
+  guest_name: string;
+  guest_phone: string;
+  guest_email?: string;
+  guest_id_card?: string;
+  guest_nationality?: string;
+  guest_company?: string;
+  is_vip?: boolean;
+  check_in: string;
+  check_out: string;
+  nights_count: number;
+  price_per_night: number;
+  total_price: number;
+  deposit_paid: number;
+  payment_method: "Espèces" | "Stripe" | "Mobile Money" | "Virement" | "Carte Bancaire";
+  cashier_name?: string;
+  mode: "walk_in" | "reservation";
+  special_requests?: string;
+}): Promise<{
+  room: HotelRoom;
+  reservation: HotelReservation;
+  receipt?: PaymentReceipt;
+  customer: HotelCustomer;
+}> {
+  // 1. Client : création ou mise à jour centralisée
+  const currentCustomers = getStoredCustomers();
+  let customer = currentCustomers.find(
+    (c) =>
+      (c.phone && params.guest_phone && c.phone.replace(/\s+/g, "") === params.guest_phone.replace(/\s+/g, "")) ||
+      c.full_name.toLowerCase() === params.guest_name.toLowerCase()
+  );
+
+  const customerId = customer ? customer.id : `clt-${Date.now()}`;
+  const customerCode = customer ? customer.code : `CLT-${Date.now().toString().slice(-4)}`;
+
+  const updatedCustomer: HotelCustomer = {
+    id: customerId,
+    code: customerCode,
+    full_name: params.guest_name.trim(),
+    company: params.guest_company || customer?.company,
+    phone: params.guest_phone.trim(),
+    email: params.guest_email?.trim() || customer?.email || "",
+    nationality: params.guest_nationality || customer?.nationality || "Togolaise",
+    id_card_or_passport: params.guest_id_card || customer?.id_card_or_passport || "À présenter",
+    total_stays: (customer?.total_stays || 0) + 1,
+    total_spent: (customer?.total_spent || 0) + (params.deposit_paid || 0),
+    is_vip: params.is_vip ?? (customer?.is_vip || false),
+    created_at: customer?.created_at || new Date().toISOString(),
+  };
+
+  await saveAndSyncCustomer(updatedCustomer);
+
+  // 2. Réservation & Dossier Séjour
+  const bookingRef = `RES-${params.mode === "walk_in" ? "DIR" : "DEM"}-${params.room_number}-${Math.floor(1000 + Math.random() * 9000)}`;
+  const paymentStatus =
+    params.deposit_paid >= params.total_price ? "réglé" : params.deposit_paid > 0 ? "acompte" : "en_attente";
+  const resStatus = params.mode === "walk_in" ? "en_cours" : "réservée";
+
+  // Retrouver le type et tarif de la chambre
+  const allRooms = getStoredRooms();
+  const roomIndex = allRooms.findIndex((r) => r.room_number === params.room_number);
+  const existingRoom = roomIndex !== -1 ? allRooms[roomIndex] : null;
+
+  const newReservation: HotelReservation = {
+    id: `res-${Date.now()}`,
+    booking_ref: bookingRef,
+    customer_name: params.guest_name.trim(),
+    customer_phone: params.guest_phone.trim(),
+    customer_email: params.guest_email?.trim(),
+    customer_id_card: params.guest_id_card?.trim(),
+    customer_nationality: params.guest_nationality || "Togolaise",
+    room_number: params.room_number,
+    room_type: existingRoom?.room_type || "Chambre Avenida",
+    check_in: params.check_in,
+    check_out: params.check_out,
+    nights_count: params.nights_count,
+    nightly_rate: params.price_per_night,
+    total_price: params.total_price,
+    deposit_paid: params.deposit_paid,
+    payment_status: paymentStatus,
+    status: resStatus,
+    payment_method: params.payment_method,
+    cashier_name: params.cashier_name || "Réception Avenida Lomé",
+    notes: params.special_requests || (params.mode === "walk_in" ? "Arrivée directe (Check-in)" : "Réservation préalable"),
+  };
+
+  await saveAndSyncReservation(newReservation);
+
+  // 3. Mise à jour de la Chambre physique (occupée immédiatement si walk-in, réservée si réservation)
+  const updatedRoom: HotelRoom = {
+    id: existingRoom?.id || `rm-${params.room_number}`,
+    room_number: params.room_number,
+    floor: existingRoom?.floor || 1,
+    room_type: existingRoom?.room_type || "Chambre Avenida",
+    price_per_night: params.price_per_night || existingRoom?.price_per_night || 25000,
+    status: params.mode === "walk_in" ? "occupée" : "réservée",
+    current_guest: params.guest_name.trim(),
+    guest_phone: params.guest_phone.trim(),
+    guest_id_card: params.guest_id_card?.trim(),
+    check_in_date: params.check_in,
+    check_out_date: params.check_out,
+    reservation_id: newReservation.id,
+    paid_amount: params.deposit_paid,
+    total_amount: params.total_price,
+  };
+
+  await saveAndSyncRoom(updatedRoom);
+
+  // 4. Encaissement immédiat à la Caisse (la trésorerie gère immédiatement sa part)
+  let generatedReceipt: PaymentReceipt | undefined = undefined;
+  if (params.deposit_paid > 0) {
+    const remaining = Math.max(0, params.total_price - params.deposit_paid);
+    const receiptRef = `#AV-REC-${params.room_number}-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    generatedReceipt = {
+      id: `rec-hotel-${Date.now()}`,
+      reference: receiptRef,
+      student_name: params.guest_name.trim(),
+      student_matricule: customerCode,
+      class_name: `Hôtel - Ch. ${params.room_number}`,
+      designation: `Hébergement Ch. ${params.room_number} (${params.nights_count} nuit${params.nights_count > 1 ? "s" : ""}) • ${params.mode === "walk_in" ? "Arrivée directe" : "Réservation"}`,
+      amount_paid: params.deposit_paid,
+      total_due: params.total_price,
+      remaining_due: remaining,
+      depositor_name: params.guest_name.trim(),
+      depositor_id_card: params.guest_id_card?.trim() || "CNI/Passeport vérifié",
+      depositor_phone: params.guest_phone.trim(),
+      depositor_role: "Client Résident",
+      payment_method: params.payment_method === "Carte Bancaire" ? "Virement" : params.payment_method,
+      site: "LOMÉ",
+      date: formatReceiptDateTime(),
+      cashier_name: params.cashier_name || "Caisse Centrale / Réception Hôtel",
+    };
+
+    await saveAndSyncReceipt(generatedReceipt);
+
+    // Enregistrement direct du flux recette dans la Trésorerie
+    const financeEntry: FinancialEntry = {
+      id: `fin-hotel-${Date.now()}`,
+      reference: `REC-HOT-${params.room_number}-${Date.now().toString().slice(-4)}`,
+      type: "recette",
+      category: "Hébergement Hôtel",
+      amount: params.deposit_paid,
+      description: `Encaissement Hébergement Ch. ${params.room_number} — ${params.guest_name} (${params.deposit_paid >= params.total_price ? "Soldé" : "Acompte"})`,
+      date: new Date().toISOString().split("T")[0],
+      recorded_by: params.cashier_name || "Réceptionniste Caisse",
+      payment_mode:
+        params.payment_method === "Stripe" || params.payment_method === "Carte Bancaire"
+          ? "Virement"
+          : (params.payment_method as "Espèces" | "Mobile Money" | "Virement" | "Chèque") || "Espèces",
+      receipt_number: receiptRef,
+    };
+    await saveAndSyncFinance(financeEntry);
+  }
+
+  notifyDirector(
+    "hotel",
+    `${params.mode === "walk_in" ? "Check-in Immédiat" : "Réservation Enregistrée"} : Ch. ${params.room_number}`,
+    `Client : ${params.guest_name} • ${params.nights_count} nuits • Total : ${params.total_price.toLocaleString()} F CFA • Encaissé : ${params.deposit_paid.toLocaleString()} F CFA`
+  );
+
+  broadcastDataChange();
+  return {
+    room: updatedRoom,
+    reservation: newReservation,
+    receipt: generatedReceipt,
+    customer: updatedCustomer,
+  };
+}
+
+/**
+ * Libère une chambre lors du check-out : passe la chambre en nettoyage,
+ * détache le client actif et clôture la réservation.
+ */
+export async function checkoutRoom(
+  roomNumber: string,
+  cashierName?: string
+): Promise<HotelRoom | null> {
+  const allRooms = getStoredRooms();
+  const room = allRooms.find((r) => r.room_number === roomNumber);
+  if (!room) return null;
+
+  const previousGuest = room.current_guest || "Client";
+
+  const updatedRoom: HotelRoom = {
+    ...room,
+    status: "nettoyage",
+    current_guest: undefined,
+    guest_phone: undefined,
+    guest_id_card: undefined,
+    check_in_date: undefined,
+    check_out_date: undefined,
+    paid_amount: undefined,
+    total_amount: undefined,
+  };
+
+  await saveAndSyncRoom(updatedRoom);
+
+  // Clôturer la réservation active pour cette chambre
+  try {
+    const allRes = getStoredReservations();
+    const activeRes = allRes.find(
+      (r) =>
+        r.room_number === roomNumber &&
+        (r.status === "en_cours" || r.status === "payée" || r.status === "confirmée" || r.status === "réservée")
+    );
+    if (activeRes) {
+      const updatedRes: HotelReservation = {
+        ...activeRes,
+        status: "terminée",
+      };
+      await saveAndSyncReservation(updatedRes);
+    }
+  } catch (err) {
+    console.warn("Erreur clôture réservation checkout:", err);
+  }
+
+  notifyDirector(
+    "hotel",
+    `Check-out effectué : Ch. ${roomNumber}`,
+    `Le client ${previousGuest} a libéré la chambre. Chambre transmise au service d'étages (Nettoyage).`
+  );
+
+  broadcastDataChange();
+  return updatedRoom;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // 7. ENCAISSEMENTS & REÇUS D'ÉCOLAGE
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1104,8 +1337,11 @@ export async function syncAbsencesFromSupabase(): Promise<AbsenceTicket[]> {
     const remote: AbsenceTicket[] = data.map((row: any, i: number) => ({
       id: row.id || `abs-${row.ticket_number || i}`,
       ticket_number: Number(String(row.ticket_number).replace(/\D/g, "")) || i + 1,
+      student_id: row.student_id,
       student_name: row.student_name || "Élève",
+      student_matricule: row.student_matricule,
       class_name: row.class_name || "Formation Hôtelière",
+      ticket_type: (row.ticket_type as "absence" | "permission" | "dispense") || "absence",
       start_date: row.start_date || new Date().toISOString(),
       end_date: row.end_date || new Date().toISOString(),
       reason: row.reason || "",
@@ -1133,23 +1369,27 @@ export async function saveAndSyncAbsence(ticket: AbsenceTicket): Promise<Absence
   // Synchronisation Supabase Cloud
   try {
     const supabase = createClient();
-    await supabase.from("student_absences").insert({
-      ticket_number: `ABS-${ticket.ticket_number}`,
+    const insertPayload: any = {
+      ticket_number: `ABS-${ticket.ticket_number}-${Date.now().toString().slice(-4)}`,
       student_name: ticket.student_name,
       class_name: ticket.class_name,
-      start_date: new Date().toISOString(),
-      end_date: new Date().toISOString(),
+      start_date: ticket.start_date || new Date().toISOString(),
+      end_date: ticket.end_date || new Date().toISOString(),
       reason: ticket.reason,
-      is_justified: Boolean(ticket.parent_justified),
+      is_justified: Boolean(ticket.parent_justified ?? ticket.is_authorized),
       visa_vie_scolaire: Boolean(ticket.visa_vie_scolaire),
-    });
+    };
+    if (ticket.student_id && ticket.student_id.length === 36) {
+      insertPayload.student_id = ticket.student_id;
+    }
+    await supabase.from("student_absences").insert(insertPayload);
   } catch (err) {
     console.warn("Sync Supabase absence non bloquante :", err);
   }
 
   notifyDirector(
     "student",
-    `Billet d'Absence Enregistré : ${ticket.student_name}`,
+    `Vie Scolaire : ${ticket.ticket_type === "permission" ? "Permission" : "Absence"} (${ticket.student_name})`,
     `Classe : ${ticket.class_name} • Motif : ${ticket.reason} • Justifié : ${ticket.parent_justified ? "Oui" : "Non"}`
   );
 
@@ -1180,7 +1420,9 @@ export async function syncLatesFromSupabase(): Promise<LateTicket[]> {
     const remote: LateTicket[] = data.map((row: any, i: number) => ({
       id: row.id || `lat-${row.ticket_number || i}`,
       ticket_number: Number(String(row.ticket_number).replace(/\D/g, "")) || i + 1,
+      student_id: row.student_id,
       student_name: row.student_name || "Élève",
+      student_matricule: row.student_matricule,
       class_name: row.class_name || "Formation Hôtelière",
       duration_minutes: Number(row.duration_minutes) || 15,
       reason: row.reason || "",
@@ -1208,15 +1450,19 @@ export async function saveAndSyncLate(ticket: LateTicket): Promise<LateTicket[]>
   // Synchronisation Supabase Cloud
   try {
     const supabase = createClient();
-    await supabase.from("student_lates").insert({
-      ticket_number: `RET-${ticket.ticket_number}`,
+    const insertPayload: any = {
+      ticket_number: `RET-${ticket.ticket_number}-${Date.now().toString().slice(-4)}`,
       student_name: ticket.student_name,
       class_name: ticket.class_name,
-      date: new Date().toISOString().split("T")[0],
+      date: (ticket.date ? ticket.date.split(" ")[0] : new Date().toISOString().split("T")[0]),
       duration_minutes: ticket.duration_minutes,
       reason: ticket.reason,
       orientation: ticket.destination || "classe",
-    });
+    };
+    if (ticket.student_id && ticket.student_id.length === 36) {
+      insertPayload.student_id = ticket.student_id;
+    }
+    await supabase.from("student_lates").insert(insertPayload);
   } catch (err) {
     console.warn("Sync Supabase retard non bloquant :", err);
   }
@@ -1229,6 +1475,63 @@ export async function saveAndSyncLate(ticket: LateTicket): Promise<LateTicket[]>
 
   broadcastDataChange();
   return updatedList;
+}
+
+/**
+ * Attribue directement un incident de vie scolaire (Absence, Retard ou Permission) à un élève.
+ * Synchronise immédiatement les données avec la base Supabase et l'ensemble des modules.
+ */
+export async function recordStudentAttendanceIncident(params: {
+  student_id?: string;
+  student_matricule: string;
+  student_name: string;
+  class_name: string;
+  type: "absence" | "retard" | "permission";
+  date: string;
+  time?: string;
+  duration_minutes?: number;
+  end_date?: string;
+  reason: string;
+  is_justified: boolean;
+  visa_vie_scolaire?: boolean;
+}): Promise<{ absence?: AbsenceTicket; late?: LateTicket }> {
+  if (params.type === "retard") {
+    const allLates = getStoredLates();
+    const newLate: LateTicket = {
+      id: `lat-${Date.now()}`,
+      ticket_number: allLates.length + 1,
+      student_id: params.student_id,
+      student_matricule: params.student_matricule,
+      student_name: params.student_name,
+      class_name: params.class_name,
+      duration_minutes: params.duration_minutes || 15,
+      reason: params.reason,
+      destination: "classe",
+      visa_vie_scolaire: params.visa_vie_scolaire ?? true,
+      date: `${params.date} ${params.time || "08:00"}`,
+    };
+    await saveAndSyncLate(newLate);
+    return { late: newLate };
+  } else {
+    const allAbsences = getStoredAbsences();
+    const newAbsence: AbsenceTicket = {
+      id: `abs-${Date.now()}`,
+      ticket_number: allAbsences.length + 1,
+      student_id: params.student_id,
+      student_matricule: params.student_matricule,
+      student_name: params.student_name,
+      class_name: params.class_name,
+      ticket_type: params.type === "permission" ? "permission" : "absence",
+      start_date: `${params.date} à ${params.time || "08:00"}`,
+      end_date: params.end_date ? `${params.end_date} à 17:00` : `${params.date} à 17:00`,
+      reason: params.reason,
+      is_authorized: params.is_justified,
+      parent_justified: params.is_justified,
+      visa_vie_scolaire: params.visa_vie_scolaire ?? true,
+    };
+    await saveAndSyncAbsence(newAbsence);
+    return { absence: newAbsence };
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
