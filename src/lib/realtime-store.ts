@@ -846,9 +846,10 @@ export async function saveAndSyncReceipt(receipt: PaymentReceipt): Promise<Payme
 
   safeSetStorage("avenida_custom_receipts", updatedList);
 
-  // Synchronisation Supabase en arrière-plan
+  const supabase = createClient();
+
+  // 1. Synchronisation du reçu dans la table fee_payments de Supabase
   try {
-    const supabase = createClient();
     const { error } = await supabase.from("fee_payments").upsert(
       {
         receipt_number: receipt.reference,
@@ -875,6 +876,79 @@ export async function saveAndSyncReceipt(receipt: PaymentReceipt): Promise<Payme
   } catch (err) {
     console.warn("Sync Supabase encaissement non bloquante:", err);
   }
+
+  // 2. DÉDUCTION ET MISE À JOUR AUTOMATIQUE DU STATUT DE L'ÉLÈVE (BASE SUPABASE & LOCALE)
+  try {
+    const currentStudents = getStoredStudents();
+    const studentIndex = currentStudents.findIndex(
+      (s) =>
+        s.registration_number === receipt.student_matricule ||
+        `${s.last_name} ${s.first_name}`.toLowerCase() === receipt.student_name.toLowerCase()
+    );
+
+    if (studentIndex !== -1) {
+      const targetStudent = currentStudents[studentIndex];
+      const prevPaid = Number(targetStudent.paid_fee) || 0;
+      const totalDue = Number(targetStudent.total_fee) || (prevPaid + Number(targetStudent.remaining_fee || 0)) || 370000;
+      const newPaid = prevPaid + Number(receipt.amount_paid);
+      const newRemaining = Math.max(0, totalDue - newPaid);
+
+      const updatedStudent: Student = {
+        ...targetStudent,
+        paid_fee: newPaid,
+        remaining_fee: newRemaining,
+      };
+
+      currentStudents[studentIndex] = updatedStudent;
+      safeSetStorage("avenida_custom_students", currentStudents);
+
+      // Mise à jour directe dans la table students de Supabase
+      const { error: studentUpdateError } = await supabase
+        .from("students")
+        .update({
+          paid_fee: newPaid,
+          remaining_fee: newRemaining,
+        })
+        .eq("registration_number", targetStudent.registration_number);
+
+      if (studentUpdateError) {
+        console.error("❌ Erreur déduction écolage élève dans Supabase :", studentUpdateError.message);
+      } else {
+        console.log(`✅ Écolage déduit dans Supabase pour ${targetStudent.registration_number} : Payé = ${newPaid} F CFA, Reste = ${newRemaining} F CFA`);
+      }
+    }
+  } catch (err) {
+    console.warn("Erreur déduction automatique écolage élève :", err);
+  }
+
+  // 3. ENREGISTREMENT DU FLUX D'ENTRÉE EN TRÉSORERIE (FINANCES / RECETTES)
+  try {
+    const newFinanceEntry: FinancialEntry = {
+      id: `fin-${Date.now()}`,
+      reference: `REC-${receipt.reference.replace(/[^a-zA-Z0-9]/g, "")}`,
+      type: "recette",
+      category: "Écolages Scolaires",
+      amount: receipt.amount_paid,
+      description: `Encaissement Scolarité — ${receipt.student_name} (${receipt.student_matricule}) • ${receipt.designation}`,
+      date: (receipt.date || new Date().toISOString()).split(" ")[0].split("T")[0],
+      recorded_by: receipt.cashier_name || "Caisse Scolaire Lomé",
+      payment_mode:
+        receipt.payment_method === "Stripe"
+          ? "Virement"
+          : (receipt.payment_method as "Espèces" | "Mobile Money" | "Virement" | "Chèque") || "Espèces",
+      receipt_number: receipt.reference,
+    };
+    await saveAndSyncFinance(newFinanceEntry);
+  } catch (err) {
+    console.warn("Erreur synchronisation finance recette automatique:", err);
+  }
+
+  // 4. NOTIFICATION DE LA DIRECTION
+  notifyDirector(
+    "finance",
+    `Paiement d'Écolage Reçu : ${receipt.amount_paid.toLocaleString()} F CFA`,
+    `Élève : ${receipt.student_name} (${receipt.student_matricule}) • Reste dû : ${receipt.remaining_due.toLocaleString()} F CFA • Réf : ${receipt.reference}`
+  );
 
   broadcastDataChange();
   return updatedList;
