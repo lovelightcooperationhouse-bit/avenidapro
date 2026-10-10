@@ -246,28 +246,28 @@ export function StudentRegistrationModal({
           {/* BANDEAU TITRE DU RÉCÉPISSÉ */}
           <div className="bg-gradient-to-r from-blue-50 via-slate-50 to-blue-50 border border-blue-200 rounded-xl p-2.5 text-center">
             <h2 className="text-xs md:text-sm font-black font-serif text-[#0C356A] uppercase tracking-wider">
-              FICHE D&apos;INSCRIPTION ACADÉMIQUE & RÉCÉPISSÉ D&apos;ENGAGEMENT
+              FICHE OFFICIELLE D&apos;INSCRIPTION &bull; CERTIFICAT ACADÉMIQUE
             </h2>
             <p className="text-[9px] text-slate-500 font-medium mt-0.5">
-              Certificat officiel d&apos;inscription pour l&apos;année scolaire {student.academic_year || "en cours"} &bull; Réf. Décret N° 2021-044/METFPA
+              Année Scolaire {student.academic_year || "2024 - 2025"} &bull; Réf. Métiers de l&apos;Hôtellerie et du Tourisme &bull; République Togolaise
             </p>
           </div>
 
-          {/* SECTION 1 : ÉTAT CIVIL & IDENTITÉ DE L'ÉLÈVE */}
+          {/* 1. ÉTAT CIVIL & IDENTITÉ ESSENTIELLE */}
           <div className="grid grid-cols-4 gap-3 bg-blue-50/40 p-3 rounded-xl border border-blue-200">
-            <div className="col-span-3 space-y-1.5">
+            <div className="col-span-3 space-y-2">
               <div className="flex items-center gap-1.5 text-[9.5px] font-black uppercase tracking-wider text-[#0C356A] border-b border-blue-200 pb-1">
                 <User className="w-3.5 h-3.5 text-[#0C356A]" />
-                <span>1. État Civil & Identité Complète de l&apos;Élève</span>
+                <span>1. État Civil & Identité de l&apos;Étudiant(e)</span>
               </div>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
                 <div>
-                  <span className="text-[9px] text-slate-500 block">Nom :</span>
-                  <strong className="text-slate-900 uppercase">{student.last_name}</strong>
+                  <span className="text-[9px] text-slate-500 block">Nom Officiel :</span>
+                  <strong className="text-slate-900 uppercase text-sm font-serif">{student.last_name}</strong>
                 </div>
                 <div>
                   <span className="text-[9px] text-slate-500 block">Prénoms :</span>
-                  <strong className="text-slate-900">{student.first_name}</strong>
+                  <strong className="text-slate-900 text-sm font-serif">{student.first_name}</strong>
                 </div>
                 <div>
                   <span className="text-[9px] text-slate-500 block">Sexe :</span>
@@ -278,19 +278,19 @@ export function StudentRegistrationModal({
                   <strong>{student.nationality || "Togolaise"}</strong>
                 </div>
                 <div>
-                  <span className="text-[9px] text-slate-500 block">Date et lieu de naissance :</span>
+                  <span className="text-[9px] text-slate-500 block">Date et Lieu de Naissance :</span>
                   <strong>{student.birth_date || "—"}</strong>{" "}
                   <span className="text-slate-600">{student.birth_place ? `à ${student.birth_place}` : ""}</span>
                 </div>
                 <div>
                   <span className="text-[9px] text-slate-500 block">Pièce d&apos;Identité / CNI :</span>
-                  <strong className="font-mono">{student.id_card_number || "TG-CNI-En cours"}</strong>
+                  <strong className="font-mono text-slate-800">{student.id_card_number || "TG-CNI-En cours"}</strong>
                 </div>
               </div>
             </div>
 
             {/* Cadre Photo 4x4 */}
-            <div className="col-span-1 flex flex-col items-center justify-center border-2 border-dashed border-slate-300 rounded-xl bg-white p-1.5 text-center overflow-hidden">
+            <div className="col-span-1 flex flex-col items-center justify-center border-2 border-dashed border-slate-300 rounded-xl bg-white p-2 text-center overflow-hidden">
               <span className="text-[7.5px] font-bold text-slate-400 uppercase leading-tight mb-1">
                 PHOTO 4 x 4
               </span>
@@ -311,202 +311,78 @@ export function StudentRegistrationModal({
             </div>
           </div>
 
-          {/* SECTION 2 : COORDONNÉES & DOMICILE */}
-          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-1.5">
+          {/* 2. FORMATION, CLASSE & SECTEUR */}
+          <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1.5">
             <div className="flex items-center gap-1.5 text-[9.5px] font-black uppercase tracking-wider text-[#0C356A] border-b border-slate-200 pb-1">
-              <MapPin className="w-3.5 h-3.5 text-[#0C356A]" />
-              <span>2. Coordonnées & Adresse de Résidence</span>
-            </div>
-            <div className="grid grid-cols-4 gap-2 text-xs">
-              <div className="col-span-2">
-                <span className="text-[9px] text-slate-400 block font-bold uppercase">Adresse & Quartier</span>
-                <span className="font-bold text-slate-800">
-                  {student.address || "Dékon"}, {student.residence_neighborhood || "Lomé"} ({student.city || "Lomé"})
-                </span>
-              </div>
-              <div>
-                <span className="text-[9px] text-slate-400 block font-bold uppercase">Téléphone Principal</span>
-                <span className="font-bold text-slate-900 font-mono">{student.phone || "—"}</span>
-              </div>
-              <div>
-                <span className="text-[9px] text-slate-400 block font-bold uppercase">Email</span>
-                <span className="text-slate-800 text-[10px] truncate block">{student.email || "—"}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* SECTION 3 : PARCOURS SCOLAIRE ANTÉRIEUR */}
-          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-1.5">
-            <div className="flex items-center gap-1.5 text-[9.5px] font-black uppercase tracking-wider text-[#0C356A] border-b border-slate-200 pb-1">
-              <FileText className="w-3.5 h-3.5 text-[#0C356A]" />
-              <span>3. Parcours Scolaire Antérieur & Cursus d&apos;Origine</span>
-            </div>
-            <div className="grid grid-cols-4 gap-2 text-xs">
-              <div>
-                <span className="text-[9px] text-slate-400 block font-bold uppercase">Dernier Établissement</span>
-                <span className="font-bold text-slate-800">{student.previous_school || "Lycée / Collège Lomé"}</span>
-              </div>
-              <div>
-                <span className="text-[9px] text-slate-400 block font-bold uppercase">Dernier Diplôme Obtenu</span>
-                <span className="font-bold text-slate-800">{student.last_diploma || "BAC 2 / BEPC"}</span>
-              </div>
-              <div>
-                <span className="text-[9px] text-slate-400 block font-bold uppercase">Dernière Classe</span>
-                <span className="font-bold text-slate-800">{student.last_class || "Terminale"}</span>
-              </div>
-              <div>
-                <span className="text-[9px] text-slate-400 block font-bold uppercase">Moyenne Antérieure</span>
-                <span className="font-bold text-[#0C356A] font-mono">{student.average_last_year || "12.50 / 20"}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* SECTION 4 : FORMATION CHOISIE & AFFECTATION */}
-          <div className="bg-blue-50/50 p-2.5 rounded-xl border border-blue-200 space-y-1.5">
-            <div className="flex items-center gap-1.5 text-[9.5px] font-black uppercase tracking-wider text-[#0C356A] border-b border-blue-200 pb-1">
               <GraduationCap className="w-3.5 h-3.5 text-[#0C356A]" />
-              <span>4. Formation Choisie, Classe & Régime Scolaire</span>
+              <span>2. Filière Académique & Régime de Formation</span>
             </div>
             <div className="grid grid-cols-4 gap-2 text-xs">
-              <div className="p-2 bg-white rounded-lg border border-blue-200">
+              <div className="p-2 bg-white rounded-lg border border-slate-200">
                 <span className="text-[8.5px] text-slate-400 block font-bold uppercase">Programme / Diplôme</span>
                 <span className="font-black text-[#0C356A] text-xs">
                   {student.program_code} — {student.class_name || "1ère Année Hôtellerie"}
                 </span>
               </div>
-              <div className="p-2 bg-white rounded-lg border border-blue-200">
+              <div className="p-2 bg-white rounded-lg border border-slate-200">
                 <span className="text-[8.5px] text-slate-400 block font-bold uppercase">Spécialité & Niveau</span>
                 <span className="font-bold text-slate-800 text-xs">
-                  {student.specialty || "Cuisine & Hébergement"} ({student.year_level || "1ère Année"})
+                  {student.specialty || "Gestion Hôtelière & Restauration"}
                 </span>
               </div>
-              <div className="p-2 bg-white rounded-lg border border-blue-200">
+              <div className="p-2 bg-white rounded-lg border border-slate-200">
                 <span className="text-[8.5px] text-slate-400 block font-bold uppercase">Régime Scolaire</span>
                 <span className="font-bold text-slate-800 text-xs capitalize">
                   {student.boarder_status === "interne" ? "Pensionnat / Internat" : "Externe (Demi-pension)"}
                 </span>
               </div>
-              <div className="p-2 bg-white rounded-lg border border-blue-200">
-                <span className="text-[8.5px] text-slate-400 block font-bold uppercase">Statut Dossier</span>
+              <div className="p-2 bg-white rounded-lg border border-slate-200">
+                <span className="text-[8.5px] text-slate-400 block font-bold uppercase">Statut Inscription</span>
                 <span className="inline-flex items-center gap-1 font-bold text-emerald-700 text-xs">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                  Inscrit & Conforme
+                  Régulière & Validée
                 </span>
               </div>
             </div>
           </div>
 
-          {/* SECTION 5 : RESPONSABLES LÉGAUX & CONTACTS D'URGENCE */}
-          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-1.5">
+          {/* 3. RESPONSABLE LÉGAL & CONTACT OFFICIEL */}
+          <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-1.5">
             <div className="flex items-center gap-1.5 text-[9.5px] font-black uppercase tracking-wider text-[#0C356A] border-b border-slate-200 pb-1">
               <Phone className="w-3.5 h-3.5 text-[#0C356A]" />
-              <span>5. Responsables Légaux & Personnes à Prévenir</span>
+              <span>3. Contact du Tuteur / Responsable Légal</span>
             </div>
-            <div className="grid grid-cols-3 gap-2.5 text-xs">
+            <div className="grid grid-cols-3 gap-3 text-xs">
               <div className="p-2 bg-white rounded-lg border border-slate-200">
-                <span className="text-[8.5px] text-slate-400 block font-bold uppercase">Père de l&apos;Élève</span>
-                <strong className="text-slate-900 block">{student.parent_father_name || "M. Parent"}</strong>
-                <span className="text-[9.5px] text-slate-500 font-mono block">
-                  {student.parent_father_phone || "+228 90 00 00 00"}
-                </span>
-                {student.parent_father_profession && (
-                  <span className="text-[9px] text-slate-400 italic block">{student.parent_father_profession}</span>
-                )}
-              </div>
-              <div className="p-2 bg-white rounded-lg border border-slate-200">
-                <span className="text-[8.5px] text-slate-400 block font-bold uppercase">Mère de l&apos;Élève</span>
-                <strong className="text-slate-900 block">{student.parent_mother_name || "Mme. Parent"}</strong>
-                <span className="text-[9.5px] text-slate-500 font-mono block">
-                  {student.parent_mother_phone || "+228 91 00 00 00"}
-                </span>
-                {student.parent_mother_profession && (
-                  <span className="text-[9px] text-slate-400 italic block">{student.parent_mother_profession}</span>
-                )}
-              </div>
-              <div className="p-2 bg-white rounded-lg border border-slate-200">
-                <span className="text-[8.5px] text-slate-400 block font-bold uppercase">Tuteur / En Cas d&apos;Urgence</span>
-                <strong className="text-slate-900 block">
-                  {student.tutor_name || student.emergency_contact_name || "Responsable désigné"}
+                <span className="text-[8.5px] text-slate-400 block font-bold uppercase">Nom du Parent / Tuteur</span>
+                <strong className="text-slate-900 block text-xs">
+                  {student.emergency_contact_name || student.tutor_name || student.parent_father_name || "Parent d'Élève"}
                 </strong>
-                <span className="text-[9.5px] text-slate-700 font-mono block font-bold">
-                  {student.emergency_contact_phone || student.tutor_phone || "+228 92 00 00 00"}
+                <span className="text-[9px] text-slate-500">Tuteur Légal Officiel</span>
+              </div>
+              <div className="p-2 bg-white rounded-lg border border-slate-200">
+                <span className="text-[8.5px] text-slate-400 block font-bold uppercase">Téléphone WhatsApp</span>
+                <span className="text-slate-900 font-mono font-bold block text-xs">
+                  {student.emergency_contact_phone || student.tutor_phone || student.phone || "+228 90 00 00 00"}
                 </span>
-                <span className="text-[9px] text-slate-500 block">
-                  {student.tutor_relation ? `Lien : ${student.tutor_relation}` : "Tuteur légal déclaré"}
+                <span className="text-[9px] text-slate-500">Ligne d&apos;urgence</span>
+              </div>
+              <div className="p-2 bg-white rounded-lg border border-slate-200">
+                <span className="text-[8.5px] text-slate-400 block font-bold uppercase">Adresse & Résidence</span>
+                <span className="text-slate-800 font-bold block text-xs truncate">
+                  {student.residence_neighborhood || "Dékon"}, Lomé
                 </span>
+                <span className="text-[9px] text-slate-500">Commune du Golfe &bull; Togo</span>
               </div>
             </div>
           </div>
 
-          {/* SECTION 6 : SANTÉ & APTITUDE MÉDICALE */}
-          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-1.5">
-            <div className="flex items-center gap-1.5 text-[9.5px] font-black uppercase tracking-wider text-[#0C356A] border-b border-slate-200 pb-1">
-              <Heart className="w-3.5 h-3.5 text-rose-600" />
-              <span>6. Renseignements Médicaux & Aptitude Physique</span>
-            </div>
-            <div className="grid grid-cols-4 gap-2 text-xs">
-              <div>
-                <span className="text-[9px] text-slate-400 block font-bold uppercase">Groupe Sanguin</span>
-                <strong className="text-rose-700 font-bold text-xs">{student.blood_group || "O+"}</strong>
-              </div>
-              <div>
-                <span className="text-[9px] text-slate-400 block font-bold uppercase">Allergies Déclarées</span>
-                <span className="font-bold text-slate-800">{student.allergies || "Aucune allergie connue"}</span>
-              </div>
-              <div className="col-span-2">
-                <span className="text-[9px] text-slate-400 block font-bold uppercase">Notes Médicales & Aptitude</span>
-                <span className="text-slate-800 text-[10px]">
-                  {student.medical_notes || "Apte aux travaux pratiques en cuisine, restaurant et hébergement hôtelier."}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* SECTION 7 : PIÈCES JUSTIFICATIVES FOURNIES AU DOSSIER */}
-          <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-1.5">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-1">
-              <div className="flex items-center gap-1.5 text-[9.5px] font-black uppercase tracking-wider text-[#0C356A]">
-                <FileCheck className="w-3.5 h-3.5 text-emerald-600" />
-                <span>7. Pièces Justificatives Fournies au Dossier</span>
-              </div>
-              <span className="text-[8.5px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                {uploadedDocsCount} document(s) classé(s) numériquement
-              </span>
-            </div>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[10px]">
-              <div className="flex items-center gap-1.5 text-emerald-800">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                <span>Extrait d&apos;Acte de Naissance certifié conforme</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-emerald-800">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                <span>Copie CNI / Passeport en cours de validité</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-emerald-800">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                <span>Photos d&apos;identité 4x4 récentes</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-emerald-800">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                <span>Dernier relevé de notes / bulletin scolaire</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-emerald-800">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                <span>Certificat médical d&apos;aptitude aux métiers hôteliers</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-emerald-800">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                <span>Copie certifiée du dernier diplôme obtenu</span>
-              </div>
-            </div>
-          </div>
-
-          {/* SECTION 8 : ENGAGEMENT FINANCIER & ÉCOLAGE */}
+          {/* 4. SITUATION FINANCIÈRE DE SCOLARITÉ & QUITTANCE CAISSE */}
           <div className="bg-emerald-50/60 p-3 rounded-xl border border-emerald-300 space-y-2">
             <div className="flex items-center justify-between border-b border-emerald-200 pb-1">
               <div className="flex items-center gap-1.5 text-[9.5px] font-black uppercase tracking-wider text-emerald-950">
                 <CreditCard className="w-3.5 h-3.5 text-emerald-700" />
-                <span>8. Engagement Financier, Scolarité & Situation Caisse</span>
+                <span>4. Quittance Financière & Scolarité Certifiée par la Caisse</span>
               </div>
               <span
                 className={`text-[9px] font-mono font-black uppercase px-2.5 py-0.5 rounded border ${
@@ -515,7 +391,7 @@ export function StudentRegistrationModal({
                     : "bg-amber-100 text-amber-900 border-amber-300"
                 }`}
               >
-                {isPaidFull ? "★ SCOLARITÉ SOLDÉE (À JOUR)" : `SOLDE EN COURS (RESTANT : ${formatFCFA(remaining)})`}
+                {isPaidFull ? "★ SCOLARITÉ SOLDÉE (EN RÈGLE)" : `SOLDE EN COURS (RESTANT : ${formatFCFA(remaining)})`}
               </span>
             </div>
 
@@ -529,54 +405,46 @@ export function StudentRegistrationModal({
                 <span className="font-black text-[#0C356A] text-xs font-mono">{formatFCFA(totalFee)}</span>
               </div>
               <div className="bg-white p-2 rounded-lg border border-emerald-200">
-                <span className="text-[8.5px] text-emerald-700 uppercase font-bold block">Montant Réglé à ce jour</span>
+                <span className="text-[8.5px] text-emerald-700 uppercase font-bold block">Montant Réglé Caisse</span>
                 <span className="font-black text-emerald-800 text-xs font-mono">{formatFCFA(paidFee)}</span>
               </div>
               <div className="bg-white p-2 rounded-lg border border-emerald-200">
-                <span className="text-[8.5px] text-rose-600 uppercase font-bold block">Solde Restant Dû</span>
+                <span className="text-[8.5px] text-rose-600 uppercase font-bold block">Reste à Solder</span>
                 <span className="font-black text-[#DC2626] text-xs font-mono">{formatFCFA(remaining)}</span>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center justify-between text-[10px] text-slate-600 pt-1 border-t border-emerald-200">
+            <div className="flex flex-wrap items-center justify-between text-[9.5px] text-slate-600 pt-1 border-t border-emerald-200">
               <div>
-                <span>Mode de règlement : </span>
-                <strong className="text-slate-800">{student.payment_method || "Espèces"}</strong>
+                <span>Mode d&apos;encaissement : </span>
+                <strong className="text-slate-800">{student.payment_method || "Espèces / Trésorerie"}</strong>
               </div>
               <div>
-                <span>Échéancier prévu : </span>
-                <strong className="text-slate-800">{student.installments_count || 1} versement(s)</strong>
+                <span>Pièces requises : </span>
+                <strong className="text-emerald-800 font-bold">Classées dans le Dossier Numérique</strong>
               </div>
               <div>
-                <span>Suivi Trésorerie : </span>
-                <strong className="text-emerald-800">Synchronisé Caisse Centrale Lomé</strong>
+                <span>Trésorerie Centrale : </span>
+                <strong className="text-slate-900">Synchronisée Supabase Cloud Lomé</strong>
               </div>
             </div>
           </div>
 
-          {/* SECTION 9 : OBSERVATIONS ADMINISTRATIVES */}
-          {student.notes && (
-            <div className="bg-slate-50 p-2 rounded-xl border border-slate-200 text-[10px] text-slate-700">
-              <strong className="text-[#0C356A] uppercase text-[9px]">Observations Administratives : </strong>
-              <span>{student.notes}</span>
-            </div>
-          )}
-
-          {/* SECTION 10 : SIGNATURES, CACHET OFFICIEL & SCEAU */}
+          {/* 5. VALIDATION, VISA & CACHET OFFICIEL */}
           <div className="border-t-2 border-[#0C356A] pt-3 grid grid-cols-2 gap-6 text-center text-xs">
             {/* Signature Élève ou Tuteur */}
-            <div className="flex flex-col justify-between min-h-[95px] border-r border-slate-200 pr-4">
+            <div className="flex flex-col justify-between min-h-[90px] border-r border-slate-200 pr-4">
               <div>
                 <p className="font-bold text-slate-800 uppercase text-[9.5px]">
                   L&apos;Étudiant(e) ou le Responsable Légal
                 </p>
-                <p className="text-[8px] text-slate-400 italic">Mention manuscrite obligatoire &quot;Lu et approuvé&quot;</p>
+                <p className="text-[8px] text-slate-400 italic">Mention manuscrite &quot;Lu et approuvé&quot;</p>
               </div>
-              <div className="text-[8.5px] text-slate-300 italic">Signature & Émargement officiel</div>
+              <div className="text-[8.5px] text-slate-400 italic mt-auto">Signature & Émargement officiel</div>
             </div>
 
             {/* Signature Direction Générale — M. Hope d'Almeida */}
-            <div className="flex flex-col justify-between min-h-[95px] pl-4 relative">
+            <div className="flex flex-col justify-between min-h-[90px] pl-4 relative">
               <div>
                 <p className="font-bold text-[#0C356A] uppercase text-[9.5px]">
                   La Direction Générale
@@ -587,7 +455,7 @@ export function StudentRegistrationModal({
                 <p className="text-[8px] text-slate-500">Hôtel École Avenida Lomé &bull; Togo</p>
               </div>
               <div className="my-auto py-1">
-                <div className="inline-block border-2 border-[#DC2626] text-[#DC2626] rounded-xl px-3 py-1 font-mono text-[8px] font-black uppercase rotate-[-3deg] tracking-wider opacity-90 shadow-2xs">
+                <div className="inline-block border-2 border-[#DC2626] text-[#DC2626] rounded-xl px-3 py-0.5 font-mono text-[8px] font-black uppercase rotate-[-3deg] tracking-wider opacity-90 shadow-2xs">
                   ★ ÉCOLE AVENIDA LOMÉ &bull; DIRECTION GÉNÉRALE ★
                 </div>
               </div>
@@ -599,7 +467,7 @@ export function StudentRegistrationModal({
 
           {/* PIED DE PAGE LÉGAL */}
           <div className="text-center text-[7.5px] text-slate-400 pt-2 border-t border-slate-200 leading-tight">
-            Ce document officiel est délivré par l&apos;Hôtel École Avenida de Lomé. Il atteste de la régularité du dossier scolaire de l&apos;étudiant et lui confère le plein droit de fréquentation des cours théoriques et ateliers professionnels.
+            Document officiel de scolarité délivré par l&apos;Hôtel École Avenida de Lomé. L&apos;intégralité des pièces complémentaires, bulletins et pointages d&apos;assiduité sont consultables dans le Dossier Scolaire Numérique de l&apos;établissement.
           </div>
         </div>
       </div>

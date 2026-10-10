@@ -160,9 +160,11 @@ export interface AbsenceTicket {
   ticket_type?: "absence" | "permission" | "dispense";
   start_date: string;
   end_date: string;
+  date?: string;
   reason: string;
   is_authorized: boolean;
   parent_justified: boolean;
+  is_justified?: boolean;
   visa_vie_scolaire: boolean;
 }
 
@@ -174,6 +176,8 @@ export interface LateTicket {
   student_matricule?: string;
   class_name: string;
   duration_minutes: number;
+  minutes_late?: number;
+  time_arrived?: string;
   reason: string;
   destination: "classe" | "permanence";
   visa_vie_scolaire: boolean;
@@ -325,8 +329,13 @@ export interface HotelCustomer {
   email: string;
   nationality: string;
   id_card_or_passport: string;
+  address?: string;
+  notes?: string;
   total_stays: number;
   total_spent: number;
+  balance?: number; // Solde débiteur ou reste à régler
+  active_room_number?: string;
+  active_reservation_id?: string;
   is_vip: boolean;
   created_at: string;
   id_card_document?: {
@@ -336,6 +345,30 @@ export interface HotelCustomer {
     type: string;
     dataUrl?: string;
   };
+  uploaded_documents?: Record<
+    string,
+    {
+      key?: string;
+      id?: string;
+      name: string;
+      size: number;
+      formattedSize: string;
+      type: string;
+      dataUrl?: string;
+      uploadedAt?: string;
+      category?: string;
+    }
+  >;
+  stay_history?: Array<{
+    id: string;
+    booking_ref: string;
+    room_number: string;
+    check_in: string;
+    check_out: string;
+    total_amount: number;
+    paid_amount: number;
+    status: string;
+  }>;
 }
 
 export interface SalaryRecord {

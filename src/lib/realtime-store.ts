@@ -825,6 +825,23 @@ export async function assignRoomToGuest(params: {
   const customerId = customer ? customer.id : `clt-${Date.now()}`;
   const customerCode = customer ? customer.code : `CLT-${Date.now().toString().slice(-4)}`;
 
+  // Référence & statut financier du séjour
+  const bookingRef = `RES-${params.mode === "walk_in" ? "DIR" : "DEM"}-${params.room_number}-${Math.floor(1000 + Math.random() * 9000)}`;
+  const paymentStatus =
+    params.deposit_paid >= params.total_price ? "réglé" : params.deposit_paid > 0 ? "acompte" : "en_attente";
+  const resStatus = params.mode === "walk_in" ? "en_cours" : "réservée";
+
+  const stayItem = {
+    id: `stay-${Date.now()}`,
+    booking_ref: bookingRef,
+    room_number: params.room_number,
+    check_in: params.check_in,
+    check_out: params.check_out,
+    total_amount: params.total_price,
+    paid_amount: params.deposit_paid,
+    status: paymentStatus,
+  };
+
   const updatedCustomer: HotelCustomer = {
     id: customerId,
     code: customerCode,
@@ -836,17 +853,16 @@ export async function assignRoomToGuest(params: {
     id_card_or_passport: params.guest_id_card || customer?.id_card_or_passport || "À présenter",
     total_stays: (customer?.total_stays || 0) + 1,
     total_spent: (customer?.total_spent || 0) + (params.deposit_paid || 0),
+    balance: Math.max(0, (customer?.balance || 0) + (params.total_price - params.deposit_paid)),
+    active_room_number: params.room_number,
+    active_reservation_id: `res-${Date.now()}`,
     is_vip: params.is_vip ?? (customer?.is_vip || false),
     created_at: customer?.created_at || new Date().toISOString(),
+    stay_history: [stayItem, ...(customer?.stay_history || [])],
+    uploaded_documents: customer?.uploaded_documents,
   };
 
   await saveAndSyncCustomer(updatedCustomer);
-
-  // 2. Réservation & Dossier Séjour
-  const bookingRef = `RES-${params.mode === "walk_in" ? "DIR" : "DEM"}-${params.room_number}-${Math.floor(1000 + Math.random() * 9000)}`;
-  const paymentStatus =
-    params.deposit_paid >= params.total_price ? "réglé" : params.deposit_paid > 0 ? "acompte" : "en_attente";
-  const resStatus = params.mode === "walk_in" ? "en_cours" : "réservée";
 
   // Retrouver le type et tarif de la chambre
   const allRooms = getStoredRooms();
@@ -1005,6 +1021,25 @@ export async function checkoutRoom(
     }
   } catch (err) {
     console.warn("Erreur clôture réservation checkout:", err);
+  }
+
+  // Libérer la chambre active du client
+  try {
+    const allCustomers = getStoredCustomers();
+    const custIndex = allCustomers.findIndex(
+      (c) => c.active_room_number === roomNumber || c.full_name.toLowerCase() === previousGuest.toLowerCase()
+    );
+    if (custIndex !== -1) {
+      const cust = allCustomers[custIndex];
+      const updatedCust: HotelCustomer = {
+        ...cust,
+        active_room_number: undefined,
+        active_reservation_id: undefined,
+      };
+      await saveAndSyncCustomer(updatedCust);
+    }
+  } catch (err) {
+    console.warn("Erreur détachement client checkout:", err);
   }
 
   notifyDirector(

@@ -25,6 +25,11 @@ import {
   Download,
   FileCheck,
   Edit3,
+  FolderOpen,
+  UploadCloud,
+  Trash2,
+  ShieldCheck,
+  AlertCircle,
 } from "lucide-react";
 import { MOCK_EMPLOYEES } from "@/lib/mock-data";
 import { Employee, EmployeeSector } from "@/types";
@@ -36,6 +41,8 @@ import {
   PhotoUploadZone,
   DocumentUploadManager,
   DocumentViewerModal,
+  DEFAULT_DOCUMENT_REQUIREMENTS,
+  formatBytes,
   type UploadedFileItem,
   type RequiredDocDef,
 } from "@/components/shared/DocumentUploadManager";
@@ -44,6 +51,7 @@ import {
   saveAndSyncEmployee,
   syncEmployeesFromSupabase,
   AVENIDA_DATA_UPDATED_EVENT,
+  broadcastDataChange,
 } from "@/lib/realtime-store";
 
 const REQUIRED_EMPLOYEE_DOCS: RequiredDocDef[] = [
@@ -94,6 +102,86 @@ export default function EmployeesPage() {
   const [employeeToEdit, setEmployeeToEdit] = useState<Employee | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedDocForViewer, setSelectedDocForViewer] = useState<UploadedFileItem | null>(null);
+  const [hrDossierTab, setHrDossierTab] = useState<"fiche" | "documents">("fiche");
+  const [newEmpDocTitle, setNewEmpDocTitle] = useState("");
+  const [newEmpDocCategory, setNewEmpDocCategory] = useState("Diplôme");
+  const [empDocError, setEmpDocError] = useState<string | null>(null);
+
+  const handleAttachDocToEmployee = (file: File) => {
+    if (!selectedEmployee) return;
+    setEmpDocError(null);
+    const ext = "." + (file.name.split(".").pop()?.toLowerCase() || "");
+    const allowed = DEFAULT_DOCUMENT_REQUIREMENTS.allowedExtensions;
+    if (!allowed.includes(ext.toLowerCase())) {
+      setEmpDocError(`Format "${ext}" non autorisé. Formats acceptés : ${allowed.join(", ").toUpperCase()}`);
+      return;
+    }
+    if (file.size > DEFAULT_DOCUMENT_REQUIREMENTS.maxSizeBytes) {
+      setEmpDocError(`Débit dépassé : ${formatBytes(file.size)}. Débit max autorisé : 5 Mo.`);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const docKey = `doc_${Date.now()}`;
+      const item: UploadedFileItem = {
+        key: docKey,
+        id: docKey,
+        name: newEmpDocTitle.trim() || file.name,
+        size: file.size,
+        formattedSize: formatBytes(file.size),
+        type: file.type || ext,
+        dataUrl: typeof reader.result === "string" ? reader.result : undefined,
+        uploadedAt: new Date().toISOString(),
+        category: newEmpDocCategory,
+      };
+
+      const updatedDocs = {
+        ...(selectedEmployee.uploaded_documents || {}),
+        [docKey]: item,
+      };
+
+      const updatedEmp: Employee = {
+        ...selectedEmployee,
+        uploaded_documents: updatedDocs,
+      };
+
+      setSelectedEmployee(updatedEmp);
+      const updatedList = employees.map((e) => (e.id === updatedEmp.id ? updatedEmp : e));
+      setEmployees(updatedList);
+      await saveAndSyncEmployee(updatedEmp);
+      broadcastDataChange();
+      setNewEmpDocTitle("");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveDocFromEmployee = async (docKey: string) => {
+    if (!selectedEmployee || !selectedEmployee.uploaded_documents) return;
+    const remainingDocs = { ...selectedEmployee.uploaded_documents };
+    delete remainingDocs[docKey];
+
+    const updatedEmp: Employee = {
+      ...selectedEmployee,
+      uploaded_documents: remainingDocs,
+    };
+
+    setSelectedEmployee(updatedEmp);
+    const updatedList = employees.map((e) => (e.id === updatedEmp.id ? updatedEmp : e));
+    setEmployees(updatedList);
+    await saveAndSyncEmployee(updatedEmp);
+    broadcastDataChange();
+  };
+
+  const handleDownloadEmpFile = (name: string, dataUrl?: string) => {
+    if (!dataUrl) return;
+    const a = document.createElement("a");
+    a.href = dataUrl;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
 
   useEffect(() => {
     setEmployees(getStoredEmployees());
@@ -103,14 +191,21 @@ export default function EmployeesPage() {
       }
     });
 
-    const handleUpdate = () => setEmployees(getStoredEmployees());
+    const handleUpdate = () => {
+      const fresh = getStoredEmployees();
+      setEmployees(fresh);
+      if (selectedEmployee) {
+        const found = fresh.find((e) => e.id === selectedEmployee.id);
+        if (found) setSelectedEmployee(found);
+      }
+    };
     window.addEventListener(AVENIDA_DATA_UPDATED_EVENT, handleUpdate);
     window.addEventListener("storage", handleUpdate);
     return () => {
       window.removeEventListener(AVENIDA_DATA_UPDATED_EVENT, handleUpdate);
       window.removeEventListener("storage", handleUpdate);
     };
-  }, []);
+  }, [selectedEmployee]);
 
   const [newEmp, setNewEmp] = useState({
     first_name: "",
@@ -547,198 +642,335 @@ export default function EmployeesPage() {
               </div>
             </div>
 
-            {/* Contenu Détaillé du Profil */}
+            {/* Navigation Onglets : Fiche Signalétique vs Dossier des Documents */}
+            <div className="flex border-b border-slate-200 bg-slate-50 px-6 pt-3 gap-2">
+              <button
+                type="button"
+                onClick={() => setHrDossierTab("fiche")}
+                className={`pb-3 px-3 text-xs font-black transition-all flex items-center gap-1.5 border-b-2 cursor-pointer ${
+                  hrDossierTab === "fiche"
+                    ? "border-[#0C356A] text-[#0C356A]"
+                    : "border-transparent text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>Fiche Signalétique Individuelle</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setHrDossierTab("documents")}
+                className={`pb-3 px-3 text-xs font-black transition-all flex items-center gap-1.5 border-b-2 cursor-pointer ${
+                  hrDossierTab === "documents"
+                    ? "border-[#0C356A] text-[#0C356A]"
+                    : "border-transparent text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                <FolderOpen className="w-3.5 h-3.5" />
+                <span>Dossier des Documents Fournis</span>
+                <span className="ml-1 text-[10px] px-2 py-0.5 bg-blue-100 text-[#0C356A] rounded-full font-mono font-bold">
+                  {selectedEmployee.uploaded_documents ? Object.keys(selectedEmployee.uploaded_documents).length : 0}
+                </span>
+              </button>
+            </div>
+
+            {/* Contenu de l'onglet actif */}
             <div className="p-6 space-y-6 text-xs text-slate-700">
-              {/* Bloc 1 : Identité & Coordonnées */}
-              <div>
-                <h3 className="text-xs font-black uppercase tracking-wider text-[#0C356A] border-b pb-1.5 mb-3 flex items-center gap-1.5">
-                  <UserPlus className="w-3.5 h-3.5" />
-                  Identité & Coordonnées à Lomé
-                </h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+              {hrDossierTab === "fiche" ? (
+                <>
+                  {/* Bloc 1 : Identité & Coordonnées */}
                   <div>
-                    <span className="text-[10px] text-slate-400 block font-bold">Nationalité</span>
-                    <span className="font-bold text-slate-800">{selectedEmployee.nationality}</span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-400 block font-bold">Date de Naissance</span>
-                    <span className="font-bold text-slate-800">{selectedEmployee.birth_date}</span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-400 block font-bold">Quartier (Lomé)</span>
-                    <span className="font-bold text-slate-800">{selectedEmployee.neighborhood}</span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-400 block font-bold">Téléphone WhatsApp</span>
-                    <span className="font-bold text-slate-800 flex items-center gap-1">
-                      <Phone className="w-3 h-3 text-emerald-600" />
-                      {selectedEmployee.phone}
-                    </span>
-                  </div>
-                  <div className="col-span-2">
-                    <span className="text-[10px] text-slate-400 block font-bold">Email Institutionnel</span>
-                    <span className="font-bold text-slate-800 flex items-center gap-1">
-                      <Mail className="w-3 h-3 text-[#0C356A]" />
-                      {selectedEmployee.email}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Bloc 2 : Poste & Affectation */}
-              <div>
-                <h3 className="text-xs font-black uppercase tracking-wider text-[#0C356A] border-b pb-1.5 mb-3 flex items-center gap-1.5">
-                  <Briefcase className="w-3.5 h-3.5" />
-                  Poste & Responsabilités
-                </h3>
-                <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
-                  <div>
-                    <span className="text-[10px] text-slate-400 block font-bold">Département</span>
-                    <span className="font-bold text-slate-800">{selectedEmployee.department}</span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-400 block font-bold">Spécialité / Discipline</span>
-                    <span className="font-bold text-slate-800">
-                      {selectedEmployee.specialty || "Polyvalence Hôtelière"}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Bloc 3 : CV & Qualifications Professionnelles */}
-              <div>
-                <h3 className="text-xs font-black uppercase tracking-wider text-[#0C356A] border-b pb-1.5 mb-3 flex items-center gap-1.5">
-                  <Award className="w-3.5 h-3.5" />
-                  Qualifications Académiques & Résumé du CV
-                </h3>
-                <div className="bg-amber-50/60 p-4 rounded-2xl border border-amber-200/80 space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] text-amber-800 font-bold block">Diplôme le plus élevé</span>
-                      <span className="text-xs font-black text-amber-950">
-                        {selectedEmployee.highest_degree}
-                      </span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-[10px] text-amber-800 font-bold block">Expérience</span>
-                      <span className="text-xs font-black text-amber-950">
-                        {selectedEmployee.experience_years} ans
-                      </span>
+                    <h3 className="text-xs font-black uppercase tracking-wider text-[#0C356A] border-b pb-1.5 mb-3 flex items-center gap-1.5">
+                      <UserPlus className="w-3.5 h-3.5" />
+                      Identité & Coordonnées à Lomé
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+                      <div>
+                        <span className="text-[10px] text-slate-400 block font-bold">Nationalité</span>
+                        <span className="font-bold text-slate-800">{selectedEmployee.nationality}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 block font-bold">Date de Naissance</span>
+                        <span className="font-bold text-slate-800">{selectedEmployee.birth_date}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 block font-bold">Quartier (Lomé)</span>
+                        <span className="font-bold text-slate-800">{selectedEmployee.neighborhood}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 block font-bold">Téléphone WhatsApp</span>
+                        <span className="font-bold text-slate-800 flex items-center gap-1">
+                          <Phone className="w-3 h-3 text-emerald-600" />
+                          {selectedEmployee.phone}
+                        </span>
+                      </div>
+                      <div className="col-span-2">
+                        <span className="text-[10px] text-slate-400 block font-bold">Email Institutionnel</span>
+                        <span className="font-bold text-slate-800 flex items-center gap-1">
+                          <Mail className="w-3 h-3 text-[#0C356A]" />
+                          {selectedEmployee.email}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                  <div className="border-t border-amber-200/60 pt-2">
-                    <span className="text-[10px] text-amber-900 font-bold block mb-1">Résumé du Parcours :</span>
-                    <p className="text-xs leading-relaxed text-slate-700 italic">
-                      &laquo; {selectedEmployee.cv_summary} &raquo;
-                    </p>
-                  </div>
-                </div>
-              </div>
 
-              {/* Bloc 4 : Données Contractuelles & Date de Réception */}
-              <div>
-                <h3 className="text-xs font-black uppercase tracking-wider text-[#0C356A] border-b pb-1.5 mb-3 flex items-center gap-1.5">
-                  <FileText className="w-3.5 h-3.5" />
-                  Contrat, Recrutement & Conditions Salariales
-                </h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+                  {/* Bloc 2 : Poste & Affectation */}
                   <div>
-                    <span className="text-[10px] text-slate-400 block font-bold">Date de Recrutement</span>
-                    <span className="font-bold text-slate-800">{selectedEmployee.hire_date}</span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-400 block font-bold">Type de Contrat</span>
-                    <span className="font-bold text-slate-800">{selectedEmployee.contract_type}</span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-400 block font-bold">Durée de Contrat</span>
-                    <span className="font-bold text-slate-800">{selectedEmployee.contract_duration}</span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-400 block font-bold">Salaire Mensuel</span>
-                    <span className="font-mono font-black text-emerald-700">
-                      {formatFCFA(selectedEmployee.base_salary)}
-                    </span>
-                  </div>
-                  {selectedEmployee.cnss_number && (
-                    <div className="col-span-2">
-                      <span className="text-[10px] text-slate-400 block font-bold">N° Immatriculation CNSS</span>
-                      <span className="font-mono font-bold text-slate-700">
-                        {selectedEmployee.cnss_number}
-                      </span>
+                    <h3 className="text-xs font-black uppercase tracking-wider text-[#0C356A] border-b pb-1.5 mb-3 flex items-center gap-1.5">
+                      <Briefcase className="w-3.5 h-3.5" />
+                      Poste & Responsabilités
+                    </h3>
+                    <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+                      <div>
+                        <span className="text-[10px] text-slate-400 block font-bold">Département</span>
+                        <span className="font-bold text-slate-800">{selectedEmployee.department}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 block font-bold">Spécialité / Discipline</span>
+                        <span className="font-bold text-slate-800">
+                          {selectedEmployee.specialty || "Polyvalence Hôtelière"}
+                        </span>
+                      </div>
                     </div>
-                  )}
-                  {selectedEmployee.contract_end_date && (
-                    <div className="col-span-2">
-                      <span className="text-[10px] text-slate-400 block font-bold">Échéance de Fin de Contrat</span>
-                      <span className="font-bold text-rose-700">
-                        {selectedEmployee.contract_end_date}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
+                  </div>
 
-              {/* Bloc 5 : Documents Numérisés & Pièces Justificatives */}
-              <div>
-                <div className="flex items-center justify-between border-b pb-1.5 mb-3">
-                  <h3 className="text-xs font-black uppercase tracking-wider text-[#0C356A] flex items-center gap-1.5">
-                    <FileCheck className="w-3.5 h-3.5 text-emerald-600" />
-                    Documents Numérisés & Dossier Collaborateur
-                  </h3>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-[#0C356A] border border-blue-200">
-                    {selectedEmployee.uploaded_documents
-                      ? Object.keys(selectedEmployee.uploaded_documents).length
-                      : 0}{" "}
-                    pièce(s)
-                  </span>
-                </div>
-
-                {selectedEmployee.uploaded_documents &&
-                Object.keys(selectedEmployee.uploaded_documents).length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                    {Object.entries(selectedEmployee.uploaded_documents).map(([k, doc]) => (
-                      <div
-                        key={k}
-                        className="p-3 bg-emerald-50/50 rounded-xl border border-emerald-200 shadow-2xs flex items-center justify-between gap-2"
-                      >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
-                            <FileText className="w-4 h-4 text-emerald-700" />
-                          </div>
-                          <div className="min-w-0">
-                            <div className="font-bold text-xs text-slate-900 truncate" title={doc.label || doc.name}>
-                              {doc.label || doc.name}
-                            </div>
-                            <div className="text-[10px] text-emerald-700 font-mono">
-                              Débit : {doc.formattedSize || "Fichier conforme"}
-                            </div>
-                          </div>
+                  {/* Bloc 3 : CV & Qualifications Professionnelles */}
+                  <div>
+                    <h3 className="text-xs font-black uppercase tracking-wider text-[#0C356A] border-b pb-1.5 mb-3 flex items-center gap-1.5">
+                      <Award className="w-3.5 h-3.5" />
+                      Qualifications Académiques & Résumé du CV
+                    </h3>
+                    <div className="bg-amber-50/60 p-4 rounded-2xl border border-amber-200/80 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] text-amber-800 font-bold block">Diplôme le plus élevé</span>
+                          <span className="text-xs font-black text-amber-950">
+                            {selectedEmployee.highest_degree}
+                          </span>
                         </div>
-
-                        <div className="flex items-center gap-1 shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => setSelectedDocForViewer(doc as any)}
-                            className="p-1.5 rounded-lg bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-200 transition-colors cursor-pointer"
-                            title="Aperçu du document"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                          </button>
+                        <div className="text-right">
+                          <span className="text-[10px] text-amber-800 font-bold block">Expérience</span>
+                          <span className="text-xs font-black text-amber-950">
+                            {selectedEmployee.experience_years} ans
+                          </span>
                         </div>
                       </div>
-                    ))}
+                      <div className="border-t border-amber-200/60 pt-2">
+                        <span className="text-[10px] text-amber-900 font-bold block mb-1">Résumé du Parcours :</span>
+                        <p className="text-xs leading-relaxed text-slate-700 italic">
+                          &laquo; {selectedEmployee.cv_summary} &raquo;
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                ) : (
-                  <div className="p-4 bg-slate-50 rounded-2xl border border-dashed border-slate-300 text-center text-xs text-slate-500 space-y-1">
-                    <FileText className="w-6 h-6 text-slate-400 mx-auto" />
-                    <p className="font-bold text-slate-700">Aucun document numérique rattaché</p>
-                    <p className="text-[11px] text-slate-500">
-                      Exigences Avenida : Formats PDF, JPG, PNG, WEBP, DOCX • Débit max 5 Mo
-                    </p>
+
+                  {/* Bloc 4 : Données Contractuelles & Conditions Salariales */}
+                  <div>
+                    <h3 className="text-xs font-black uppercase tracking-wider text-[#0C356A] border-b pb-1.5 mb-3 flex items-center gap-1.5">
+                      <FileText className="w-3.5 h-3.5" />
+                      Contrat, Recrutement & Conditions Salariales
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+                      <div>
+                        <span className="text-[10px] text-slate-400 block font-bold">Date de Recrutement</span>
+                        <span className="font-bold text-slate-800">{selectedEmployee.hire_date}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 block font-bold">Type de Contrat</span>
+                        <span className="font-bold text-slate-800">{selectedEmployee.contract_type}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 block font-bold">Durée de Contrat</span>
+                        <span className="font-bold text-slate-800">{selectedEmployee.contract_duration}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 block font-bold">Salaire Mensuel</span>
+                        <span className="font-mono font-black text-emerald-700">
+                          {formatFCFA(selectedEmployee.base_salary)}
+                        </span>
+                      </div>
+                      {selectedEmployee.cnss_number && (
+                        <div className="col-span-2">
+                          <span className="text-[10px] text-slate-400 block font-bold">N° Immatriculation CNSS</span>
+                          <span className="font-mono font-bold text-slate-700">
+                            {selectedEmployee.cnss_number}
+                          </span>
+                        </div>
+                      )}
+                      {selectedEmployee.contract_end_date && (
+                        <div className="col-span-2">
+                          <span className="text-[10px] text-slate-400 block font-bold">Échéance de Fin de Contrat</span>
+                          <span className="font-bold text-rose-700">
+                            {selectedEmployee.contract_end_date}
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                )}
-              </div>
+                </>
+              ) : (
+                /* Onglet Documents Fournis */
+                <div className="space-y-6">
+                  {/* Bandeau d'information sur le dossier numérique */}
+                  <div className="p-3.5 bg-blue-50/70 border border-blue-200 rounded-2xl flex items-center gap-3">
+                    <ShieldCheck className="w-5 h-5 text-[#0C356A] shrink-0" />
+                    <div>
+                      <p className="font-black text-[#0C356A] text-xs">Portefeuille Numérique RH Sécurisé</p>
+                      <p className="text-[11px] text-slate-600">
+                        Consultez en ligne ou téléchargez chaque pièce justificative fournie. Vous pouvez également déposer de nouveaux documents ci-dessous.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Liste des documents existants */}
+                  <div>
+                    <h4 className="text-xs font-black uppercase text-slate-700 mb-3 flex items-center justify-between">
+                      <span>Pièces Justificatives Déposées</span>
+                      <span className="font-mono text-[10px] text-slate-500">
+                        {selectedEmployee.uploaded_documents ? Object.keys(selectedEmployee.uploaded_documents).length : 0} fichier(s)
+                      </span>
+                    </h4>
+
+                    {selectedEmployee.uploaded_documents && Object.keys(selectedEmployee.uploaded_documents).length > 0 ? (
+                      <div className="grid grid-cols-1 gap-2.5">
+                        {Object.entries(selectedEmployee.uploaded_documents).map(([k, doc]) => (
+                          <div
+                            key={k}
+                            className="p-3 bg-white rounded-xl border border-slate-200 hover:border-[#0C356A]/40 shadow-xs flex items-center justify-between gap-3 transition-colors"
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-9 h-9 rounded-xl bg-blue-50 text-[#0C356A] flex items-center justify-center shrink-0 border border-blue-100">
+                                <FileText className="w-4 h-4" />
+                              </div>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-extrabold text-xs text-slate-900 truncate" title={doc.name || doc.label}>
+                                    {doc.name || doc.label}
+                                  </span>
+                                  {doc.category && (
+                                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200 shrink-0">
+                                      {doc.category}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-[10px] text-slate-400 mt-0.5">
+                                  Débit : {doc.formattedSize || "Fichier conforme"} {doc.uploadedAt ? `• Ajouté le ${new Date(doc.uploadedAt).toLocaleDateString("fr-FR")}` : ""}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedDocForViewer(doc as any)}
+                                className="px-2.5 py-1.5 rounded-lg bg-blue-50 hover:bg-[#0C356A] text-[#0C356A] hover:text-white border border-blue-200 text-[11px] font-bold transition-colors cursor-pointer flex items-center gap-1"
+                                title="Consulter le document"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                                <span>Consulter</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDownloadEmpFile(doc.name || `document_${k}`, doc.dataUrl)}
+                                className="px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-600 text-emerald-800 hover:text-white border border-emerald-200 text-[11px] font-bold transition-colors cursor-pointer flex items-center gap-1"
+                                title="Télécharger le document"
+                              >
+                                <Download className="w-3.5 h-3.5" />
+                                <span>Télécharger</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveDocFromEmployee(k)}
+                                className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border border-rose-200 text-[11px] transition-colors cursor-pointer"
+                                title="Retirer ce document"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-6 bg-slate-50 rounded-2xl border border-dashed border-slate-300 text-center space-y-1.5">
+                        <FolderOpen className="w-7 h-7 text-slate-400 mx-auto" />
+                        <p className="font-bold text-slate-700 text-xs">Aucune pièce justificative déposée</p>
+                        <p className="text-[11px] text-slate-500">
+                          Utilisez le formulaire ci-dessous pour verser un diplôme, CV, pièce d&apos;identité ou contrat.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Formulaire de dépôt d'une nouvelle pièce */}
+                  <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+                    <h4 className="text-xs font-black uppercase text-[#0C356A] flex items-center gap-1.5">
+                      <UploadCloud className="w-4 h-4 text-[#0C356A]" />
+                      Déposer une Nouvelle Pièce au Dossier
+                    </h4>
+
+                    {empDocError && (
+                      <div className="p-2.5 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 shrink-0" />
+                        <span>{empDocError}</span>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-600 block mb-1">
+                          Intitulé de la pièce
+                        </label>
+                        <input
+                          type="text"
+                          value={newEmpDocTitle}
+                          onChange={(e) => setNewEmpDocTitle(e.target.value)}
+                          placeholder="ex: Diplôme de Master, CNI Recto-Verso..."
+                          className="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#0C356A]"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-600 block mb-1">
+                          Catégorie du document
+                        </label>
+                        <select
+                          value={newEmpDocCategory}
+                          onChange={(e) => setNewEmpDocCategory(e.target.value)}
+                          className="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#0C356A]"
+                        >
+                          <option value="Diplôme">Diplôme & Certifications</option>
+                          <option value="Curriculum Vitae (CV)">Curriculum Vitae (CV)</option>
+                          <option value="Pièce d'Identité / Passeport">Pièce d&apos;Identité / Passeport</option>
+                          <option value="Contrat de Travail">Contrat de Travail Avenida</option>
+                          <option value="Certificat Médical">Certificat Médical d&apos;Aptitude</option>
+                          <option value="Casier Judiciaire">Casier Judiciaire (Bulletin N°3)</option>
+                          <option value="Attestation / Autre">Autre Justificatif Officiel</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-blue-300 hover:border-[#0C356A] bg-blue-50/40 hover:bg-blue-50/70 rounded-xl cursor-pointer transition-colors text-center">
+                        <UploadCloud className="w-6 h-6 text-[#0C356A] mb-1" />
+                        <span className="text-xs font-bold text-[#0C356A]">
+                          Cliquez pour sélectionner un fichier depuis votre appareil
+                        </span>
+                        <span className="text-[10px] text-slate-500 mt-0.5">
+                          PDF, JPG, PNG, WEBP, DOCX • Débit max 5 Mo
+                        </span>
+                        <input
+                          type="file"
+                          accept=".pdf,.png,.jpg,.jpeg,.webp,.docx"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleAttachDocToEmployee(file);
+                            e.target.value = "";
+                          }}
+                        />
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Footer Modal */}

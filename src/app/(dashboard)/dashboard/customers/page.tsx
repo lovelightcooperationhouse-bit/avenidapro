@@ -21,7 +21,12 @@ import {
   Paperclip,
   Eye,
   Edit3,
+  Download,
+  BedDouble,
+  FolderOpen,
+  ShieldCheck,
 } from "lucide-react";
+import Link from "next/link";
 import { MOCK_CUSTOMERS } from "@/lib/mock-data";
 import { HotelCustomer } from "@/types";
 import { formatFCFA } from "@/lib/utils";
@@ -31,6 +36,8 @@ import { EditWithDirectorApprovalModal } from "@/components/shared/EditWithDirec
 import { createClient } from "@/lib/supabase/client";
 import {
   DocumentViewerModal,
+  DEFAULT_DOCUMENT_REQUIREMENTS,
+  formatBytes,
   type UploadedFileItem,
 } from "@/components/shared/DocumentUploadManager";
 import {
@@ -47,7 +54,11 @@ export default function CustomersPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [customerToEdit, setCustomerToEdit] = useState<HotelCustomer | null>(null);
   const [selectedCustomerForAttestation, setSelectedCustomerForAttestation] = useState<HotelCustomer | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<HotelCustomer | null>(null);
   const [activeDocPreview, setActiveDocPreview] = useState<UploadedFileItem | null>(null);
+  const [newCustDocTitle, setNewCustDocTitle] = useState("");
+  const [newCustDocCategory, setNewCustDocCategory] = useState("Pièce d'Identité");
+  const [custDocError, setCustDocError] = useState<string | null>(null);
 
   useEffect(() => {
     setCustomers(getStoredCustomers());
@@ -57,14 +68,97 @@ export default function CustomersPage() {
       }
     });
 
-    const handleUpdate = () => setCustomers(getStoredCustomers());
+    const handleUpdate = () => {
+      const freshList = getStoredCustomers();
+      setCustomers(freshList);
+      if (selectedCustomer) {
+        const found = freshList.find((c) => c.id === selectedCustomer.id);
+        if (found) setSelectedCustomer(found);
+      }
+    };
     window.addEventListener(AVENIDA_DATA_UPDATED_EVENT, handleUpdate);
     window.addEventListener("storage", handleUpdate);
     return () => {
       window.removeEventListener(AVENIDA_DATA_UPDATED_EVENT, handleUpdate);
       window.removeEventListener("storage", handleUpdate);
     };
-  }, []);
+  }, [selectedCustomer]);
+
+  const handleAttachCustomerDocToSelected = (file: File) => {
+    if (!selectedCustomer) return;
+    setCustDocError(null);
+    const ext = "." + (file.name.split(".").pop()?.toLowerCase() || "");
+    const allowed = DEFAULT_DOCUMENT_REQUIREMENTS.allowedExtensions;
+    if (!allowed.includes(ext.toLowerCase())) {
+      setCustDocError(`Format "${ext}" non autorisé. Formats acceptés : ${allowed.join(", ").toUpperCase()}`);
+      return;
+    }
+    if (file.size > DEFAULT_DOCUMENT_REQUIREMENTS.maxSizeBytes) {
+      setCustDocError(`Débit dépassé : ${formatBytes(file.size)}. Débit max autorisé : 5 Mo.`);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const docKey = `doc_${Date.now()}`;
+      const item: UploadedFileItem = {
+        key: docKey,
+        id: docKey,
+        name: newCustDocTitle.trim() || file.name,
+        size: file.size,
+        formattedSize: formatBytes(file.size),
+        type: file.type || ext,
+        dataUrl: typeof reader.result === "string" ? reader.result : undefined,
+        uploadedAt: new Date().toISOString(),
+        category: newCustDocCategory,
+      };
+
+      const updatedDocs = {
+        ...(selectedCustomer.uploaded_documents || {}),
+        [docKey]: item,
+      };
+
+      const updatedCust: HotelCustomer = {
+        ...selectedCustomer,
+        uploaded_documents: updatedDocs,
+      };
+
+      setSelectedCustomer(updatedCust);
+      const updatedList = customers.map((c) => (c.id === updatedCust.id ? updatedCust : c));
+      setCustomers(updatedList);
+      await saveAndSyncCustomer(updatedCust);
+      broadcastDataChange();
+      setNewCustDocTitle("");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveCustomerDocFromSelected = async (docKey: string) => {
+    if (!selectedCustomer || !selectedCustomer.uploaded_documents) return;
+    const remainingDocs = { ...selectedCustomer.uploaded_documents };
+    delete remainingDocs[docKey];
+
+    const updatedCust: HotelCustomer = {
+      ...selectedCustomer,
+      uploaded_documents: remainingDocs,
+    };
+
+    setSelectedCustomer(updatedCust);
+    const updatedList = customers.map((c) => (c.id === updatedCust.id ? updatedCust : c));
+    setCustomers(updatedList);
+    await saveAndSyncCustomer(updatedCust);
+    broadcastDataChange();
+  };
+
+  const handleDownloadFile = (name: string, dataUrl?: string) => {
+    if (!dataUrl) return;
+    const a = document.createElement("a");
+    a.href = dataUrl;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
 
   const [newCust, setNewCust] = useState({
     full_name: "",
@@ -281,9 +375,13 @@ export default function CustomersPage() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredCustomers.map((cust) => (
-                <tr key={cust.id} className="hover:bg-red-50/30">
+                <tr
+                  key={cust.id}
+                  onClick={() => setSelectedCustomer(cust)}
+                  className="hover:bg-red-50/30 transition-colors cursor-pointer group"
+                >
                   <td className="py-3 px-4">
-                    <div className="font-extrabold text-slate-900">{cust.full_name}</div>
+                    <div className="font-extrabold text-slate-900 group-hover:text-[#DC2626] transition-colors">{cust.full_name}</div>
                     <div className="text-[10px] text-slate-500 font-mono">{cust.code}</div>
                   </td>
                   <td className="py-3 px-4 text-slate-700">
@@ -307,7 +405,8 @@ export default function CustomersPage() {
                       {cust.id_card_document && (
                         <button
                           type="button"
-                          onClick={() =>
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setActiveDocPreview({
                               key: `cust-${cust.id}-id`,
                               id: `cust-${cust.id}-id`,
@@ -318,8 +417,8 @@ export default function CustomersPage() {
                               dataUrl: cust.id_card_document?.dataUrl,
                               uploadedAt: new Date().toISOString(),
                               category: "Pièce d'Identité Client",
-                            })
-                          }
+                            });
+                          }}
                           className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-100 hover:bg-emerald-200 text-emerald-800 border border-emerald-300 transition-colors cursor-pointer"
                           title="Cliquer pour prévisualiser la pièce d'identité"
                         >
@@ -344,8 +443,16 @@ export default function CustomersPage() {
                       </span>
                     )}
                   </td>
-                  <td className="py-3 px-4 text-right">
+                  <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
                     <div className="inline-flex items-center gap-1.5 justify-end">
+                      <button
+                        onClick={() => setSelectedCustomer(cust)}
+                        className="px-2.5 py-1.5 bg-slate-100 hover:bg-[#0C356A] hover:text-white text-slate-700 font-bold rounded-xl text-[11px] transition-all inline-flex items-center gap-1 shadow-2xs active:scale-95 cursor-pointer"
+                        title="Consulter le dossier individuel complet et les pièces fournies"
+                      >
+                        <FolderOpen className="w-3.5 h-3.5 text-blue-600" />
+                        <span>Dossier 360°</span>
+                      </button>
                       <button
                         onClick={() => setCustomerToEdit(cust)}
                         className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-500 hover:text-slate-950 text-amber-900 border border-amber-300 font-bold rounded-xl text-[11px] transition-all inline-flex items-center gap-1 shadow-2xs active:scale-95 cursor-pointer"
@@ -370,6 +477,382 @@ export default function CustomersPage() {
           </table>
         </div>
       </div>
+
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {/* DOSSIER CLIENT INDIVIDUEL COMPLET & COFFRE-FORT NUMÉRIQUE      */}
+      {/* ═══════════════════════════════════════════════════════════════ */}
+      {selectedCustomer && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
+            {/* Header du dossier client */}
+            <div className="p-6 bg-gradient-to-r from-[#DC2626] to-[#991B1B] text-white rounded-t-3xl relative">
+              <button
+                onClick={() => setSelectedCustomer(null)}
+                className="absolute top-4 right-4 p-2 bg-white/20 hover:bg-white/30 rounded-full transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4 text-white" />
+              </button>
+
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-white/20 border-2 border-white/40 flex items-center justify-center text-xl font-black shadow-md shrink-0">
+                  {selectedCustomer.full_name[0]}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] font-black uppercase tracking-wider bg-white/20 px-2 py-0.5 rounded-full font-mono">
+                      {selectedCustomer.code}
+                    </span>
+                    {selectedCustomer.is_vip ? (
+                      <span className="text-[10px] font-black bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                        <Star className="w-3 h-3 fill-slate-950 text-slate-950" />
+                        Client VIP
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-bold bg-white/15 px-2 py-0.5 rounded-full">
+                        Client Standard
+                      </span>
+                    )}
+                    {selectedCustomer.active_room_number && (
+                      <span className="text-[10px] font-black bg-emerald-400 text-emerald-950 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                        <BedDouble className="w-3 h-3" />
+                        En Chambre : {selectedCustomer.active_room_number}
+                      </span>
+                    )}
+                  </div>
+                  <h2 className="text-xl font-black mt-1">
+                    {selectedCustomer.full_name}
+                  </h2>
+                  <p className="text-xs text-red-100">
+                    {selectedCustomer.company ? `Société : ${selectedCustomer.company}` : "Client Particulier"} &bull; {selectedCustomer.nationality}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Corps du dossier */}
+            <div className="p-6 space-y-5 text-xs text-slate-700">
+              {/* 1. Coordonnées & Identification */}
+              <div>
+                <h3 className="text-xs font-black uppercase tracking-wider text-[#DC2626] border-b pb-1 mb-2.5 flex items-center gap-1.5">
+                  <UserCheck className="w-3.5 h-3.5" />
+                  <span>Coordonnées & Identification Officielle</span>
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+                  <div>
+                    <span className="text-[10px] text-slate-400 font-bold block">Téléphone</span>
+                    <span className="font-bold text-slate-900 font-mono">{selectedCustomer.phone}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 font-bold block">Email</span>
+                    <span className="font-bold text-slate-900 truncate block">{selectedCustomer.email}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 font-bold block">Nationalité</span>
+                    <span className="font-bold text-slate-900">{selectedCustomer.nationality}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 font-bold block">N° CNI / Passeport</span>
+                    <span className="font-mono font-bold text-slate-900">{selectedCustomer.id_card_or_passport}</span>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="text-[10px] text-slate-400 font-bold block">Entreprise / Organisme</span>
+                    <span className="font-bold text-slate-900">{selectedCustomer.company || "Non rattaché (Individuel)"}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. Situation Financière & Compte Client */}
+              <div>
+                <h3 className="text-xs font-black uppercase tracking-wider text-[#DC2626] border-b pb-1 mb-2.5 flex items-center justify-between">
+                  <span>Situation Financière & Dépenses Hôtelières</span>
+                  <span className="text-[10px] text-emerald-700 font-bold">Synchronisé Caisse</span>
+                </h3>
+                <div className="grid grid-cols-3 gap-3 bg-red-50/40 p-3.5 rounded-2xl border border-red-200">
+                  <div>
+                    <span className="text-[10px] text-slate-500 font-bold block">Total Dépensé Cumulé</span>
+                    <span className="font-mono font-black text-emerald-800 text-sm">
+                      {formatFCFA(selectedCustomer.total_spent)}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-500 font-bold block">Séjours Enregistrés</span>
+                    <span className="font-mono font-black text-slate-900 text-sm">
+                      {selectedCustomer.total_stays} séjour(s)
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-500 font-bold block">Solde Débiteur</span>
+                    <span className={`font-mono font-black text-sm ${Number(selectedCustomer.balance) > 0 ? "text-[#DC2626]" : "text-slate-800"}`}>
+                      {formatFCFA(Number(selectedCustomer.balance) || 0)}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="mt-2.5 p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-slate-700 text-[11px]">
+                    <CreditCard className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>Règlement direct de facture et émission de reçu officiel de caisse</span>
+                  </div>
+                  <Link
+                    href={`/dashboard/payments`}
+                    className="px-3 py-1.5 bg-[#DC2626] hover:bg-[#b91c1c] text-white rounded-lg font-bold text-xs transition-colors shrink-0 flex items-center gap-1"
+                  >
+                    <span>Caisse Centrale &rarr;</span>
+                  </Link>
+                </div>
+              </div>
+
+              {/* 3. Historique des Séjours */}
+              {selectedCustomer.stay_history && selectedCustomer.stay_history.length > 0 && (
+                <div>
+                  <h3 className="text-xs font-black uppercase tracking-wider text-[#DC2626] border-b pb-1 mb-2.5">
+                    Historique des Séjours & Chambres Occupées
+                  </h3>
+                  <div className="space-y-1.5 max-h-36 overflow-y-auto">
+                    {selectedCustomer.stay_history.map((st) => (
+                      <div
+                        key={st.id}
+                        className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs"
+                      >
+                        <div className="flex items-center gap-2">
+                          <BedDouble className="w-3.5 h-3.5 text-red-600" />
+                          <div>
+                            <strong className="text-slate-900">Chambre {st.room_number}</strong>
+                            <div className="text-[10px] text-slate-500 font-mono">
+                              Du {st.check_in} au {st.check_out} &bull; Réf: {st.booking_ref}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-mono font-bold text-slate-900">{formatFCFA(st.total_amount)}</div>
+                          <span className="text-[9px] font-bold text-emerald-700 uppercase">{st.status}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 4. DÉPÔT & GESTION DES PIÈCES FOURNIES PAR LE CLIENT */}
+              <div>
+                <div className="flex items-center justify-between border-b pb-1.5 mb-2.5">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-[#DC2626] flex items-center gap-1.5">
+                    <Paperclip className="w-3.5 h-3.5 text-[#DC2626]" />
+                    <span>Coffre-Fort Numérique &amp; Pièces Fournies par le Client</span>
+                  </h3>
+                  <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                    {Object.keys(selectedCustomer.uploaded_documents || {}).length + (selectedCustomer.id_card_document ? 1 : 0)} document(s)
+                  </span>
+                </div>
+
+                <div className="p-2.5 mb-3 rounded-xl bg-blue-50/70 border border-blue-200 text-[11px] text-blue-900 flex items-start gap-2">
+                  <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                  <div>
+                    <div className="font-bold">Gestion des Pièces d&apos;Identité &amp; Justificatifs Avenida :</div>
+                    <div className="text-blue-800 text-[10px]">
+                      Formats : <strong>PDF, JPG, PNG, WEBP, DOCX</strong> &bull; Débit max : <strong>5 Mo</strong> &bull; Transparence totale pour les gestionnaires
+                    </div>
+                  </div>
+                </div>
+
+                {custDocError && (
+                  <div className="p-2.5 mb-3 rounded-xl bg-red-50 border border-red-200 text-[11px] text-red-800 flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                    <span>{custDocError}</span>
+                  </div>
+                )}
+
+                {/* Pièce d'identité principale scannée à l'enregistrement si présente */}
+                {selectedCustomer.id_card_document && (
+                  <div className="p-2.5 bg-emerald-50/70 rounded-xl border border-emerald-300 flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+                        <FileText className="w-3.5 h-3.5" />
+                      </div>
+                      <div className="min-w-0">
+                        <strong className="text-slate-900 text-xs block truncate">
+                          {selectedCustomer.id_card_document.name || "CNI / Passeport Principal"}
+                        </strong>
+                        <span className="text-[10px] text-emerald-800 font-bold">
+                          Pièce d&apos;identité officielle &bull; {selectedCustomer.id_card_document.formattedSize}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setActiveDocPreview({
+                            key: "main-id",
+                            id: "main-id",
+                            name: selectedCustomer.id_card_document?.name || "Pièce d'Identité",
+                            size: selectedCustomer.id_card_document?.size || 0,
+                            formattedSize: selectedCustomer.id_card_document?.formattedSize || "",
+                            type: selectedCustomer.id_card_document?.type || "application/pdf",
+                            dataUrl: selectedCustomer.id_card_document?.dataUrl,
+                            uploadedAt: new Date().toISOString(),
+                            category: "Pièce d'Identité",
+                          })
+                        }
+                        className="p-1.5 rounded-lg bg-white text-blue-700 hover:bg-blue-50 border border-blue-200 cursor-pointer"
+                        title="Visualiser"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                      </button>
+                      {selectedCustomer.id_card_document.dataUrl && (
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadFile(selectedCustomer.id_card_document?.name || "Piece_Identite.pdf", selectedCustomer.id_card_document?.dataUrl)}
+                          className="p-1.5 rounded-lg bg-white text-emerald-700 hover:bg-emerald-50 border border-emerald-200 cursor-pointer"
+                          title="Télécharger la pièce"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Liste des autres pièces fournies déposées */}
+                {selectedCustomer.uploaded_documents && Object.keys(selectedCustomer.uploaded_documents).length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
+                    {Object.entries(selectedCustomer.uploaded_documents).map(([key, doc]) => (
+                      <div
+                        key={key}
+                        className="flex items-center justify-between p-2.5 bg-slate-50 hover:bg-red-50/30 rounded-xl border border-slate-200 text-xs transition-colors"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-7 h-7 rounded-lg bg-red-100 text-red-700 flex items-center justify-center shrink-0">
+                            <FileText className="w-3.5 h-3.5" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-bold text-slate-800 truncate">{doc.name}</p>
+                            <div className="flex items-center gap-1.5 text-[10px]">
+                              {doc.category && <span className="text-red-700 font-semibold">{doc.category}</span>}
+                              <span className="font-mono text-slate-500 font-bold">{doc.formattedSize}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => setActiveDocPreview(doc)}
+                            className="p-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-600 hover:text-white transition-colors cursor-pointer"
+                            title="Consulter"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                          {doc.dataUrl && (
+                            <button
+                              type="button"
+                              onClick={() => handleDownloadFile(doc.name, doc.dataUrl)}
+                              className="p-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white transition-colors cursor-pointer"
+                              title="Télécharger"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveCustomerDocFromSelected(key)}
+                            className="p-1.5 rounded-lg bg-slate-100 text-red-500 hover:bg-red-100 hover:text-red-700 transition-colors cursor-pointer"
+                            title="Supprimer la pièce"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : !selectedCustomer.id_card_document && (
+                  <div className="p-3 mb-3 bg-slate-50 rounded-xl border border-dashed border-slate-200 text-center text-[11px] text-slate-500">
+                    Aucune pièce justificative déposée pour le moment.
+                  </div>
+                )}
+
+                {/* Formulaire de dépôt d'une nouvelle pièce fournie */}
+                <div className="p-3 bg-slate-50/80 rounded-2xl border border-slate-200">
+                  <span className="text-[11px] font-black uppercase text-slate-700 block mb-2 flex items-center gap-1.5">
+                    <UploadCloud className="w-3.5 h-3.5 text-[#DC2626]" />
+                    Déposer une nouvelle pièce fournie par le client
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
+                    <input
+                      type="text"
+                      placeholder="Libellé (ex: Registre Commerce, Passeport, Attestation...)"
+                      value={newCustDocTitle}
+                      onChange={(e) => setNewCustDocTitle(e.target.value)}
+                      className="px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-red-500"
+                    />
+                    <select
+                      value={newCustDocCategory}
+                      onChange={(e) => setNewCustDocCategory(e.target.value)}
+                      className="px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-red-500"
+                    >
+                      <option value="Pièce d'Identité">Pièce d&apos;Identité / Passeport</option>
+                      <option value="Registre de Commerce">Registre de Commerce / RCCM</option>
+                      <option value="Justificatif de Domicile">Justificatif de Domicile / Facture</option>
+                      <option value="Attestation d'Entreprise">Attestation de Prise en Charge</option>
+                      <option value="Contrat Séjour">Contrat d&apos;Hébergement Spécial</option>
+                      <option value="Autre Pièce Fournie">Autre Pièce Fournie</option>
+                    </select>
+                  </div>
+                  <label className="flex items-center justify-center gap-2 p-2 rounded-xl border-2 border-dashed border-red-300 hover:border-red-500 bg-white hover:bg-red-50/30 cursor-pointer text-red-800 transition-colors">
+                    <UploadCloud className="w-4 h-4 text-red-600" />
+                    <span className="font-bold text-[11px]">
+                      Téléverser le document déposé (PDF ou Image, Max 5 Mo)
+                    </span>
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png,.webp,.docx"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleAttachCustomerDocToSelected(file);
+                        e.target.value = "";
+                      }}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer Modal */}
+            <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-between items-center rounded-b-3xl">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    const c = selectedCustomer;
+                    setSelectedCustomer(null);
+                    setSelectedCustomerForAttestation(c);
+                  }}
+                  className="px-4 py-2 bg-[#DC2626] hover:bg-[#b91c1c] text-white font-bold rounded-xl text-xs transition-colors flex items-center gap-1.5 shadow-sm cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Fiche Client Officielle (PDF)</span>
+                </button>
+                <button
+                  onClick={() => {
+                    const c = selectedCustomer;
+                    setSelectedCustomer(null);
+                    setCustomerToEdit(c);
+                  }}
+                  className="px-3 py-2 bg-amber-50 hover:bg-amber-400 text-amber-950 border border-amber-300 font-bold rounded-xl text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Edit3 className="w-3.5 h-3.5 text-amber-700" />
+                  <span>Modifier (Visa Direction)</span>
+                </button>
+              </div>
+              <button
+                onClick={() => setSelectedCustomer(null)}
+                className="px-5 py-2 bg-[#0C356A] hover:bg-[#164E87] text-white font-bold rounded-xl text-xs transition-colors cursor-pointer"
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal Nouveau Client */}
       {isModalOpen && (

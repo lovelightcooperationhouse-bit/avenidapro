@@ -281,6 +281,29 @@ export default function StudentsPage() {
     }
   };
 
+  const getStudentAttendanceSummary = (st: Student) => {
+    const absences = allAbsences.filter(
+      (a) =>
+        (a.student_matricule && a.student_matricule === st.registration_number) ||
+        (a.student_id && a.student_id === st.id) ||
+        (a.student_name && a.student_name.toLowerCase().includes(st.last_name.toLowerCase()))
+    );
+    const lates = allLates.filter(
+      (l) =>
+        (l.student_matricule && l.student_matricule === st.registration_number) ||
+        (l.student_id && l.student_id === st.id) ||
+        (l.student_name && l.student_name.toLowerCase().includes(st.last_name.toLowerCase()))
+    );
+    const regularAbs = absences.filter((a) => a.ticket_type !== "permission");
+    const permissions = absences.filter((a) => a.ticket_type === "permission");
+    return {
+      total: absences.length + lates.length,
+      absencesCount: regularAbs.length,
+      permissionsCount: permissions.length,
+      latesCount: lates.length,
+    };
+  };
+
   // Statistiques calculées
   const stats = useMemo(() => {
     const list =
@@ -528,15 +551,17 @@ export default function StudentsPage() {
                 <th className="py-3.5 px-4">Élève & État Civil</th>
                 <th className="py-3.5 px-4">Matricule & Contact Lomé</th>
                 <th className="py-3.5 px-4">Diplôme & Classe</th>
-                <th className="py-3.5 px-4">Année Scolaire</th>
-                <th className="py-3.5 px-4 text-right">Écolage & Paiement</th>
-                <th className="py-3.5 px-4 text-center">Statut</th>
+                <th className="py-3.5 px-4 text-right">Écolage Dû / Payé</th>
+                <th className="py-3.5 px-4 text-center">Statut Financier (Caisse)</th>
+                <th className="py-3.5 px-4 text-center">Pointages & Assiduité</th>
                 <th className="py-3.5 px-4 text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredStudents.map((s) => {
                 const isPaidFull = s.remaining_fee === 0;
+                const isUnpaid = (Number(s.paid_fee) || 0) === 0;
+                const attSummary = getStudentAttendanceSummary(s);
 
                 return (
                   <tr
@@ -597,32 +622,21 @@ export default function StudentsPage() {
 
                     <td className="py-3 px-4">
                       <div className="font-bold text-slate-800">{s.class_name}</div>
-                      <span className="text-[10px] font-black uppercase text-blue-700">
-                        Diplôme : {s.program_code}
-                      </span>
-                    </td>
-
-                    <td className="py-3 px-4">
-                      <span
-                        className={`px-2.5 py-1 rounded-full text-[10px] font-black border ${
-                          s.academic_year === "2024 - 2025"
-                            ? "bg-blue-50 text-blue-800 border-blue-200"
-                            : s.academic_year === "2025 - 2026"
-                            ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                            : "bg-purple-50 text-purple-800 border-purple-200"
-                        }`}
-                      >
-                        {s.academic_year}
-                      </span>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-[10px] font-black uppercase text-blue-700">
+                          {s.program_code}
+                        </span>
+                        <span className="text-[9.5px] text-slate-400 font-medium">&bull; {s.academic_year}</span>
+                      </div>
                     </td>
 
                     <td className="py-3 px-4 text-right">
-                      <div className="font-mono font-bold text-slate-900">
+                      <div className="font-mono font-black text-slate-900 text-xs">
                         {formatFCFA(s.paid_fee)}
                       </div>
-                      <div className="text-[10px] text-slate-500">
+                      <div className="text-[10px] text-slate-500 font-medium">
                         {isPaidFull ? (
-                          <span className="text-emerald-700 font-bold">Solde réglé (100%)</span>
+                          <span className="text-emerald-700 font-bold">Soldé (100%)</span>
                         ) : (
                           <span className="text-rose-600 font-bold">
                             Reste: {formatFCFA(s.remaining_fee)}
@@ -631,10 +645,52 @@ export default function StudentsPage() {
                       </div>
                     </td>
 
+                    {/* Statut Financier Caisse Direct */}
                     <td className="py-3 px-4 text-center">
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                        Inscrit Actif
-                      </span>
+                      {isPaidFull ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          Soldé (En Règle)
+                        </span>
+                      ) : isUnpaid ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300 shadow-2xs">
+                          <AlertTriangle className="w-3 h-3 text-rose-600" />
+                          Impayé (0 F)
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs">
+                          <Clock className="w-3 h-3 text-amber-700" />
+                          Solde Partiel
+                        </span>
+                      )}
+                    </td>
+
+                    {/* Pointages & Assiduité Direct */}
+                    <td className="py-3 px-4 text-center">
+                      {attSummary.total === 0 ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                          0 Incident (Assidu)
+                        </span>
+                      ) : (
+                        <div className="inline-flex items-center gap-1 flex-wrap justify-center">
+                          {attSummary.absencesCount > 0 && (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-red-100 text-red-800 border border-red-200">
+                              {attSummary.absencesCount} abs.
+                            </span>
+                          )}
+                          {attSummary.latesCount > 0 && (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-amber-100 text-amber-900 border border-amber-200">
+                              {attSummary.latesCount} ret.
+                            </span>
+                          )}
+                          {attSummary.permissionsCount > 0 && (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-blue-100 text-blue-900 border border-blue-200">
+                              {attSummary.permissionsCount} perm.
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </td>
 
                     <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
@@ -732,13 +788,32 @@ export default function StudentsPage() {
                     {selectedStudent.first_name[0]}
                   </div>
                 )}
-                <div>
-                  <div className="flex items-center gap-2">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-[10px] font-black uppercase tracking-wider bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full font-mono">
                       {selectedStudent.registration_number}
                     </span>
                     <span className="text-xs text-white/80 font-bold">
                       Année {selectedStudent.academic_year}
+                    </span>
+                    {/* Badge financier temps réel */}
+                    {selectedStudent.remaining_fee === 0 ? (
+                      <span className="text-[10px] font-black bg-emerald-500/30 text-emerald-200 border border-emerald-400/40 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-300" />
+                        Scolarité Soldée
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-black bg-amber-500/30 text-amber-200 border border-amber-400/40 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-amber-300" />
+                        Reste : {formatFCFA(selectedStudent.remaining_fee)}
+                      </span>
+                    )}
+                    {/* Badge pointage vie scolaire temps réel */}
+                    <span className="text-[10px] font-black bg-white/20 text-white px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-blue-200" />
+                      {studentRegularAbsences.length + selectedStudentLates.length === 0
+                        ? "Assidu (0 Pointage)"
+                        : `${studentRegularAbsences.length} abs. / ${selectedStudentLates.length} ret.`}
                     </span>
                   </div>
                   <h2 className="text-xl font-black mt-1">
@@ -850,6 +925,115 @@ export default function StudentsPage() {
                     Guichet Caisse &rarr;
                   </Link>
                 </div>
+              </div>
+
+              {/* Vie Scolaire, Pointages & Assiduité Directe */}
+              <div>
+                <div className="flex items-center justify-between border-b pb-1 mb-2.5">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-[#0C356A] flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Vie Scolaire & Pointages de l&apos;Élève</span>
+                  </h3>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenIncidentModal("absence")}
+                      className="px-2 py-1 bg-red-50 hover:bg-red-600 hover:text-white text-red-700 font-bold rounded-lg text-[10px] transition-colors border border-red-200 cursor-pointer"
+                    >
+                      + Absence
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenIncidentModal("retard")}
+                      className="px-2 py-1 bg-amber-50 hover:bg-amber-600 hover:text-white text-amber-800 font-bold rounded-lg text-[10px] transition-colors border border-amber-200 cursor-pointer"
+                    >
+                      + Retard
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenIncidentModal("permission")}
+                      className="px-2 py-1 bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-800 font-bold rounded-lg text-[10px] transition-colors border border-blue-200 cursor-pointer"
+                    >
+                      + Permission
+                    </button>
+                  </div>
+                </div>
+
+                {/* Synthèse des Pointages */}
+                <div className="grid grid-cols-3 gap-2.5 mb-2.5">
+                  <div className="bg-red-50/70 p-2.5 rounded-xl border border-red-200 text-center">
+                    <span className="text-[10px] text-red-700 font-bold block uppercase">Absences</span>
+                    <span className="text-base font-black text-red-950 font-mono">
+                      {studentRegularAbsences.length}
+                    </span>
+                    <span className="text-[9px] text-red-600 block">
+                      {studentRegularAbsences.filter((a) => !a.is_justified && !a.parent_justified).length} injustifiée(s)
+                    </span>
+                  </div>
+                  <div className="bg-amber-50/70 p-2.5 rounded-xl border border-amber-200 text-center">
+                    <span className="text-[10px] text-amber-800 font-bold block uppercase">Retards</span>
+                    <span className="text-base font-black text-amber-950 font-mono">
+                      {selectedStudentLates.length}
+                    </span>
+                    <span className="text-[9px] text-amber-700 block">Pointages horaires</span>
+                  </div>
+                  <div className="bg-blue-50/70 p-2.5 rounded-xl border border-blue-200 text-center">
+                    <span className="text-[10px] text-blue-800 font-bold block uppercase">Permissions</span>
+                    <span className="text-base font-black text-blue-950 font-mono">
+                      {studentPermissions.length}
+                    </span>
+                    <span className="text-[9px] text-blue-600 block">Visas accordés</span>
+                  </div>
+                </div>
+
+                {/* Historique des incidents récents */}
+                {selectedStudentAbsences.length > 0 || selectedStudentLates.length > 0 ? (
+                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-2 max-h-36 overflow-y-auto">
+                    {selectedStudentAbsences.map((ab) => (
+                      <div
+                        key={ab.id}
+                        className="flex items-center justify-between text-[11px] p-2 bg-white rounded-xl border border-slate-200"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase ${
+                              ab.ticket_type === "permission"
+                                ? "bg-blue-100 text-blue-800"
+                                : "bg-red-100 text-red-800"
+                            }`}
+                          >
+                            {ab.ticket_type === "permission" ? "Permission" : "Absence"}
+                          </span>
+                          <span className="font-semibold text-slate-800">{ab.reason || "Non spécifié"}</span>
+                        </div>
+                        <div className="text-right text-[10px] text-slate-500 font-mono">
+                          {ab.date || ab.start_date} {ab.is_justified || ab.parent_justified ? "• Justifiée" : "• Injustifiée"}
+                        </div>
+                      </div>
+                    ))}
+                    {selectedStudentLates.map((lt) => (
+                      <div
+                        key={lt.id}
+                        className="flex items-center justify-between text-[11px] p-2 bg-white rounded-xl border border-slate-200"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-amber-100 text-amber-900">
+                            Retard ({lt.duration_minutes || lt.minutes_late || 15} min)
+                          </span>
+                          <span className="font-semibold text-slate-800">{lt.reason || "Arrivée tardive"}</span>
+                        </div>
+                        <div className="text-right text-[10px] text-slate-500 font-mono">
+                          {lt.date} {lt.time_arrived ? `à ${lt.time_arrived}` : ""}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-3 bg-emerald-50/50 rounded-xl border border-emerald-200 text-center text-emerald-800 text-[11px] font-semibold flex items-center justify-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span>Élève assidu : Aucun incident d&apos;assiduité ou de retard enregistré.</span>
+                  </div>
+                )}
               </div>
 
               {/* Bilan Académique & Bulletin */}
@@ -1054,6 +1238,130 @@ export default function StudentsPage() {
                 Fermer
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL D'ENREGISTREMENT RAPIDE D'INCIDENT / POINTAGE VIE SCOLAIRE */}
+      {showIncidentModal && selectedStudent && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b pb-3 mb-4">
+              <div>
+                <span className="text-[10px] font-black uppercase text-blue-700 bg-blue-50 px-2 py-0.5 rounded">
+                  Vie Scolaire &bull; Pointage
+                </span>
+                <h3 className="text-base font-black text-slate-900 mt-1">
+                  Enregistrer un incident : {selectedStudent.last_name} {selectedStudent.first_name}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowIncidentModal(false)}
+                className="p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveStudentIncident} className="space-y-3.5 text-xs">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Type de Pointage *</label>
+                <select
+                  value={incidentForm.type}
+                  onChange={(e) =>
+                    setIncidentForm({ ...incidentForm, type: e.target.value as any })
+                  }
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 focus:outline-none"
+                >
+                  <option value="absence">Absence (Non comparu au cours)</option>
+                  <option value="retard">Retard (Arrivée tardive)</option>
+                  <option value="permission">Permission de sortie autorisée</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Date *</label>
+                  <input
+                    type="date"
+                    required
+                    value={incidentForm.date}
+                    onChange={(e) => setIncidentForm({ ...incidentForm, date: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold"
+                  />
+                </div>
+                {incidentForm.type === "retard" ? (
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Minutes de retard</label>
+                    <input
+                      type="number"
+                      min={5}
+                      step={5}
+                      value={incidentForm.duration_minutes}
+                      onChange={(e) =>
+                        setIncidentForm({ ...incidentForm, duration_minutes: Number(e.target.value) })
+                      }
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold"
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Heure / Période</label>
+                    <input
+                      type="time"
+                      value={incidentForm.time}
+                      onChange={(e) => setIncidentForm({ ...incidentForm, time: e.target.value })}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Motif / Justification *</label>
+                <textarea
+                  required
+                  rows={3}
+                  placeholder="ex: Maladie déclarée, problème de transport, convocation..."
+                  value={incidentForm.reason}
+                  onChange={(e) => setIncidentForm({ ...incidentForm, reason: e.target.value })}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="incident-justified"
+                  checked={incidentForm.is_justified}
+                  onChange={(e) =>
+                    setIncidentForm({ ...incidentForm, is_justified: e.target.checked })
+                  }
+                  className="w-4 h-4 rounded text-[#0C356A]"
+                />
+                <label htmlFor="incident-justified" className="font-bold text-slate-700 cursor-pointer">
+                  Incident formellement justifié (Certificat / Billet officiel)
+                </label>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t">
+                <button
+                  type="button"
+                  onClick={() => setShowIncidentModal(false)}
+                  className="px-4 py-2 text-slate-600 font-bold hover:bg-slate-100 rounded-xl cursor-pointer"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingIncident}
+                  className="px-5 py-2 bg-[#0C356A] hover:bg-[#164E87] text-white font-bold rounded-xl shadow-md cursor-pointer disabled:opacity-50"
+                >
+                  {isSubmittingIncident ? "Enregistrement..." : "Valider le Pointage"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
