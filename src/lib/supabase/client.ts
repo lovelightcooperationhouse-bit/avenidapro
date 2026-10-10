@@ -1,17 +1,11 @@
 import { createBrowserClient } from "@supabase/ssr";
 
+const SUPABASE_URL =
+  process.env.NEXT_PUBLIC_SUPABASE_URL || "https://xlugccxuittetcayjsxc.supabase.co";
+const SUPABASE_ANON_KEY =
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  "sb_publishable_HwIkJ3XqvKdiuXx8T3J_fg_2fhtfSu7";
+
 export function createClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    console.warn(
-      "Supabase environment variables (NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY) are not set."
-    );
-  }
-
-  return createBrowserClient(
-    supabaseUrl || "https://placeholder.supabase.co",
-    supabaseAnonKey || "placeholder-key"
-  );
+  return createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 }

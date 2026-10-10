@@ -149,6 +149,7 @@ interface FormData {
   parent_mother_profession: string;
   tutor_name: string;
   tutor_phone: string;
+  tutor_profession: string;
   tutor_relation: string;
   emergency_contact_name: string;
   emergency_contact_phone: string;
@@ -170,8 +171,13 @@ interface FormData {
   doc_diploma_copy: boolean;
   doc_enrollment_form: boolean;
 
-  // ── OBSERVATIONS ──
+  // ── OBSERVATIONS & EXTRAS ──
   observations: string;
+  medical_notes?: string;
+  payment_method?: string;
+  registration_fee?: number | string;
+  installments_count?: number | string;
+  notes?: string;
 }
 
 const INITIAL_FORM: FormData = {
@@ -206,6 +212,7 @@ const INITIAL_FORM: FormData = {
   parent_mother_profession: "",
   tutor_name: "",
   tutor_phone: "",
+  tutor_profession: "",
   tutor_relation: "",
   emergency_contact_name: "",
   emergency_contact_phone: "",
@@ -591,11 +598,17 @@ export default function NewStudentPage() {
       tutor_relation: form.tutor_relation || undefined,
       blood_group: form.blood_group || undefined,
       allergies: form.allergies || undefined,
-      medical_notes: form.medical_notes || undefined,
-      payment_method: form.payment_method || undefined,
+      medical_notes:
+        form.medical_notes ||
+        (form.chronic_conditions
+          ? `Affections: ${form.chronic_conditions}${form.doctor_name ? ` | Médecin: ${form.doctor_name} (${form.doctor_phone})` : ""}`
+          : form.doctor_name
+          ? `Médecin: ${form.doctor_name} (${form.doctor_phone})`
+          : undefined),
+      payment_method: form.payment_method || "Espèces",
       registration_fee: Number(form.registration_fee) || fees?.registration || 50000,
       installments_count: Number(form.installments_count) || 1,
-      notes: form.notes || undefined,
+      notes: form.notes || form.observations || undefined,
       raw_data: { ...form },
     };
 
@@ -1184,7 +1197,7 @@ export default function NewStudentPage() {
               <h3 className="text-sm font-bold text-slate-700 flex items-center gap-2">
                 <User className="w-4 h-4" /> Tuteur / Responsable légal (si différent des parents)
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <FormField label="Nom complet du tuteur">
                   <input type="text" value={form.tutor_name} onChange={(e) => updateField("tutor_name", e.target.value)}
                     placeholder="Nom et prénoms" className="form-input-avenida" />
@@ -1192,6 +1205,10 @@ export default function NewStudentPage() {
                 <FormField label="Téléphone du tuteur">
                   <input type="tel" value={form.tutor_phone} onChange={(e) => updateField("tutor_phone", e.target.value)}
                     className="form-input-avenida" />
+                </FormField>
+                <FormField label="Profession du tuteur">
+                  <input type="text" value={form.tutor_profession} onChange={(e) => updateField("tutor_profession", e.target.value)}
+                    placeholder="Ex: Fonctionnaire, Commerçant..." className="form-input-avenida" />
                 </FormField>
                 <FormField label="Lien de parenté">
                   <input type="text" value={form.tutor_relation} onChange={(e) => updateField("tutor_relation", e.target.value)}

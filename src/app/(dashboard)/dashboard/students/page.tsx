@@ -98,7 +98,7 @@ export default function StudentsPage() {
     }
 
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       const docKey = `doc_${Date.now()}`;
       const item: UploadedFileItem = {
         key: docKey,
