@@ -28,22 +28,29 @@ import { StatsCard } from "@/components/shared/StatsCard";
 import { AvenidaLogo } from "@/components/shared/AvenidaLogo";
 import { DirectorPendingApprovalsBanner } from "@/components/shared/DirectorPendingApprovalsBanner";
 import {
-  MOCK_STUDENTS,
-  MOCK_RECEIPTS,
-  MOCK_ROOMS,
-  MOCK_ABSENCES,
-  MOCK_LATES,
   MOCK_PROGRAMS,
-  MOCK_EMPLOYEES,
-  MOCK_FINANCES,
 } from "@/lib/mock-data";
 import { formatFCFA } from "@/lib/utils";
+import {
+  Student,
+  HotelRoom,
+  PaymentReceipt,
+  Employee,
+  FinancialEntry,
+  AbsenceTicket,
+  LateTicket,
+} from "@/types";
 import {
   getStoredStudents,
   getStoredEmployees,
   getStoredFinances,
   getStoredRooms,
   getStoredReceipts,
+  getStoredAbsences,
+  getStoredLates,
+  syncStudentsFromSupabase,
+  syncRoomsFromSupabase,
+  syncReceiptsFromSupabase,
   AVENIDA_DATA_UPDATED_EVENT,
 } from "@/lib/realtime-store";
 
@@ -51,11 +58,13 @@ type ActiveSpace = "all" | "school" | "hotel";
 
 export default function DashboardPage() {
   const [activeSpace, setActiveSpace] = useState<ActiveSpace>("all");
-  const [studentsList, setStudentsList] = useState(MOCK_STUDENTS);
-  const [receiptsList, setReceiptsList] = useState(MOCK_RECEIPTS);
-  const [roomsList, setRoomsList] = useState(MOCK_ROOMS);
-  const [employeesList, setEmployeesList] = useState(MOCK_EMPLOYEES);
-  const [financesList, setFinancesList] = useState(MOCK_FINANCES);
+  const [studentsList, setStudentsList] = useState<Student[]>([]);
+  const [receiptsList, setReceiptsList] = useState<PaymentReceipt[]>([]);
+  const [roomsList, setRoomsList] = useState<HotelRoom[]>([]);
+  const [employeesList, setEmployeesList] = useState<Employee[]>([]);
+  const [financesList, setFinancesList] = useState<FinancialEntry[]>([]);
+  const [absencesList, setAbsencesList] = useState<AbsenceTicket[]>([]);
+  const [latesList, setLatesList] = useState<LateTicket[]>([]);
 
   const refreshAllStats = () => {
     setStudentsList(getStoredStudents());
@@ -63,10 +72,18 @@ export default function DashboardPage() {
     setRoomsList(getStoredRooms());
     setEmployeesList(getStoredEmployees());
     setFinancesList(getStoredFinances());
+    setAbsencesList(getStoredAbsences());
+    setLatesList(getStoredLates());
   };
 
   useEffect(() => {
     refreshAllStats();
+    Promise.all([
+      syncStudentsFromSupabase(),
+      syncRoomsFromSupabase(),
+      syncReceiptsFromSupabase(),
+    ]).then(() => refreshAllStats());
+
     window.addEventListener(AVENIDA_DATA_UPDATED_EVENT, refreshAllStats);
     window.addEventListener("storage", refreshAllStats);
     return () => {
@@ -179,9 +196,6 @@ export default function DashboardPage() {
         >
           <GraduationCap className="w-4 h-4 text-blue-300 transition-transform duration-200 group-hover:scale-110 group-hover:rotate-6" />
           <span>ESPACE 1 : ÉCOLE & FORMATION (Bleu)</span>
-          <span className="text-[10px] bg-white/20 text-white px-2 py-0.5 rounded-full font-bold transition-transform duration-200 group-hover:scale-105">
-            {totalStudents} élève{totalStudents > 1 ? "s" : ""}
-          </span>
         </button>
 
         <button
@@ -342,7 +356,7 @@ export default function DashboardPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {MOCK_RECEIPTS.slice(0, 3).map((r) => (
+                      {receiptsList.slice(0, 5).map((r) => (
                         <tr key={r.id} className="hover:bg-blue-50/30 transition-colors">
                           <td className="py-3 px-3 font-mono font-bold text-slate-900 whitespace-nowrap">
                             {r.reference}
@@ -383,39 +397,57 @@ export default function DashboardPage() {
 
               {/* Carnet de Correspondance : Billets Absences / Retards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                <div className="p-3.5 rounded-xl border border-rose-200 bg-rose-50/40 text-xs space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-rose-800 flex items-center gap-1.5">
-                      <AlertCircle className="w-4 h-4 text-rose-600" />
-                      Billet d'Absence N°1
-                    </span>
-                    <span className="text-[10px] bg-rose-100 text-rose-700 font-bold px-1.5 py-0.2 rounded">
-                      BTS1 Restauration
-                    </span>
+                {absencesList.length > 0 ? (
+                  absencesList.slice(0, 2).map((abs) => (
+                    <div key={abs.id} className="p-3.5 rounded-xl border border-rose-200 bg-rose-50/40 text-xs space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-rose-800 flex items-center gap-1.5">
+                          <AlertCircle className="w-4 h-4 text-rose-600" />
+                          Billet d&apos;Absence N°{abs.ticket_number}
+                        </span>
+                        <span className="text-[10px] bg-rose-100 text-rose-700 font-bold px-1.5 py-0.2 rounded">
+                          {abs.class_name}
+                        </span>
+                      </div>
+                      <p className="font-semibold text-slate-900">{abs.student_name}</p>
+                      <p className="text-[11px] text-slate-600">{abs.start_date} &bull; Motif : {abs.reason}</p>
+                      <div className="text-[10px] text-emerald-700 font-bold flex items-center gap-1 pt-1">
+                        <CheckCircle2 className="w-3 h-3" /> {abs.visa_vie_scolaire ? "Visa Vie Scolaire accordé" : "En attente de visa"}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-3.5 rounded-xl border border-rose-200 bg-rose-50/40 text-xs text-rose-800 flex items-center gap-2">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                    <span>Aucune absence non justifiée en cours</span>
                   </div>
-                  <p className="font-semibold text-slate-900">AFOLEHO Essi</p>
-                  <p className="text-[11px] text-slate-600">Du 14/01 au 15/01 &bull; Motif : Médical</p>
-                  <div className="text-[10px] text-emerald-700 font-bold flex items-center gap-1 pt-1">
-                    <CheckCircle2 className="w-3 h-3" /> Visa Vie Scolaire accordé
-                  </div>
-                </div>
+                )}
 
-                <div className="p-3.5 rounded-xl border border-blue-200 bg-blue-50/40 text-xs space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-blue-900 flex items-center gap-1.5">
-                      <Clock className="w-4 h-4 text-blue-600" />
-                      Billet de Retard N°1 (25 min)
-                    </span>
-                    <span className="text-[10px] bg-blue-100 text-blue-800 font-bold px-1.5 py-0.2 rounded">
-                      BTS1 Restauration
-                    </span>
+                {latesList.length > 0 ? (
+                  latesList.slice(0, 2).map((late) => (
+                    <div key={late.id} className="p-3.5 rounded-xl border border-blue-200 bg-blue-50/40 text-xs space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-blue-900 flex items-center gap-1.5">
+                          <Clock className="w-4 h-4 text-blue-600" />
+                          Billet de Retard N°{late.ticket_number} ({late.duration_minutes} min)
+                        </span>
+                        <span className="text-[10px] bg-blue-100 text-blue-800 font-bold px-1.5 py-0.2 rounded">
+                          {late.class_name}
+                        </span>
+                      </div>
+                      <p className="font-semibold text-slate-900">{late.student_name}</p>
+                      <p className="text-[11px] text-slate-600">{(late as any).date || "Aujourd'hui"} &bull; Orientation : <strong>{late.destination}</strong></p>
+                      <div className="text-[10px] text-emerald-700 font-bold flex items-center gap-1 pt-1">
+                        <CheckCircle2 className="w-3 h-3" /> Visa Vie Scolaire apposé
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-3.5 rounded-xl border border-blue-200 bg-blue-50/40 text-xs text-blue-800 flex items-center gap-2">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                    <span>Aucun retard signalé ce matin</span>
                   </div>
-                  <p className="font-semibold text-slate-900">AGBAHEY Toundé Jean Chrysotome</p>
-                  <p className="text-[11px] text-slate-600">Le 22/01 à 07h55 &bull; Orientation : <strong>En classe</strong></p>
-                  <div className="text-[10px] text-emerald-700 font-bold flex items-center gap-1 pt-1">
-                    <CheckCircle2 className="w-3 h-3" /> Visa Vie Scolaire apposé
-                  </div>
-                </div>
+                )}
               </div>
             </div>
 
@@ -518,7 +550,7 @@ export default function DashboardPage() {
 
             {/* Grille Interactive des Chambres */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-              {MOCK_ROOMS.map((room) => {
+              {roomsList.map((room) => {
                 const statusStyles = {
                   disponible: {
                     bg: "bg-emerald-50 border-emerald-300 text-emerald-900",
@@ -558,7 +590,8 @@ export default function DashboardPage() {
                   },
                 };
 
-                const currentStyle = statusStyles[room.status];
+                const currentStyle =
+                  (statusStyles as Record<string, any>)[room.status] || statusStyles.disponible;
 
                 return (
                   <div

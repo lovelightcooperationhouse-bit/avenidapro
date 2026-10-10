@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   CreditCard,
   Printer,
@@ -11,26 +11,69 @@ import {
   FileCheck,
   X,
 } from "lucide-react";
-import { MOCK_RECEIPTS, MOCK_STUDENTS } from "@/lib/mock-data";
 import { PaymentReceipt } from "@/types";
 import { formatFCFA } from "@/lib/utils";
 import { AvenidaLogo } from "@/components/shared/AvenidaLogo";
+import {
+  getStoredReceipts,
+  saveAndSyncReceipt,
+  syncReceiptsFromSupabase,
+  getStoredStudents,
+  syncStudentsFromSupabase,
+  AVENIDA_DATA_UPDATED_EVENT,
+} from "@/lib/realtime-store";
 
 export default function PaymentsPage() {
-  const [receipts, setReceipts] = useState<PaymentReceipt[]>(MOCK_RECEIPTS);
+  const [receipts, setReceipts] = useState<PaymentReceipt[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
   const [selectedReceipt, setSelectedReceipt] = useState<PaymentReceipt | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   // New Payment Modal state
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
-  const [selectedStudentId, setSelectedStudentId] = useState(MOCK_STUDENTS[0].id);
+  const [selectedStudentId, setSelectedStudentId] = useState("");
   const [amount, setAmount] = useState(50000);
   const [designation, setDesignation] = useState("Frais de scolarité (Tranche suivante)");
   const [paymentMethod, setPaymentMethod] = useState<any>("Espèces");
+  const [depositorName, setDepositorName] = useState("");
+  const [depositorPhone, setDepositorPhone] = useState("");
+  const [depositorRole, setDepositorRole] = useState("Parent");
+  const [cashierName, setCashierName] = useState("BANGASSOU AGNETA");
 
-  const handleCashIn = (e: React.FormEvent) => {
+  // Chargement initial + écoute des mises à jour
+  useEffect(() => {
+    const refreshData = () => {
+      const stored = getStoredReceipts();
+      setReceipts(stored);
+      const studs = getStoredStudents();
+      setStudents(studs);
+      if (studs.length > 0 && !selectedStudentId) setSelectedStudentId(studs[0].id);
+    };
+
+    refreshData();
+    Promise.all([syncReceiptsFromSupabase(), syncStudentsFromSupabase()]).then(() => {
+      refreshData();
+    });
+
+    window.addEventListener(AVENIDA_DATA_UPDATED_EVENT, refreshData);
+    return () => window.removeEventListener(AVENIDA_DATA_UPDATED_EVENT, refreshData);
+  }, []);
+
+  const filteredReceipts = receipts.filter((r) => {
+    if (!searchTerm) return true;
+    const q = searchTerm.toLowerCase();
+    return (
+      r.student_name.toLowerCase().includes(q) ||
+      r.reference.toLowerCase().includes(q) ||
+      r.student_matricule.toLowerCase().includes(q)
+    );
+  });
+
+  const handleCashIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    const st = MOCK_STUDENTS.find((s) => s.id === selectedStudentId)!;
-    const newRef = `#AV2025-${Math.floor(1000 + Math.random() * 9000)}`;
+    const st = students.find((s) => s.id === selectedStudentId) || students[0];
+    if (!st) return;
+    const newRef = `#AV${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
     const newReceipt: PaymentReceipt = {
       id: `rec-${Date.now()}`,
@@ -42,19 +85,22 @@ export default function PaymentsPage() {
       amount_paid: Number(amount),
       total_due: st.total_fee,
       remaining_due: Math.max(0, st.remaining_fee - Number(amount)),
-      depositor_name: st.emergency_contact_name,
+      depositor_name: depositorName || st.emergency_contact_name,
       depositor_id_card: "TG-LOM-2024-9912",
-      depositor_phone: st.emergency_contact_phone,
-      depositor_role: "Parent",
+      depositor_phone: depositorPhone || st.emergency_contact_phone,
+      depositor_role: depositorRole,
       payment_method: paymentMethod,
       site: "LOMÉ",
       date: new Date().toISOString().replace("T", " ").substring(0, 19),
-      cashier_name: "BANGASSOU AGNETA",
+      cashier_name: cashierName,
     };
 
-    setReceipts([newReceipt, ...receipts]);
+    const updated = await saveAndSyncReceipt(newReceipt);
+    setReceipts(updated);
     setIsNewModalOpen(false);
     setSelectedReceipt(newReceipt);
+    setDepositorName("");
+    setDepositorPhone("");
   };
 
   return (
@@ -92,13 +138,25 @@ export default function PaymentsPage() {
 
       {/* Receipts List */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-        <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-blue-50/40">
+        <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-blue-50/40">
           <span className="text-xs font-black uppercase text-[#0C356A]">
             Journal des Transactions Récentes &bull; Site LOMÉ
           </span>
-          <span className="text-xs font-black text-emerald-800 bg-emerald-100 px-3 py-1 rounded-lg border border-emerald-300">
-            Total Encaissé : {formatFCFA(receipts.reduce((s, r) => s + r.amount_paid, 0))}
-          </span>
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Nom élève, réf, matricule..."
+                className="pl-8 pr-3 py-1.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none w-48"
+              />
+            </div>
+            <span className="text-xs font-black text-emerald-800 bg-emerald-100 px-3 py-1 rounded-lg border border-emerald-300">
+              Total Encaissé : {formatFCFA(receipts.reduce((s, r) => s + r.amount_paid, 0))}
+            </span>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -116,7 +174,7 @@ export default function PaymentsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {receipts.map((r) => (
+              {filteredReceipts.map((r) => (
                 <tr key={r.id} className="hover:bg-slate-50/80 transition-colors">
                   <td className="py-3.5 px-4 font-mono font-bold text-slate-900">
                     {r.reference}
@@ -282,7 +340,7 @@ export default function PaymentsPage() {
                   onChange={(e) => setSelectedStudentId(e.target.value)}
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold"
                 >
-                  {MOCK_STUDENTS.map((s) => (
+                  {students.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.last_name} {s.first_name} ({s.registration_number}) - Reste: {formatFCFA(s.remaining_fee)}
                     </option>
@@ -325,6 +383,54 @@ export default function PaymentsPage() {
                     <option value="Virement">Virement Bancaire</option>
                     <option value="Stripe">Carte Bancaire / Stripe</option>
                   </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Nom Déposant</label>
+                  <input
+                    type="text"
+                    value={depositorName}
+                    onChange={(e) => setDepositorName(e.target.value)}
+                    placeholder="Nom complet du déposant"
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Tél Déposant</label>
+                  <input
+                    type="text"
+                    value={depositorPhone}
+                    onChange={(e) => setDepositorPhone(e.target.value)}
+                    placeholder="+228..."
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Qualité / Rôle</label>
+                  <select
+                    value={depositorRole}
+                    onChange={(e) => setDepositorRole(e.target.value)}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold"
+                  >
+                    <option>Parent</option>
+                    <option>Tuteur</option>
+                    <option>Élève lui-même</option>
+                    <option>Responsable légal</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Caissier</label>
+                  <input
+                    type="text"
+                    value={cashierName}
+                    onChange={(e) => setCashierName(e.target.value)}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
+                  />
                 </div>
               </div>
 

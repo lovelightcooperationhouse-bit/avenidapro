@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Wallet,
   CreditCard,
@@ -14,24 +14,59 @@ import {
   Download,
   Building,
 } from "lucide-react";
-import { MOCK_SALARIES, MOCK_EMPLOYEES } from "@/lib/mock-data";
-import { SalaryRecord } from "@/types";
+import { SalaryRecord, Employee } from "@/types";
 import { formatFCFA } from "@/lib/utils";
+import {
+  getStoredSalaries,
+  getStoredEmployees,
+  saveAndSyncSalary,
+  syncSalariesFromSupabase,
+  syncEmployeesFromSupabase,
+  AVENIDA_DATA_UPDATED_EVENT,
+} from "@/lib/realtime-store";
 
 export default function SalariesPage() {
-  const [salaries, setSalaries] = useState<SalaryRecord[]>(MOCK_SALARIES);
+  const [salaries, setSalaries] = useState<SalaryRecord[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [sectorFilter, setSectorFilter] = useState("ALL");
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const [newSal, setNewSal] = useState({
-    employee_id: MOCK_EMPLOYEES[0]?.id,
+    employee_id: "",
     period_month: "Octobre 2026",
     base_salary: 300000,
     bonuses: 25000,
     cnss_deduction: 12000,
     payment_method: "Virement Bancaire" as any,
   });
+
+  useEffect(() => {
+    const init = async () => {
+      const stored = getStoredSalaries();
+      setSalaries(stored);
+      const emps = getStoredEmployees();
+      setEmployees(emps);
+      if (emps.length > 0) {
+        setNewSal((prev) => ({
+          ...prev,
+          employee_id: emps[0].id,
+          base_salary: emps[0].base_salary || 250000,
+        }));
+      }
+
+      await syncEmployeesFromSupabase();
+      await syncSalariesFromSupabase();
+    };
+    init();
+
+    const handler = () => {
+      setSalaries(getStoredSalaries());
+      setEmployees(getStoredEmployees());
+    };
+    window.addEventListener(AVENIDA_DATA_UPDATED_EVENT, handler);
+    return () => window.removeEventListener(AVENIDA_DATA_UPDATED_EVENT, handler);
+  }, []);
 
   const totalNet = salaries.reduce((acc, s) => acc + s.net_payable, 0);
   const ecoleNet = salaries
@@ -51,14 +86,15 @@ export default function SalariesPage() {
     return matchSearch && matchSector;
   });
 
-  const handleAddSalary = (e: React.FormEvent) => {
+  const handleAddSalary = async (e: React.FormEvent) => {
     e.preventDefault();
-    const emp = MOCK_EMPLOYEES.find((e) => e.id === newSal.employee_id) || MOCK_EMPLOYEES[0];
+    const emp = employees.find((e) => e.id === newSal.employee_id) || employees[0];
+    if (!emp) return;
     const net = Number(newSal.base_salary) + Number(newSal.bonuses) - Number(newSal.cnss_deduction);
 
     const added: SalaryRecord = {
       id: `sal-${Date.now()}`,
-      slip_ref: `PAY-2026-10-${String(salaries.length + 5).padStart(2, "0")}`,
+      slip_ref: `PAY-${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-${String(salaries.length + 1).padStart(3, "0")}`,
       employee_id: emp.id,
       employee_name: `${emp.first_name} ${emp.last_name}`,
       employee_matricule: emp.matricule,
@@ -74,7 +110,8 @@ export default function SalariesPage() {
       status: "payé",
     };
 
-    setSalaries([added, ...salaries]);
+    const updated = await saveAndSyncSalary(added);
+    setSalaries(updated);
     setIsModalOpen(false);
   };
 
@@ -253,7 +290,7 @@ export default function SalariesPage() {
                 <select
                   value={newSal.employee_id}
                   onChange={(e) => {
-                    const emp = MOCK_EMPLOYEES.find((m) => m.id === e.target.value);
+                    const emp = employees.find((m) => m.id === e.target.value);
                     setNewSal({
                       ...newSal,
                       employee_id: e.target.value,
@@ -262,7 +299,7 @@ export default function SalariesPage() {
                   }}
                   className="form-input-avenida"
                 >
-                  {MOCK_EMPLOYEES.map((e) => (
+                  {employees.map((e) => (
                     <option key={e.id} value={e.id}>
                       [{e.sector.toUpperCase()}] {e.last_name} {e.first_name} - {e.role_title}
                     </option>

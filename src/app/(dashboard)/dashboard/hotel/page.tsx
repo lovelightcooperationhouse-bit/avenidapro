@@ -22,6 +22,7 @@ import { HotelReceiptModal } from "@/components/shared/HotelReceiptModal";
 import {
   getStoredRooms,
   saveAndSyncRoom,
+  syncRoomsFromSupabase,
   broadcastDataChange,
   AVENIDA_DATA_UPDATED_EVENT,
 } from "@/lib/realtime-store";
@@ -66,6 +67,7 @@ export default function HotelRoomsPage() {
 
   useEffect(() => {
     refreshRooms();
+    syncRoomsFromSupabase().then(() => refreshRooms());
     window.addEventListener(AVENIDA_DATA_UPDATED_EVENT, refreshRooms);
     window.addEventListener("storage", refreshRooms);
     return () => {

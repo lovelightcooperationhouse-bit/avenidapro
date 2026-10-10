@@ -10,6 +10,8 @@ import {
   MOCK_RESERVATIONS,
   MOCK_ABSENCES,
   MOCK_LATES,
+  MOCK_SALARIES,
+  MOCK_INVENTORY,
 } from "@/lib/mock-data";
 import {
   Student,
@@ -17,11 +19,14 @@ import {
   HotelCustomer,
   FinancialEntry,
   HotelRoom,
+  RoomStatus,
   PaymentReceipt,
   HotelReservation,
   DiplomeCode,
   AbsenceTicket,
   LateTicket,
+  SalaryRecord,
+  InventoryItem,
 } from "@/types";
 import { createClient } from "@/lib/supabase/client";
 import { notifyDirector } from "@/lib/notifications";
@@ -73,9 +78,7 @@ export function getStoredStudents(): Student[] {
     if (!raw) return MOCK_STUDENTS;
     const parsed = JSON.parse(raw) as Student[];
     if (!Array.isArray(parsed) || parsed.length === 0) return MOCK_STUDENTS;
-    const customMatricules = new Set(parsed.map((s) => s.registration_number));
-    const mocks = MOCK_STUDENTS.filter((m) => !customMatricules.has(m.registration_number));
-    return [...parsed, ...mocks];
+    return parsed;
   } catch (err) {
     console.warn("Erreur lecture élèves locaux:", err);
     return MOCK_STUDENTS;
@@ -115,13 +118,16 @@ export async function syncStudentsFromSupabase(): Promise<Student[]> {
       uploaded_documents: row.uploaded_documents || {},
     }));
 
-    // Fusionner les élèves distants avec les locaux existants
+    // Fusionner avec les élèves locaux non-mocks
     const current = getStoredStudents();
     const remoteMatricules = new Set(remoteStudents.map((s) => s.registration_number));
-    const merged = [
-      ...remoteStudents,
-      ...current.filter((s) => !remoteMatricules.has(s.registration_number)),
-    ];
+    const nonMockLocal = current.filter(
+      (s) =>
+        !remoteMatricules.has(s.registration_number) &&
+        s.registration_number !== "801AVN-24" &&
+        s.registration_number !== "802AVN-24"
+    );
+    const merged = [...remoteStudents, ...nonMockLocal];
 
     safeSetStorage("avenida_custom_students", merged);
     broadcastDataChange();
@@ -644,12 +650,35 @@ export function getStoredRooms(): HotelRoom[] {
     if (!raw) return MOCK_ROOMS;
     const parsed = JSON.parse(raw) as HotelRoom[];
     if (!Array.isArray(parsed) || parsed.length === 0) return MOCK_ROOMS;
-    const customIds = new Set(parsed.map((r) => r.id));
-    const mocks = MOCK_ROOMS.filter((m) => !customIds.has(m.id));
-    return [...parsed, ...mocks];
+    return parsed;
   } catch (err) {
     console.warn("Erreur lecture chambres locales:", err);
     return MOCK_ROOMS;
+  }
+}
+
+export async function syncRoomsFromSupabase(): Promise<HotelRoom[]> {
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase.from("rooms").select("*");
+    if (error || !data || data.length === 0) return getStoredRooms();
+
+    const remoteRooms: HotelRoom[] = data.map((row: any) => ({
+      id: row.id || `rm-${row.room_number}`,
+      room_number: row.room_number,
+      floor: Number(row.floor) || 1,
+      room_type: row.room_type || "Chambre Standard Découverte",
+      price_per_night: Number(row.price_per_night) || 25000,
+      status: (row.status || "disponible") as RoomStatus,
+      current_guest: row.current_guest || undefined,
+    }));
+
+    safeSetStorage("avenida_custom_rooms", remoteRooms);
+    broadcastDataChange();
+    return remoteRooms;
+  } catch (err) {
+    console.warn("Sync Supabase chambres échouée:", err);
+    return getStoredRooms();
   }
 }
 
@@ -693,12 +722,48 @@ export function getStoredReceipts(): PaymentReceipt[] {
     if (!raw) return MOCK_RECEIPTS;
     const parsed = JSON.parse(raw) as PaymentReceipt[];
     if (!Array.isArray(parsed) || parsed.length === 0) return MOCK_RECEIPTS;
-    const customIds = new Set(parsed.map((r) => r.id));
-    const mocks = MOCK_RECEIPTS.filter((m) => !customIds.has(m.id));
-    return [...parsed, ...mocks];
+    return parsed;
   } catch (err) {
     console.warn("Erreur lecture reçus locaux:", err);
     return MOCK_RECEIPTS;
+  }
+}
+
+export async function syncReceiptsFromSupabase(): Promise<PaymentReceipt[]> {
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase.from("fee_payments").select("*");
+    if (error || !data || data.length === 0) return getStoredReceipts();
+
+    const remote: PaymentReceipt[] = data.map((row: any) => ({
+      id: row.id || `rec-${row.receipt_number}`,
+      reference: row.receipt_number,
+      student_name: row.student_name,
+      student_matricule: row.student_matricule,
+      class_name: row.class_name || "BTS",
+      designation: row.designation || "Frais d'écolage",
+      amount_paid: Number(row.amount) || 0,
+      total_due: Number(row.total_due) || 0,
+      remaining_due: Number(row.remaining_due) || 0,
+      depositor_name: row.depositor_name || "",
+      depositor_id_card: row.depositor_id_card || "",
+      depositor_phone: row.depositor_phone || "",
+      depositor_role: row.depositor_role || "Parent",
+      payment_method: row.payment_method || "Espèces",
+      site: row.site || "LOMÉ",
+      date: row.payment_date || row.created_at || new Date().toISOString().substring(0, 10),
+      cashier_name: row.cashier_name || "Caisse Avenida",
+    }));
+
+    const current = getStoredReceipts();
+    const remoteRefs = new Set(remote.map((r) => r.reference));
+    const merged = [...remote, ...current.filter((c) => !remoteRefs.has(c.reference))];
+    safeSetStorage("avenida_custom_receipts", merged);
+    broadcastDataChange();
+    return merged;
+  } catch (err) {
+    console.warn("Sync Supabase reçus échouée:", err);
+    return getStoredReceipts();
   }
 }
 
@@ -753,12 +818,38 @@ export function getStoredAbsences(): AbsenceTicket[] {
     if (!raw) return MOCK_ABSENCES;
     const parsed = JSON.parse(raw) as AbsenceTicket[];
     if (!Array.isArray(parsed) || parsed.length === 0) return MOCK_ABSENCES;
-    const customIds = new Set(parsed.map((a) => a.id));
-    const mocks = MOCK_ABSENCES.filter((m) => !customIds.has(m.id));
-    return [...parsed, ...mocks];
+    return parsed;
   } catch (err) {
     console.warn("Erreur lecture absences locales:", err);
     return MOCK_ABSENCES;
+  }
+}
+
+export async function syncAbsencesFromSupabase(): Promise<AbsenceTicket[]> {
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase.from("student_absences").select("*");
+    if (error || !data || data.length === 0) return getStoredAbsences();
+
+    const remote: AbsenceTicket[] = data.map((row: any, i: number) => ({
+      id: row.id || `abs-${row.ticket_number || i}`,
+      ticket_number: Number(String(row.ticket_number).replace(/\D/g, "")) || i + 1,
+      student_name: row.student_name || "Élève",
+      class_name: row.class_name || "Formation Hôtelière",
+      start_date: row.start_date || new Date().toISOString(),
+      end_date: row.end_date || new Date().toISOString(),
+      reason: row.reason || "",
+      is_authorized: Boolean(row.is_justified),
+      parent_justified: Boolean(row.is_justified),
+      visa_vie_scolaire: Boolean(row.visa_vie_scolaire),
+    }));
+
+    safeSetStorage("avenida_custom_absences", remote);
+    broadcastDataChange();
+    return remote;
+  } catch (err) {
+    console.warn("Sync Supabase absences échouée:", err);
+    return getStoredAbsences();
   }
 }
 
@@ -774,6 +865,8 @@ export async function saveAndSyncAbsence(ticket: AbsenceTicket): Promise<Absence
     const supabase = createClient();
     await supabase.from("student_absences").insert({
       ticket_number: `ABS-${ticket.ticket_number}`,
+      student_name: ticket.student_name,
+      class_name: ticket.class_name,
       start_date: new Date().toISOString(),
       end_date: new Date().toISOString(),
       reason: ticket.reason,
@@ -801,12 +894,37 @@ export function getStoredLates(): LateTicket[] {
     if (!raw) return MOCK_LATES;
     const parsed = JSON.parse(raw) as LateTicket[];
     if (!Array.isArray(parsed) || parsed.length === 0) return MOCK_LATES;
-    const customIds = new Set(parsed.map((l) => l.id));
-    const mocks = MOCK_LATES.filter((m) => !customIds.has(m.id));
-    return [...parsed, ...mocks];
+    return parsed;
   } catch (err) {
     console.warn("Erreur lecture retards locaux:", err);
     return MOCK_LATES;
+  }
+}
+
+export async function syncLatesFromSupabase(): Promise<LateTicket[]> {
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase.from("student_lates").select("*");
+    if (error || !data || data.length === 0) return getStoredLates();
+
+    const remote: LateTicket[] = data.map((row: any, i: number) => ({
+      id: row.id || `lat-${row.ticket_number || i}`,
+      ticket_number: Number(String(row.ticket_number).replace(/\D/g, "")) || i + 1,
+      student_name: row.student_name || "Élève",
+      class_name: row.class_name || "Formation Hôtelière",
+      duration_minutes: Number(row.duration_minutes) || 15,
+      reason: row.reason || "",
+      destination: row.orientation || "classe",
+      visa_vie_scolaire: true,
+      date: row.date || new Date().toISOString(),
+    }));
+
+    safeSetStorage("avenida_custom_lates", remote);
+    broadcastDataChange();
+    return remote;
+  } catch (err) {
+    console.warn("Sync Supabase retards échouée:", err);
+    return getStoredLates();
   }
 }
 
@@ -822,6 +940,8 @@ export async function saveAndSyncLate(ticket: LateTicket): Promise<LateTicket[]>
     const supabase = createClient();
     await supabase.from("student_lates").insert({
       ticket_number: `RET-${ticket.ticket_number}`,
+      student_name: ticket.student_name,
+      class_name: ticket.class_name,
       date: new Date().toISOString().split("T")[0],
       duration_minutes: ticket.duration_minutes,
       reason: ticket.reason,
@@ -836,6 +956,217 @@ export async function saveAndSyncLate(ticket: LateTicket): Promise<LateTicket[]>
     `Billet de Retard : ${ticket.student_name} (${ticket.duration_minutes} min)`,
     `Classe : ${ticket.class_name} • Motif : ${ticket.reason}`
   );
+
+  broadcastDataChange();
+  return updatedList;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 9. SALAIRES & BULLETINS DE PAIE
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function getStoredSalaries(): SalaryRecord[] {
+  if (typeof window === "undefined") return MOCK_SALARIES;
+  try {
+    const raw = localStorage.getItem("avenida_custom_salaries");
+    if (!raw) return MOCK_SALARIES;
+    const parsed = JSON.parse(raw) as SalaryRecord[];
+    if (!Array.isArray(parsed) || parsed.length === 0) return MOCK_SALARIES;
+    const customRefs = new Set(parsed.map((s) => s.slip_ref));
+    const mocks = MOCK_SALARIES.filter((m) => !customRefs.has(m.slip_ref));
+    return [...parsed, ...mocks];
+  } catch (err) {
+    console.warn("Erreur lecture salaires locaux:", err);
+    return MOCK_SALARIES;
+  }
+}
+
+export async function syncSalariesFromSupabase(): Promise<SalaryRecord[]> {
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase.from("salary_records").select("*");
+    if (error || !data || data.length === 0) return getStoredSalaries();
+
+    const remote: SalaryRecord[] = data.map((row: any) => ({
+      id: row.id,
+      slip_ref: row.slip_ref,
+      employee_id: row.employee_id,
+      employee_name: row.employee_name,
+      employee_matricule: row.employee_matricule || row.matricule || "",
+      sector: (row.sector || "ecole") as "ecole" | "hotel",
+      role_title: row.role_title || row.position || "",
+      period_month: row.period_month || row.pay_period || "",
+      base_salary: Number(row.base_salary) || 0,
+      bonuses: Number(row.bonuses || row.allowances) || 0,
+      cnss_deduction: Number(row.cnss_deduction || row.deductions) || 0,
+      net_payable: Number(row.net_payable || row.net_salary) || 0,
+      payment_method: row.payment_method || "Virement Bancaire",
+      payment_date: row.payment_date || new Date().toISOString().split("T")[0],
+      status: (row.status || "payé") as "payé" | "validé" | "en_attente",
+    }));
+
+    const current = getStoredSalaries();
+    const remoteRefs = new Set(remote.map((s) => s.slip_ref));
+    const merged = [...remote, ...current.filter((s) => !remoteRefs.has(s.slip_ref))];
+    safeSetStorage("avenida_custom_salaries", merged);
+    broadcastDataChange();
+    return merged;
+  } catch (err) {
+    console.warn("Sync Supabase salaires échouée:", err);
+    return getStoredSalaries();
+  }
+}
+
+export async function saveAndSyncSalary(record: SalaryRecord): Promise<SalaryRecord[]> {
+  const current = getStoredSalaries();
+  const filtered = current.filter((s) => s.id !== record.id && s.slip_ref !== record.slip_ref);
+  const updatedList = [record, ...filtered];
+  safeSetStorage("avenida_custom_salaries", updatedList);
+
+  try {
+    const supabase = createClient();
+    const { error } = await supabase.from("salary_records").upsert(
+      {
+        slip_ref: record.slip_ref,
+        employee_id: record.employee_id,
+        employee_name: record.employee_name,
+        employee_matricule: record.employee_matricule,
+        sector: record.sector,
+        role_title: record.role_title,
+        period_month: record.period_month,
+        pay_period: record.period_month,
+        base_salary: record.base_salary,
+        bonuses: record.bonuses,
+        allowances: record.bonuses,
+        cnss_deduction: record.cnss_deduction,
+        deductions: record.cnss_deduction,
+        net_payable: record.net_payable,
+        net_salary: record.net_payable,
+        payment_method: record.payment_method,
+        payment_date: record.payment_date,
+        status: record.status,
+      },
+      { onConflict: "slip_ref" }
+    );
+    if (error) console.error("❌ Erreur enregistrement Supabase (salaires) :", error.message);
+    else console.log("✅ Bulletin de paie synchronisé dans Supabase :", record.slip_ref);
+  } catch (err) {
+    console.warn("Sync Supabase salaire non bloquante:", err);
+  }
+
+  notifyDirector(
+    "employee",
+    `Bulletin de Paie Émis : ${record.employee_name}`,
+    `Réf ${record.slip_ref} • Net versé : ${record.net_payable.toLocaleString()} F CFA • Période : ${record.period_month}`
+  );
+
+  broadcastDataChange();
+  return updatedList;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 10. STOCK & INVENTAIRE
+// ─────────────────────────────────────────────────────────────────────────────
+export function getStoredInventory(): InventoryItem[] {
+  if (typeof window === "undefined") return MOCK_INVENTORY;
+  try {
+    const raw = localStorage.getItem("avenida_custom_inventory");
+    if (!raw) return MOCK_INVENTORY;
+    const parsed = JSON.parse(raw) as InventoryItem[];
+    if (!Array.isArray(parsed) || parsed.length === 0) return MOCK_INVENTORY;
+    return parsed;
+  } catch (err) {
+    console.warn("Erreur lecture inventaire local:", err);
+    return MOCK_INVENTORY;
+  }
+}
+
+export async function syncInventoryFromSupabase(): Promise<InventoryItem[]> {
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase.from("products").select("*");
+    if (error || !data || data.length === 0) return getStoredInventory();
+
+    const remote: InventoryItem[] = data.map((row: any) => ({
+      id: row.id,
+      code: row.sku || `STK-${row.id.slice(0, 6)}`,
+      name: row.name || "",
+      category: row.category || "Cuisine & Épicerie",
+      quantity: Number(row.current_quantity) || 0,
+      unit: row.unit || "pièce",
+      min_alert_threshold: Number(row.minimum_stock_alert) || 5,
+      unit_price: Number(row.average_cost_price) || 0,
+      supplier: row.supplier || "",
+      last_restock_date: row.last_restock_date || new Date().toISOString().split("T")[0],
+      location: row.location || "Économat Principal",
+    }));
+
+    const current = getStoredInventory();
+    const remoteCodes = new Set(remote.map((i) => i.code));
+    const merged = [...remote, ...current.filter((i) => !remoteCodes.has(i.code))];
+    safeSetStorage("avenida_custom_inventory", merged);
+    broadcastDataChange();
+    return merged;
+  } catch (err) {
+    console.warn("Sync Supabase inventaire échouée:", err);
+    return getStoredInventory();
+  }
+}
+
+export async function saveAndSyncInventoryItem(item: InventoryItem): Promise<InventoryItem[]> {
+  const current = getStoredInventory();
+  const exists = current.some((i) => i.id === item.id || i.code === item.code);
+  const updatedList = exists
+    ? current.map((i) => (i.id === item.id || i.code === item.code ? item : i))
+    : [item, ...current];
+  safeSetStorage("avenida_custom_inventory", updatedList);
+
+  try {
+    const supabase = createClient();
+    const { error } = await supabase.from("products").upsert(
+      {
+        sku: item.code,
+        name: item.name,
+        category: item.category,
+        current_quantity: item.quantity,
+        unit: item.unit,
+        minimum_stock_alert: item.min_alert_threshold,
+        average_cost_price: item.unit_price,
+        supplier: item.supplier,
+        last_restock_date: item.last_restock_date,
+        location: item.location,
+      },
+      { onConflict: "sku" }
+    );
+    if (error) console.error("❌ Erreur enregistrement Supabase (produits) :", error.message);
+    else console.log("✅ Article inventaire synchronisé dans Supabase (products) :", item.code);
+  } catch (err) {
+    console.warn("Sync Supabase inventaire non bloquante:", err);
+  }
+
+  broadcastDataChange();
+  return updatedList;
+}
+
+export async function updateInventoryQuantity(
+  itemCode: string,
+  newQuantity: number
+): Promise<InventoryItem[]> {
+  const current = getStoredInventory();
+  const updatedList = current.map((i) =>
+    i.code === itemCode ? { ...i, quantity: newQuantity } : i
+  );
+  safeSetStorage("avenida_custom_inventory", updatedList);
+
+  try {
+    const supabase = createClient();
+    await supabase
+      .from("products")
+      .update({ current_quantity: newQuantity })
+      .eq("sku", itemCode);
+  } catch (err) {
+    console.warn("Sync Supabase mise à jour quantité non bloquante:", err);
+  }
 
   broadcastDataChange();
   return updatedList;

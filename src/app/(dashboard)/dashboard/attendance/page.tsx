@@ -6,8 +6,11 @@ import {
   getStoredStudents,
   getStoredAbsences,
   saveAndSyncAbsence,
+  syncAbsencesFromSupabase,
   getStoredLates,
   saveAndSyncLate,
+  syncLatesFromSupabase,
+  syncStudentsFromSupabase,
   AVENIDA_DATA_UPDATED_EVENT,
 } from "@/lib/realtime-store";
 import { useState, useEffect } from "react";
@@ -39,6 +42,12 @@ export default function AttendancePage() {
 
   useEffect(() => {
     refreshAll();
+    Promise.all([
+      syncStudentsFromSupabase(),
+      syncAbsencesFromSupabase(),
+      syncLatesFromSupabase(),
+    ]).then(() => refreshAll());
+
     window.addEventListener(AVENIDA_DATA_UPDATED_EVENT, refreshAll);
     window.addEventListener("storage", refreshAll);
     return () => {

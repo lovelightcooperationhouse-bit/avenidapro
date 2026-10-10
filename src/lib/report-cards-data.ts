@@ -1,5 +1,7 @@
 import { StudentReportCard, SubjectGrade, DiplomeCode } from "@/types";
 import { ALL_REAL_STUDENTS } from "@/lib/real-students";
+import { createClient } from "@/lib/supabase/client";
+import { getStoredStudents } from "@/lib/realtime-store";
 
 // =========================================================================
 // MATIÈRES ET PROGRAMMES OFFICIELS DE FORMATION — AVENIDA LOMÉ
@@ -515,11 +517,106 @@ export function getReportCardsFromStorage(): StudentReportCard[] {
       return INITIAL_REPORT_CARDS;
     }
     const parsed = JSON.parse(data);
-    const limited = Array.isArray(parsed) && parsed.length > 2 ? parsed.slice(0, 2) : parsed;
-    return calculateClassRankings(limited);
+    if (!Array.isArray(parsed) || parsed.length === 0) return INITIAL_REPORT_CARDS;
+    return calculateClassRankings(parsed);
   } catch (err) {
     console.error("Erreur lecture local storage report cards:", err);
     return INITIAL_REPORT_CARDS;
+  }
+}
+
+export async function syncReportCardsFromSupabase(): Promise<StudentReportCard[]> {
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase.from("report_cards").select("*");
+    if (error || !data || data.length === 0) return getReportCardsFromStorage();
+
+    const remote: StudentReportCard[] = data.map((row: any) => ({
+      id: row.id,
+      bulletin_number: row.bulletin_number,
+      student_id: row.student_id || row.student_matricule,
+      student_name: row.student_name,
+      student_matricule: row.student_matricule,
+      student_number: row.student_number || row.student_matricule,
+      gender: row.gender || "M",
+      birth_date: row.birth_date || "",
+      birth_place: row.birth_place || "",
+      nationality: row.nationality || "Togolaise",
+      photo_url: row.photo_url || "/avatars/default.png",
+      class_name: row.class_name,
+      program_code: row.program_code || "BTS",
+      academic_year: row.academic_year,
+      period: row.period || "Semestre 1",
+      total_students: Number(row.total_students) || 1,
+      subjects: Array.isArray(row.subjects_data) ? row.subjects_data : [],
+      total_coefficients: Array.isArray(row.subjects_data)
+        ? row.subjects_data.reduce((s: number, sub: any) => s + (Number(sub.coefficient) || 1), 0)
+        : 1,
+      total_points: Array.isArray(row.subjects_data)
+        ? row.subjects_data.reduce(
+            (s: number, sub: any) => s + (Number(sub.score) || 0) * (Number(sub.coefficient) || 1),
+            0
+          )
+        : 0,
+      general_average: Number(row.general_average) || 0,
+      class_general_average: Number(row.class_general_average) || 12,
+      class_highest_average: Number(row.class_highest_average) || 16,
+      class_lowest_average: Number(row.class_lowest_average) || 8,
+      rank: Number(row.rank) || 1,
+      rank_display: `${row.rank || 1}e`,
+      appreciation_mention: row.mention || "Bien",
+      council_decision: row.council_decision || "Passage accordé",
+      absences_unjustified: Number(row.absences_unjustified) || 0,
+      absences_justified: Number(row.absences_justified) || 0,
+      lates_count: Number(row.lates_count) || 0,
+      conduct_appreciation: row.conduct_appreciation || "Bonne conduite",
+      principal_teacher_name: row.principal_teacher_name || "",
+      principal_teacher_comment: row.principal_teacher_comment || "",
+      director_comment: row.director_comment || "",
+      issue_date: row.issue_date || new Date().toLocaleDateString("fr-FR"),
+    }));
+
+    const current = getReportCardsFromStorage();
+    const remoteNums = new Set(remote.map((r) => r.bulletin_number));
+    const merged = [...remote, ...current.filter((c) => !remoteNums.has(c.bulletin_number))];
+    saveReportCardsToStorage(merged);
+    return merged;
+  } catch (err) {
+    console.warn("Sync Supabase bulletins échouée:", err);
+    return getReportCardsFromStorage();
+  }
+}
+
+export async function saveAndSyncReportCardToSupabase(card: StudentReportCard): Promise<void> {
+  try {
+    const supabase = createClient();
+    const { error } = await supabase.from("report_cards").upsert(
+      {
+        bulletin_number: card.bulletin_number,
+        student_name: card.student_name,
+        student_matricule: card.student_matricule,
+        class_name: card.class_name,
+        program_code: card.program_code,
+        academic_year: card.academic_year,
+        period: card.period,
+        general_average: card.general_average,
+        rank: card.rank,
+        total_students: card.total_students,
+        mention: card.appreciation_mention,
+        council_decision: card.council_decision,
+        principal_teacher_name: card.principal_teacher_name,
+        principal_teacher_comment: card.principal_teacher_comment,
+        director_comment: card.director_comment,
+        conduct_appreciation: card.conduct_appreciation,
+        issue_date: card.issue_date,
+        subjects_data: card.subjects,
+      },
+      { onConflict: "bulletin_number" }
+    );
+    if (error) console.error("❌ Erreur Supabase report_cards :", error.message);
+    else console.log("✅ Bulletin synchronisé dans Supabase :", card.bulletin_number);
+  } catch (err) {
+    console.warn("Sync Supabase bulletin non bloquante :", err);
   }
 }
 
@@ -553,6 +650,8 @@ export function upsertReportCard(card: StudentReportCard): StudentReportCard[] {
 
   const ranked = calculateClassRankings(updated);
   saveReportCardsToStorage(ranked);
+  // Synchronisation asynchrone Supabase
+  saveAndSyncReportCardToSupabase(card);
   return ranked;
 }
 
@@ -561,7 +660,11 @@ export function createBlankReportCardForStudent(
   period: StudentReportCard["period"] = "Semestre 1",
   academicYear: string = "2024 - 2025"
 ): StudentReportCard {
-  const st = ALL_REAL_STUDENTS.find((s) => s.id === studentId) || ALL_REAL_STUDENTS[0];
+  const allSt = getStoredStudents();
+  const st =
+    allSt.find((s) => s.id === studentId || s.registration_number === studentId) ||
+    allSt[0] ||
+    ALL_REAL_STUDENTS[0];
   const progCode = (st.program_code || "BTS") as DiplomeCode;
   const curriculum = CURRICULUM_BY_PROGRAM[progCode] || CURRICULUM_BY_PROGRAM.BTS;
 

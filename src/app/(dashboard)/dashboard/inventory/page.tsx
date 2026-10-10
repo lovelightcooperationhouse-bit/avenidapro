@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Boxes,
   AlertTriangle,
@@ -13,12 +13,17 @@ import {
   X,
   Warehouse,
 } from "lucide-react";
-import { MOCK_INVENTORY } from "@/lib/mock-data";
 import { InventoryItem } from "@/types";
 import { formatFCFA } from "@/lib/utils";
+import {
+  getStoredInventory,
+  saveAndSyncInventoryItem,
+  syncInventoryFromSupabase,
+  AVENIDA_DATA_UPDATED_EVENT,
+} from "@/lib/realtime-store";
 
 export default function InventoryPage() {
-  const [items, setItems] = useState<InventoryItem[]>(MOCK_INVENTORY);
+  const [items, setItems] = useState<InventoryItem[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("ALL");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -34,6 +39,20 @@ export default function InventoryPage() {
     location: "Magasin Cuisine",
   });
 
+  useEffect(() => {
+    const init = async () => {
+      setItems(getStoredInventory());
+      await syncInventoryFromSupabase();
+    };
+    init();
+
+    const handler = () => {
+      setItems(getStoredInventory());
+    };
+    window.addEventListener(AVENIDA_DATA_UPDATED_EVENT, handler);
+    return () => window.removeEventListener(AVENIDA_DATA_UPDATED_EVENT, handler);
+  }, []);
+
   const totalValue = items.reduce((acc, i) => acc + i.quantity * i.unit_price, 0);
   const alertCount = items.filter((i) => i.quantity <= i.min_alert_threshold).length;
 
@@ -46,7 +65,7 @@ export default function InventoryPage() {
     return matchSearch && matchCategory;
   });
 
-  const handleAddItem = (e: React.FormEvent) => {
+  const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newItem.name) return;
 
@@ -64,8 +83,19 @@ export default function InventoryPage() {
       location: newItem.location,
     };
 
-    setItems([added, ...items]);
+    const updated = await saveAndSyncInventoryItem(added);
+    setItems(updated);
     setIsModalOpen(false);
+    setNewItem({
+      name: "",
+      category: "Cuisine & Épicerie",
+      quantity: 10,
+      unit: "kg",
+      min_alert_threshold: 5,
+      unit_price: 15000,
+      supplier: "Marché Central Lomé",
+      location: "Magasin Cuisine",
+    });
   };
 
   return (

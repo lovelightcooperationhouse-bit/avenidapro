@@ -12,7 +12,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { StudentReportCard, SubjectGrade, Student, DiplomeCode } from "@/types";
-import { ALL_REAL_STUDENTS } from "@/lib/real-students";
+import { getStoredStudents } from "@/lib/realtime-store";
 import {
   CURRICULUM_BY_PROGRAM,
   getMentionAndDecision,
@@ -34,8 +34,9 @@ export function GradeEntryModal({
   initialReportCard,
   defaultStudentId,
 }: GradeEntryModalProps) {
+  const students = getStoredStudents();
   const [selectedStudentId, setSelectedStudentId] = useState<string>(
-    initialReportCard?.student_id || defaultStudentId || ALL_REAL_STUDENTS[0].id
+    initialReportCard?.student_id || defaultStudentId || students[0]?.id || ""
   );
   const [selectedPeriod, setSelectedPeriod] = useState<StudentReportCard["period"]>(
     initialReportCard?.period || "Semestre 1"
@@ -115,7 +116,8 @@ export function GradeEntryModal({
   const { mention, decision } = getMentionAndDecision(liveAverage);
 
   const selectedStudent =
-    ALL_REAL_STUDENTS.find((s) => s.id === selectedStudentId) || ALL_REAL_STUDENTS[0];
+    students.find((s) => s.id === selectedStudentId || s.registration_number === selectedStudentId) ||
+    students[0];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -213,7 +215,7 @@ export function GradeEntryModal({
                 onChange={(e) => handleStudentChange(e.target.value)}
                 className="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0C356A]"
               >
-                {ALL_REAL_STUDENTS.map((st) => (
+                {students.map((st) => (
                   <option key={st.id} value={st.id}>
                     {st.last_name} {st.first_name} ({st.registration_number}) - {st.class_name}
                   </option>

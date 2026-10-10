@@ -26,7 +26,9 @@ import {
   getReportCardsFromStorage,
   upsertReportCard,
   calculateClassRankings,
+  syncReportCardsFromSupabase,
 } from "@/lib/report-cards-data";
+import { getStoredStudents } from "@/lib/realtime-store";
 import { ReportCardModal } from "@/components/shared/ReportCardModal";
 import { GradeEntryModal } from "@/components/shared/GradeEntryModal";
 
@@ -47,9 +49,10 @@ export default function GradesPage() {
 
   // Single grade entry modal state (Legacy tab)
   const [isSingleGradeModalOpen, setIsSingleGradeModalOpen] = useState(false);
+  const initialStudent = getStoredStudents()[0];
   const [newGrade, setNewGrade] = useState({
-    student_name: MOCK_STUDENTS[0]?.first_name + " " + MOCK_STUDENTS[0]?.last_name,
-    class_name: MOCK_STUDENTS[0]?.class_name || "BTS1 - Restauration",
+    student_name: initialStudent ? `${initialStudent.first_name} ${initialStudent.last_name}` : "Élève Avenida",
+    class_name: initialStudent?.class_name || "BTS1 - Restauration",
     subject: "Technologie Culinaire",
     evaluation_type: "Pratique Cuisine" as any,
     score: 15,
@@ -58,10 +61,15 @@ export default function GradesPage() {
     appreciation: "Bonne application des règles d'hygiène et de sécurité.",
   });
 
-  // Load report cards on mount
+  // Load report cards on mount and sync with Supabase
   useEffect(() => {
     const loaded = getReportCardsFromStorage();
     setReportCards(loaded);
+    syncReportCardsFromSupabase().then((remote) => {
+      if (remote && remote.length > 0) {
+        setReportCards(remote);
+      }
+    });
   }, []);
 
   // Available classes in report cards
