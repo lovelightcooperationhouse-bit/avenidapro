@@ -78,59 +78,7 @@ export default function StudentsPage() {
   const [newDocTitle, setNewDocTitle] = useState("");
   const [newDocCategory, setNewDocCategory] = useState("Dossier Scolaire");
 
-  // État de versement direct d'écolage
-  const [paymentModalStudent, setPaymentModalStudent] = useState<Student | null>(null);
-  const [paymentAmount, setPaymentAmount] = useState<number>(50000);
-  const [paymentDesignation, setPaymentDesignation] = useState("Frais de scolarité (Tranche suivante)");
-  const [paymentMethod, setPaymentMethod] = useState<string>("Espèces");
-  const [paymentDepositor, setPaymentDepositor] = useState("");
-  const [paymentPhone, setPaymentPhone] = useState("");
-  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
-  const [paymentSuccessReceipt, setPaymentSuccessReceipt] = useState<PaymentReceipt | null>(null);
 
-  const handleQuickPaymentSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!paymentModalStudent) return;
-    setIsProcessingPayment(true);
-
-    const ref = `#AV${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
-    const amt = Number(paymentAmount) || 0;
-    const newReceipt: PaymentReceipt = {
-      id: `rec-${Date.now()}`,
-      reference: ref,
-      student_name: `${paymentModalStudent.last_name} ${paymentModalStudent.first_name}`,
-      student_matricule: paymentModalStudent.registration_number,
-      class_name: paymentModalStudent.class_name.split(" ")[0] || "BTS",
-      designation: paymentDesignation,
-      amount_paid: amt,
-      total_due: paymentModalStudent.total_fee,
-      remaining_due: Math.max(0, paymentModalStudent.remaining_fee - amt),
-      depositor_name: paymentDepositor || paymentModalStudent.emergency_contact_name || "Parent d'Élève",
-      depositor_id_card: "TG-LOM-2024-9912",
-      depositor_phone: paymentPhone || paymentModalStudent.emergency_contact_phone || "+228 90 00 00 00",
-      depositor_role: "Parent / Tuteur",
-      payment_method: paymentMethod as any,
-      site: "LOMÉ",
-      date: new Date().toISOString().replace("T", " ").substring(0, 19),
-      cashier_name: "Caisse Scolaire Avenida Lomé",
-    };
-
-    await saveAndSyncReceipt(newReceipt);
-
-    const updatedRemaining = Math.max(0, paymentModalStudent.remaining_fee - amt);
-    const updatedPaid = paymentModalStudent.paid_fee + amt;
-    const updatedStud: Student = {
-      ...paymentModalStudent,
-      paid_fee: updatedPaid,
-      remaining_fee: updatedRemaining,
-    };
-    setSelectedStudent(updatedStud);
-    setAllStudents((prev) => prev.map((s) => (s.id === updatedStud.id ? updatedStud : s)));
-
-    setIsProcessingPayment(false);
-    setPaymentModalStudent(null);
-    setPaymentSuccessReceipt(newReceipt);
-  };
 
   const handleAttachStudentDocument = (file: File) => {
     if (!selectedStudent) return;
@@ -590,19 +538,14 @@ export default function StudentsPage() {
 
                     <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
                       <div className="inline-flex items-center gap-1.5">
-                        <button
-                          onClick={() => {
-                            setPaymentModalStudent(s);
-                            setPaymentAmount(Math.min(s.remaining_fee || 50000, 50000));
-                            setPaymentDepositor(s.emergency_contact_name || "");
-                            setPaymentPhone(s.emergency_contact_phone || "");
-                          }}
-                          className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-600 hover:text-white text-emerald-800 font-bold rounded-xl text-[11px] transition-all inline-flex items-center gap-1 shadow-2xs border border-emerald-200 active:scale-95 cursor-pointer"
-                          title="Encaisser un versement et déduire du solde d'écolage"
+                        <Link
+                          href="/dashboard/payments"
+                          className="px-2.5 py-1.5 bg-slate-50 hover:bg-[#0C356A] hover:text-white text-slate-700 font-bold rounded-xl text-[11px] transition-all inline-flex items-center gap-1 shadow-2xs border border-slate-200 active:scale-95 cursor-pointer"
+                          title="Consulter le dossier de cet élève à la Caisse Centrale (Gestion Trésorerie)"
                         >
-                          <CreditCard className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>Payer / Encaisser</span>
-                        </button>
+                          <CreditCard className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Situation Caisse</span>
+                        </Link>
                         <button
                           onClick={() => setSelectedEnrollmentStudent(s)}
                           className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-400 hover:text-slate-950 text-amber-900 font-bold rounded-xl text-[11px] transition-all inline-flex items-center gap-1 shadow-2xs border border-amber-200 active:scale-95 cursor-pointer"
@@ -794,19 +737,18 @@ export default function StudentsPage() {
                     </span>
                   </div>
                 </div>
-                {/* Bouton d'encaissement et déduction d'écolage */}
-                <button
-                  onClick={() => {
-                    setPaymentModalStudent(selectedStudent);
-                    setPaymentAmount(Math.min(selectedStudent.remaining_fee || 50000, 50000));
-                    setPaymentDepositor(selectedStudent.emergency_contact_name || "");
-                    setPaymentPhone(selectedStudent.emergency_contact_phone || "");
-                  }}
-                  className="mt-2.5 w-full py-2 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white rounded-xl text-xs font-black flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95 cursor-pointer"
-                >
-                  <CreditCard className="w-3.5 h-3.5 text-amber-300" />
-                  <span>Encaisser un Versement / Déduire du Reste d&apos;Écolage</span>
-                </button>
+                <div className="mt-2.5 p-3 bg-blue-50/70 border border-blue-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px]">
+                  <div className="flex items-center gap-2 text-[#0C356A] font-semibold">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>Statut financier certifié par la Caisse &amp; Trésorerie Centrale (Lecture seule Pôle Scolaire)</span>
+                  </div>
+                  <Link
+                    href="/dashboard/payments"
+                    className="px-3 py-1.5 bg-[#0C356A] hover:bg-[#164E87] text-white rounded-lg font-bold text-xs transition-colors shrink-0 text-center"
+                  >
+                    Guichet Caisse &rarr;
+                  </Link>
+                </div>
               </div>
 
               {/* Bilan Académique & Bulletin */}
@@ -1062,247 +1004,12 @@ export default function StudentsPage() {
           onClose={() => setStudentToEdit(null)}
           onSuccess={() => {
             setAllStudents(getStoredStudents());
-            if (selectedStudent?.id === studentToEdit.id) {
+            if (selectedStudent?.id === studentToEdit?.id) {
               const fresh = getStoredStudents().find((s) => s.id === studentToEdit.id);
               if (fresh) setSelectedStudent(fresh);
             }
           }}
         />
-      )}
-
-      {/* MODAL RAPIDE DE VERSEMENT D'ÉCOLAGE / DÉDUCTION DU SOLDE */}
-      {paymentModalStudent && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-lg w-full shadow-2xl border-2 border-emerald-200 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            {/* Header Modal */}
-            <div className="bg-gradient-to-r from-emerald-700 to-teal-800 text-white p-5 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center">
-                  <CreditCard className="w-5 h-5 text-amber-300" />
-                </div>
-                <div>
-                  <h3 className="font-serif font-black text-base leading-tight">
-                    Encaisser un Versement Scolaire
-                  </h3>
-                  <p className="text-xs text-emerald-100">
-                    Déduction immédiate dans la base de données Supabase
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setPaymentModalStudent(null)}
-                className="p-1.5 text-white/80 hover:text-white rounded-full hover:bg-white/10 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Formulaire de paiement */}
-            <form onSubmit={handleQuickPaymentSubmit} className="p-5 sm:p-6 space-y-4 text-xs">
-              {/* Infos élève */}
-              <div className="bg-emerald-50/70 p-3.5 rounded-2xl border border-emerald-200 flex items-center justify-between">
-                <div>
-                  <span className="text-[10px] text-slate-500 font-bold block uppercase">
-                    Élève bénéficiaire
-                  </span>
-                  <span className="font-black text-slate-900 text-sm">
-                    {paymentModalStudent.last_name} {paymentModalStudent.first_name}
-                  </span>
-                  <span className="text-[10px] text-slate-500 font-mono block">
-                    Matricule : {paymentModalStudent.registration_number} &bull; {paymentModalStudent.class_name}
-                  </span>
-                </div>
-                <div className="text-right">
-                  <span className="text-[10px] text-rose-600 font-bold block uppercase">
-                    Reste actuel à payer
-                  </span>
-                  <span className="font-mono font-black text-rose-700 text-sm">
-                    {formatFCFA(paymentModalStudent.remaining_fee)}
-                  </span>
-                  <span className="text-[9px] text-slate-400 block">
-                    Total dû : {formatFCFA(paymentModalStudent.total_fee)}
-                  </span>
-                </div>
-              </div>
-
-              {/* Montant versé */}
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">
-                  Montant à encaisser (F CFA) *
-                </label>
-                <input
-                  type="number"
-                  min="1000"
-                  step="1000"
-                  value={paymentAmount}
-                  onChange={(e) => setPaymentAmount(Number(e.target.value))}
-                  required
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl font-mono font-black text-base text-[#0C356A] focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  placeholder="Ex: 50000"
-                />
-                <div className="flex gap-2 mt-1.5">
-                  {[25000, 50000, 100000].map((quickAmt) => (
-                    <button
-                      key={quickAmt}
-                      type="button"
-                      onClick={() => setPaymentAmount(quickAmt)}
-                      className="px-2.5 py-1 bg-slate-100 hover:bg-emerald-100 text-slate-700 hover:text-emerald-900 rounded-lg text-[10px] font-bold transition-colors"
-                    >
-                      +{quickAmt.toLocaleString()} F
-                    </button>
-                  ))}
-                  {paymentModalStudent.remaining_fee > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setPaymentAmount(paymentModalStudent.remaining_fee)}
-                      className="px-2.5 py-1 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded-lg text-[10px] font-bold transition-colors ml-auto"
-                    >
-                      Régler la totalité ({formatFCFA(paymentModalStudent.remaining_fee)})
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Motif / Tranche */}
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">
-                  Désignation du paiement / Tranche *
-                </label>
-                <input
-                  type="text"
-                  value={paymentDesignation}
-                  onChange={(e) => setPaymentDesignation(e.target.value)}
-                  required
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  placeholder="Ex: Frais de scolarité - Tranche 2"
-                />
-              </div>
-
-              {/* Mode de règlement & déposant */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">
-                    Mode de règlement
-                  </label>
-                  <select
-                    value={paymentMethod}
-                    onChange={(e) => setPaymentMethod(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  >
-                    <option value="Espèces">Espèces (Caisse)</option>
-                    <option value="Virement bancaire">Virement bancaire</option>
-                    <option value="T-Money">T-Money</option>
-                    <option value="Flooz">Flooz</option>
-                    <option value="Chèque">Chèque</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">
-                    Déposant (Nom complet)
-                  </label>
-                  <input
-                    type="text"
-                    value={paymentDepositor}
-                    onChange={(e) => setPaymentDepositor(e.target.value)}
-                    placeholder="Nom du parent"
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  />
-                </div>
-              </div>
-
-              {/* Aperçu du nouveau solde */}
-              <div className="p-3 bg-slate-100 rounded-xl flex items-center justify-between text-[11px]">
-                <span className="text-slate-600 font-bold">Nouveau solde restant calculé :</span>
-                <span className="font-mono font-black text-emerald-800 text-sm">
-                  {formatFCFA(Math.max(0, paymentModalStudent.remaining_fee - paymentAmount))}
-                </span>
-              </div>
-
-              {/* Bouton de validation */}
-              <div className="pt-2 flex items-center justify-end gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setPaymentModalStudent(null)}
-                  className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-bold cursor-pointer transition-colors"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  disabled={isProcessingPayment || paymentAmount <= 0}
-                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black shadow-md transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2 cursor-pointer"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>
-                    {isProcessingPayment ? "Synchronisation Supabase..." : "Valider & Déduire l'Écolage"}
-                  </span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* CONFIRMATION DE SUCCÈS APRÈS VERSEMENT */}
-      {paymentSuccessReceipt && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 text-center shadow-2xl border-2 border-emerald-300 space-y-4 animate-in fade-in zoom-in-95 duration-200">
-            <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-inner">
-              <CheckCircle2 className="w-9 h-9" />
-            </div>
-            <div>
-              <h3 className="font-serif font-black text-lg text-[#0C356A]">
-                Versement Enregistré avec Succès !
-              </h3>
-              <p className="text-xs text-slate-600 mt-1">
-                Le montant de{" "}
-                <strong className="text-emerald-800 font-mono text-sm">
-                  {formatFCFA(paymentSuccessReceipt.amount_paid)}
-                </strong>{" "}
-                a été déduit du compte de l&apos;élève.
-              </p>
-            </div>
-
-            <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 text-left text-xs space-y-1.5">
-              <div className="flex justify-between">
-                <span className="text-slate-500">Réf. Reçu :</span>
-                <strong className="font-mono">{paymentSuccessReceipt.reference}</strong>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Élève :</span>
-                <strong>{paymentSuccessReceipt.student_name}</strong>
-              </div>
-              <div className="flex justify-between border-t border-slate-200 pt-1.5">
-                <span className="text-slate-500 font-bold">Nouveau Reste Dû :</span>
-                <strong className="text-rose-700 font-mono text-sm">
-                  {formatFCFA(paymentSuccessReceipt.remaining_due)}
-                </strong>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Statut :</span>
-                <strong className="text-emerald-700">
-                  {paymentSuccessReceipt.remaining_due === 0 ? "★ Totalement Soldé" : "Paiement Partiel"}
-                </strong>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-center gap-3 pt-2">
-              <Link
-                href="/dashboard/payments"
-                className="px-4 py-2 bg-[#0C356A] hover:bg-[#164E87] text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1.5"
-              >
-                <Printer className="w-3.5 h-3.5" />
-                <span>Voir / Imprimer le Reçu</span>
-              </Link>
-              <button
-                onClick={() => setPaymentSuccessReceipt(null)}
-                className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl text-xs font-bold transition-colors cursor-pointer"
-              >
-                Fermer
-              </button>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );

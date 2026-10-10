@@ -54,7 +54,7 @@ import {
   AVENIDA_DATA_UPDATED_EVENT,
 } from "@/lib/realtime-store";
 
-type ActiveSpace = "all" | "school" | "hotel";
+type ActiveSpace = "all" | "school" | "hotel" | "treasury";
 
 export default function DashboardPage() {
   const [activeSpace, setActiveSpace] = useState<ActiveSpace>("all");
@@ -104,6 +104,22 @@ export default function DashboardPage() {
     .filter((f) => f.category === "Hébergement Hôtel" || f.category === "Restauration & Bar")
     .filter((f) => f.type === "recette")
     .reduce((sum, f) => sum + f.amount, 0) || 180000;
+
+  // Métriques Scolaires & Situation Financière Certifiée par la Trésorerie
+  const totalSchoolCollected = studentsList.reduce((sum, s) => sum + (Number(s.paid_fee) || 0), 0);
+  const totalSchoolRemaining = studentsList.reduce((sum, s) => sum + (Number(s.remaining_fee) || 0), 0);
+  const totalSchoolTarget = studentsList.reduce((sum, s) => sum + (Number(s.total_fee) || 0), 0);
+  const schoolRecoveryRate = totalSchoolTarget > 0 ? Math.round((totalSchoolCollected / totalSchoolTarget) * 100) : 0;
+  const settledStudentsCount = studentsList.filter((s) => Number(s.remaining_fee) === 0).length;
+  const inProgressStudentsCount = studentsList.filter((s) => Number(s.paid_fee) > 0 && Number(s.remaining_fee) > 0).length;
+  const unpaidStudentsCount = studentsList.filter((s) => Number(s.paid_fee) === 0).length;
+
+  // Métriques Trésorerie & Caisse Globale
+  const totalFinancesDepenses = financesList
+    .filter((f) => f.type === "depense")
+    .reduce((sum, f) => sum + f.amount, 0);
+  const totalGlobalRevenue = totalSchoolCollected + totalHotelRevenue;
+  const netTreasuryBalance = totalGlobalRevenue - totalFinancesDepenses;
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -212,6 +228,18 @@ export default function DashboardPage() {
             {totalAvailableRooms} dispo
           </span>
         </button>
+
+        <button
+          onClick={() => setActiveSpace("treasury")}
+          className={`flex-1 w-full py-2.5 px-4 rounded-xl text-xs font-extrabold transition-all duration-200 flex items-center justify-center gap-2 group active:scale-98 ${
+            activeSpace === "treasury"
+              ? "bg-emerald-700 text-white shadow-md border border-emerald-700 -translate-y-0.5"
+              : "text-emerald-800 hover:bg-emerald-50 hover:-translate-y-0.5"
+          }`}
+        >
+          <CreditCard className="w-4 h-4 text-emerald-300 transition-transform duration-200 group-hover:scale-110 group-hover:rotate-6" />
+          <span>ESPACE 3 : CAISSE & TRÉSORERIE (Vert)</span>
+        </button>
       </div>
 
       {/* 3. CARTES KPI ESSENTIELLES (Adaptées à la sélection) */}
@@ -262,6 +290,43 @@ export default function DashboardPage() {
             trend={{ value: "+12% ce mois", isPositive: true }}
             badge="Pôle Hôtel"
           />
+        )}
+
+        {activeSpace === "treasury" && (
+          <>
+            <StatsCard
+              title="Recettes Globales Encaissées"
+              value={formatFCFA(totalGlobalRevenue)}
+              subtitle={`Scolarité : ${formatFCFA(totalSchoolCollected)} • Hôtel : ${formatFCFA(totalHotelRevenue)}`}
+              icon={TrendingUp}
+              variant="default"
+              badge="Caisse Centrale"
+            />
+            <StatsCard
+              title="Créances Scolarités Restantes"
+              value={formatFCFA(totalSchoolRemaining)}
+              subtitle={`${inProgressStudentsCount} partiels • ${unpaidStudentsCount} non commencés`}
+              icon={AlertCircle}
+              variant="hotel"
+              badge="Reste à Recouvrer"
+            />
+            <StatsCard
+              title="Taux Recouvrement Scolaire"
+              value={`${schoolRecoveryRate}%`}
+              subtitle={`${settledStudentsCount} élèves soldés sur ${totalStudents}`}
+              icon={CheckCircle2}
+              variant="school"
+              badge="Recouvrement"
+            />
+            <StatsCard
+              title="Solde Net Théorique Caisse"
+              value={formatFCFA(netTreasuryBalance)}
+              subtitle={`Total Dépenses : ${formatFCFA(totalFinancesDepenses)}`}
+              icon={CreditCard}
+              variant="default"
+              badge="Trésorerie"
+            />
+          </>
         )}
 
         {activeSpace === "all" && (
@@ -637,6 +702,76 @@ export default function DashboardPage() {
                   </div>
                 );
               })}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ========================================================
+          ESPACE 3 : PÔLE CAISSE & TRÉSORERIE (Cadre et Accent ÉMERAUDE)
+         ======================================================== */}
+      {(activeSpace === "all" || activeSpace === "treasury") && (
+        <section className="bg-white rounded-3xl border-2 border-emerald-200 shadow-xs overflow-hidden">
+          {/* Section Header: Emerald Band */}
+          <div className="bg-emerald-800 text-white p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
+                <CreditCard className="w-6 h-6 text-emerald-200" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-black tracking-wide font-serif">
+                    ESPACE CAISSE & TRÉSORERIE CENTRALE
+                  </h2>
+                  <span className="text-[10px] bg-emerald-500/40 text-emerald-100 font-bold px-2 py-0.5 rounded-full border border-emerald-300/30">
+                    GESTION DES FONDS & REÇUS
+                  </span>
+                </div>
+                <p className="text-xs text-emerald-100">
+                  Entrées et sorties d'argent, encaissements écolages &amp; clients hôtel, balance des soldes en temps réel
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Link
+                href="/dashboard/payments"
+                className="px-3.5 py-1.5 bg-white text-emerald-900 rounded-xl text-xs font-bold hover:bg-emerald-50 transition-colors shadow-xs"
+              >
+                Guichet Caisse Unique
+              </Link>
+              <Link
+                href="/dashboard/finances"
+                className="px-3.5 py-1.5 bg-emerald-950/40 hover:bg-emerald-950/60 text-white rounded-xl text-xs font-bold border border-emerald-400/30 transition-colors"
+              >
+                Livre de Trésorerie
+              </Link>
+            </div>
+          </div>
+
+          <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div className="p-4 bg-emerald-50/70 rounded-2xl border border-emerald-200">
+              <span className="text-[11px] font-bold text-emerald-800 block mb-1">Total Encaissé Tous Pôles</span>
+              <p className="text-2xl font-black text-emerald-900">{formatFCFA(totalGlobalRevenue)}</p>
+              <p className="text-[10px] text-emerald-700 mt-1">
+                Scolarité : {formatFCFA(totalSchoolCollected)} &bull; Hôtel : {formatFCFA(totalHotelRevenue)}
+              </p>
+            </div>
+
+            <div className="p-4 bg-rose-50/70 rounded-2xl border border-rose-200">
+              <span className="text-[11px] font-bold text-rose-800 block mb-1">Créances Restantes à Recouvrer</span>
+              <p className="text-2xl font-black text-[#DC2626]">{formatFCFA(totalSchoolRemaining)}</p>
+              <p className="text-[10px] text-rose-700 mt-1">
+                {inProgressStudentsCount} élèves en cours &bull; {unpaidStudentsCount} non démarrés
+              </p>
+            </div>
+
+            <div className="p-4 bg-blue-50/70 rounded-2xl border border-blue-200">
+              <span className="text-[11px] font-bold text-blue-800 block mb-1">Taux Global de Recouvrement</span>
+              <p className="text-2xl font-black text-[#0C356A]">{schoolRecoveryRate}%</p>
+              <p className="text-[10px] text-blue-700 mt-1">
+                {settledStudentsCount} élèves totalement soldés (100%) sur {totalStudents}
+              </p>
             </div>
           </div>
         </section>

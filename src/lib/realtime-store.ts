@@ -839,7 +839,20 @@ export async function syncReceiptsFromSupabase(): Promise<PaymentReceipt[]> {
   }
 }
 
+export function formatReceiptDateTime(dateInput?: string): string {
+  if (dateInput && dateInput.includes(":") && (dateInput.includes("à") || dateInput.length > 15)) {
+    return dateInput;
+  }
+  const now = new Date();
+  const dateStr = now.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric" });
+  const timeStr = now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  return `${dateStr} à ${timeStr}`;
+}
+
 export async function saveAndSyncReceipt(receipt: PaymentReceipt): Promise<PaymentReceipt[]> {
+  // Garantir l'enregistrement de la Date ET de l'Heure exacte du paiement
+  receipt.date = formatReceiptDateTime(receipt.date);
+
   const current = getStoredReceipts();
   const filtered = current.filter((r) => r.id !== receipt.id && r.reference !== receipt.reference);
   const updatedList = [receipt, ...filtered];
@@ -952,6 +965,117 @@ export async function saveAndSyncReceipt(receipt: PaymentReceipt): Promise<Payme
 
   broadcastDataChange();
   return updatedList;
+}
+
+export async function saveAndSyncCustomerPayment(params: {
+  customer_id?: string;
+  customer_name: string;
+  customer_phone?: string;
+  reservation_id?: string;
+  amount: number;
+  total_due?: number;
+  remaining_due?: number;
+  designation: string;
+  payment_method: "Espèces" | "Stripe" | "Mobile Money" | "Virement";
+  depositor_name?: string;
+  depositor_phone?: string;
+  cashier_name?: string;
+}): Promise<PaymentReceipt> {
+  const ref = `#AV-HOT-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+  const amt = Number(params.amount) || 0;
+  const totDue = Number(params.total_due) || amt;
+  const remDue = Math.max(0, params.remaining_due !== undefined ? params.remaining_due : totDue - amt);
+
+  const newReceipt: PaymentReceipt = {
+    id: `rec-cust-${Date.now()}`,
+    reference: ref,
+    student_name: params.customer_name,
+    student_matricule: params.customer_id || `CLT-${Date.now().toString().slice(-4)}`,
+    class_name: "Prestation Hôtellerie",
+    designation: params.designation || "Règlement Prestation & Séjour Hôtel",
+    amount_paid: amt,
+    total_due: totDue,
+    remaining_due: remDue,
+    depositor_name: params.depositor_name || params.customer_name,
+    depositor_id_card: "PIÈCE CLIENT",
+    depositor_phone: params.depositor_phone || params.customer_phone || "+228 90 00 00 00",
+    depositor_role: "Client / Entreprise",
+    payment_method: params.payment_method,
+    site: "LOMÉ",
+    date: formatReceiptDateTime(),
+    cashier_name: params.cashier_name || "Caisse Centrale Avenida Lomé",
+  };
+
+  await saveAndSyncReceipt(newReceipt);
+
+  // Mettre à jour le client dans la base locale et Supabase si customer_id
+  if (params.customer_id) {
+    try {
+      const allCustomers = getStoredCustomers();
+      const cIdx = allCustomers.findIndex((c) => c.id === params.customer_id || c.code === params.customer_id);
+      if (cIdx !== -1) {
+        const cust = allCustomers[cIdx];
+        const updatedCust: HotelCustomer = {
+          ...cust,
+          total_spent: (Number(cust.total_spent) || 0) + amt,
+        };
+        allCustomers[cIdx] = updatedCust;
+        safeSetStorage("avenida_custom_customers", allCustomers);
+        const supabase = createClient();
+        await supabase.from("hotel_customers").update({ total_spent: updatedCust.total_spent }).eq("id", cust.id);
+      }
+    } catch (err) {
+      console.warn("Update customer balance error:", err);
+    }
+  }
+
+  // Mettre à jour la réservation si reservation_id
+  if (params.reservation_id) {
+    try {
+      const allRes = getStoredReservations();
+      const rIdx = allRes.findIndex((r) => r.id === params.reservation_id || r.booking_ref === params.reservation_id);
+      if (rIdx !== -1) {
+        const res = allRes[rIdx];
+        const newDeposit = (Number(res.deposit_paid) || 0) + amt;
+        const newStatus = newDeposit >= Number(res.total_price) ? "réglé" : "acompte";
+        const updatedRes: HotelReservation = {
+          ...res,
+          deposit_paid: newDeposit,
+          payment_status: newStatus,
+        };
+        allRes[rIdx] = updatedRes;
+        safeSetStorage("avenida_custom_reservations", allRes);
+        const supabase = createClient();
+        await supabase.from("hotel_reservations").update({ deposit_paid: newDeposit, payment_status: newStatus }).eq("id", res.id);
+      }
+    } catch (err) {
+      console.warn("Update reservation balance error:", err);
+    }
+  }
+
+  // Enregistrement recette spécifique hôtel dans finances
+  try {
+    const newFinanceEntry: FinancialEntry = {
+      id: `fin-hot-${Date.now()}`,
+      reference: `REC-HOT-${newReceipt.reference.replace(/[^a-zA-Z0-9]/g, "")}`,
+      type: "recette",
+      category: "Hébergement Hôtel",
+      amount: amt,
+      description: `Encaissement Hôtel — ${params.customer_name} • ${params.designation}`,
+      date: new Date().toISOString().split("T")[0],
+      recorded_by: params.cashier_name || "Caisse Centrale Avenida Lomé",
+      payment_mode:
+        params.payment_method === "Stripe"
+          ? "Virement"
+          : (params.payment_method as "Espèces" | "Mobile Money" | "Virement" | "Chèque") || "Espèces",
+      receipt_number: newReceipt.reference,
+    };
+    await saveAndSyncFinance(newFinanceEntry);
+  } catch (err) {
+    console.warn("Sync finance hotel error:", err);
+  }
+
+  return newReceipt;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
