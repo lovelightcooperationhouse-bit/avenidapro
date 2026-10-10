@@ -888,7 +888,7 @@ export async function assignRoomToGuest(params: {
     payment_status: paymentStatus,
     status: resStatus,
     payment_method: params.payment_method,
-    cashier_name: params.cashier_name || "Réception Avenida Lomé",
+    cashier_name: params.cashier_name || "Réception & Caisse Centrale",
     notes: params.special_requests || (params.mode === "walk_in" ? "Arrivée directe (Check-in)" : "Réservation préalable"),
   };
 
@@ -935,7 +935,7 @@ export async function assignRoomToGuest(params: {
       depositor_phone: params.guest_phone.trim(),
       depositor_role: "Client Résident",
       payment_method: params.payment_method === "Carte Bancaire" ? "Virement" : params.payment_method,
-      site: "LOMÉ",
+      site: "CENTRAL",
       date: formatReceiptDateTime(),
       cashier_name: params.cashier_name || "Caisse Centrale / Réception Hôtel",
     };
@@ -1090,9 +1090,12 @@ export async function syncReceiptsFromSupabase(): Promise<PaymentReceipt[]> {
       depositor_phone: row.depositor_phone || "",
       depositor_role: row.depositor_role || "Parent",
       payment_method: row.payment_method || "Espèces",
-      site: row.site || "LOMÉ",
+      site: row.site || "CENTRAL",
       date: row.payment_date || row.created_at || new Date().toISOString().substring(0, 10),
-      cashier_name: row.cashier_name || "Caisse Avenida",
+      cashier_name: row.cashier_name || "Caisse Écolage & Trésorerie Centrale",
+      proof_file_name: row.proof_file_name || row.raw_data?.proof_file_name || undefined,
+      proof_file_url: row.proof_file_url || row.raw_data?.proof_file_url || undefined,
+      proof_file_size: row.proof_file_size || row.raw_data?.proof_file_size || undefined,
     }));
 
     const current = getStoredReceipts();
@@ -1147,8 +1150,12 @@ export async function saveAndSyncReceipt(receipt: PaymentReceipt): Promise<Payme
         depositor_phone: receipt.depositor_phone,
         depositor_role: receipt.depositor_role,
         cashier_name: receipt.cashier_name,
-        site: receipt.site || "LOMÉ",
+        site: receipt.site || "CENTRAL",
         status: "validé",
+        proof_file_name: receipt.proof_file_name || null,
+        proof_file_url: receipt.proof_file_url || null,
+        proof_file_size: receipt.proof_file_size || null,
+        raw_data: receipt,
       },
       { onConflict: "receipt_number" }
     );
