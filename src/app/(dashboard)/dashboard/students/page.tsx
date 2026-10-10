@@ -934,7 +934,7 @@ export default function StudentsPage() {
                     <span className="font-bold text-slate-800">{selectedStudent.nationality}</span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 font-bold block">Quartier (Lomé)</span>
+                    <span className="text-[10px] text-slate-400 font-bold block">Quartier de Résidence</span>
                     <span className="font-bold text-slate-800">{selectedStudent.residence_neighborhood}</span>
                   </div>
                   <div>
@@ -1041,54 +1041,90 @@ export default function StudentsPage() {
                   </div>
                 </div>
 
-                {/* Boutons d'Action Directs : Encaisser Versement & Reçu Définitif */}
-                <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPaymentAmount(
-                        selectedStudent.remaining_fee > 0
-                          ? Math.min(50000, Number(selectedStudent.remaining_fee))
-                          : 25000
-                      );
-                      setPaymentDesignation(
-                        selectedStudent.remaining_fee > 0
-                          ? `Frais de scolarité (Tranche suivante)`
-                          : `Règlement scolarité complémentaire`
-                      );
-                      setPaymentDepositorName(
-                        selectedStudent.parent_father_name ||
-                          selectedStudent.emergency_contact_name ||
-                          "Parent / Tuteur"
-                      );
-                      setPaymentDepositorPhone(
-                        selectedStudent.emergency_contact_phone || selectedStudent.phone || ""
-                      );
-                      setIsPaymentModalOpen(true);
-                    }}
-                    className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-xs transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95"
+                {/* Décision Administrative & Solvabilité Scolaire (Garder ou Renvoyer) */}
+                <div className="mt-3 p-3.5 rounded-2xl border text-xs bg-white shadow-2xs">
+                  <div className="flex items-start gap-3">
+                    {Number(selectedStudent.remaining_fee) === 0 ? (
+                      <>
+                        <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                          <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <strong className="text-emerald-950 font-black text-xs uppercase tracking-wide">
+                              SITUATION 100% EN RÈGLE &bull; ÉLÈVE AUTORISÉ DÉFINITIVEMENT EN COURS
+                            </strong>
+                            <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full font-bold text-[10px]">
+                              Quittance Intégrale
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-emerald-800 mt-0.5">
+                            Tous les frais de scolarité sont intégralement acquittés. L&apos;apprenant est autorisé à participer à tous les cours, ateliers pratiques et examens officiels.
+                          </p>
+                        </div>
+                      </>
+                    ) : Number(selectedStudent.paid_fee) > 0 ? (
+                      <>
+                        <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                          <Clock className="w-5 h-5 text-amber-600" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <strong className="text-amber-950 font-black text-xs uppercase tracking-wide">
+                              TRANCHE EN COURS VALIDÉE &bull; ACCÈS AUX COURS AUTORISÉ SOUS CONTRÔLE
+                            </strong>
+                            <span className="px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full font-bold text-[10px]">
+                              Reste : {formatFCFA(selectedStudent.remaining_fee)}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-amber-800 mt-0.5">
+                            L&apos;élève est en règle pour les échéances actuelles. Suivre le calendrier des versements pour anticiper la tranche suivante.
+                          </p>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-9 h-9 rounded-xl bg-red-100 text-[#DC2626] flex items-center justify-center shrink-0">
+                          <AlertTriangle className="w-5 h-5 text-[#DC2626]" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <strong className="text-red-950 font-black text-xs uppercase tracking-wide">
+                              ALERTE IMPAYÉ CRITIQUE &bull; ORIENTER IMMÉDIATEMENT À LA CAISSE
+                            </strong>
+                            <span className="px-2 py-0.5 bg-red-100 text-red-800 rounded-full font-bold text-[10px]">
+                              0 F Versé
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-[#DC2626] font-semibold mt-0.5">
+                            Décision du Responsable : Accès aux cours conditionné. L&apos;élève doit se présenter d&apos;urgence à la Caisse Écolage pour versement de la 1ère tranche.
+                          </p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Boutons d'Action : Orientation Caisse & Reçu Définitif */}
+                <div className="mt-3 flex flex-wrap items-center gap-2.5">
+                  <Link
+                    href={`/dashboard/payments?student=${selectedStudent.registration_number}`}
+                    className="flex-1 min-w-[240px] px-4 py-2.5 bg-[#0C356A] hover:bg-[#164E87] text-white rounded-xl font-black text-xs transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-95 text-center"
                   >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>+ Effectuer un Versement d&apos;Écolage</span>
-                  </button>
+                    <CreditCard className="w-4 h-4 text-amber-300" />
+                    <span>Transférer à la Caisse Écolage pour Règlement par Tranche &rarr;</span>
+                  </Link>
 
                   {Number(selectedStudent.remaining_fee) === 0 && selectedStudentReceipts.length > 0 && (
                     <button
                       type="button"
                       onClick={() => setReceiptToView(selectedStudentReceipts[selectedStudentReceipts.length - 1])}
-                      className="px-3.5 py-2 bg-[#0C356A] hover:bg-[#164E87] text-white rounded-xl font-bold text-xs transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95"
+                      className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-xs transition-all shadow-md flex items-center gap-1.5 cursor-pointer active:scale-95"
                     >
-                      <Award className="w-3.5 h-3.5 text-amber-300" />
-                      <span>Imprimer Reçu Définitif (Solde Intégral)</span>
+                      <Award className="w-4 h-4 text-amber-300" />
+                      <span>Imprimer Reçu Définitif (Solde Intégral 100%)</span>
                     </button>
                   )}
-
-                  <Link
-                    href="/dashboard/payments"
-                    className="px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl font-bold text-xs transition-colors text-center ml-auto"
-                  >
-                    Guichet Caisse Centrale &rarr;
-                  </Link>
                 </div>
 
                 {/* Historique Horodaté de l'Échelonnement des Paiements Effectués */}
@@ -1097,7 +1133,7 @@ export default function StudentsPage() {
                     <span className="text-[11px] font-black uppercase text-slate-700 tracking-wider">
                       Échelonnement &amp; Tranches Réglées ({selectedStudentReceipts.length})
                     </span>
-                    <span className="text-[10px] text-slate-400 font-mono">Date &amp; Heure de chaque opération</span>
+                    <span className="text-[10px] text-slate-400 font-mono">Date, heure &amp; justificatifs</span>
                   </div>
 
                   {selectedStudentReceipts.length > 0 ? (
@@ -1148,15 +1184,38 @@ export default function StudentsPage() {
                               <Eye className="w-3 h-3" />
                               <span>Reçu</span>
                             </button>
+                            {rec.proof_file_url && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveDocPreview({
+                                    id: `proof-${rec.reference}`,
+                                    key: `proof-${rec.reference}`,
+                                    name: rec.proof_file_name || `Preuve de versement ${rec.reference}`,
+                                    size: 0,
+                                    formattedSize: rec.proof_file_size || "Pièce jointe",
+                                    type: "application/pdf",
+                                    dataUrl: rec.proof_file_url,
+                                    uploadedAt: rec.date,
+                                    category: "Justificatifs Financiers & Reçus de Caisse",
+                                  });
+                                }}
+                                className="px-2 py-1 bg-emerald-50 hover:bg-emerald-600 text-emerald-800 hover:text-white border border-emerald-300 rounded-lg text-[10px] font-bold transition-colors flex items-center gap-1 cursor-pointer shadow-2xs"
+                                title="Consulter la pièce justificative jointe par la caisse"
+                              >
+                                <Paperclip className="w-3 h-3" />
+                                <span>Preuve</span>
+                              </button>
+                            )}
                           </div>
                         </div>
                       ))}
                     </div>
                   ) : (
                     <div className="p-3 bg-slate-50 rounded-xl border border-dashed border-slate-300 text-center text-xs text-slate-500 space-y-1">
-                      <p className="font-bold text-slate-700">Aucun versement d&apos;écolage enregistré</p>
+                      <p className="font-bold text-slate-700">Aucun versement d&apos;écolage enregistré à la caisse</p>
                       <p className="text-[11px]">
-                        Utilisez le bouton &laquo; + Effectuer un Versement d&apos;Écolage &raquo; ci-dessus pour enregistrer la 1ère tranche.
+                        Le service comptabilité &amp; trésorerie n&apos;a pas encore enregistré d&apos;encaissement. Cliquez sur &laquo; Transférer à la Caisse Écolage &raquo; pour encaisser la 1ère tranche.
                       </p>
                     </div>
                   )}

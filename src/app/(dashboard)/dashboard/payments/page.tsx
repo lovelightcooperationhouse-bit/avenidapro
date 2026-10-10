@@ -25,6 +25,7 @@ import {
   Check,
   Building2,
   Sparkles,
+  UploadCloud,
 } from "lucide-react";
 import { PaymentReceipt, Student, HotelCustomer, HotelReservation } from "@/types";
 import { formatFCFA } from "@/lib/utils";
@@ -68,8 +69,16 @@ export default function PaymentsPage() {
   const [depositorName, setDepositorName] = useState("");
   const [depositorPhone, setDepositorPhone] = useState("");
   const [depositorRole, setDepositorRole] = useState("Parent / Tuteur");
-  const [cashierName, setCashierName] = useState("Caisse Centrale Lomé");
+  const [cashierName, setCashierName] = useState("Caisse Écolage & Trésorerie Centrale");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedTranche, setSelectedTranche] = useState<string>("Tranche 1");
+  const [studentProofFile, setStudentProofFile] = useState<{
+    name: string;
+    size: number;
+    formattedSize: string;
+    type: string;
+    dataUrl?: string;
+  } | null>(null);
 
   // Modal Encaissement Client Hôtel
   const [isCustomerPaymentModalOpen, setIsCustomerPaymentModalOpen] = useState(false);
@@ -79,6 +88,13 @@ export default function PaymentsPage() {
   const [custMethod, setCustMethod] = useState<"Espèces" | "Stripe" | "Mobile Money" | "Virement">("Espèces");
   const [custDepositorName, setCustDepositorName] = useState("");
   const [custDepositorPhone, setCustDepositorPhone] = useState("");
+  const [customerProofFile, setCustomerProofFile] = useState<{
+    name: string;
+    size: number;
+    formattedSize: string;
+    type: string;
+    dataUrl?: string;
+  } | null>(null);
 
   // Chargement et synchronisation temps réel
   const refreshAllData = () => {
@@ -97,6 +113,51 @@ export default function PaymentsPage() {
       syncCustomersFromSupabase(),
       syncReservationsFromSupabase(),
     ]).then(() => refreshAllData());
+
+    // Écoute de redirection automatique depuis dossier élève ou client
+    if (typeof window !== "undefined" && window.location.search) {
+      const params = new URLSearchParams(window.location.search);
+      const studentParam = params.get("student");
+      const customerParam = params.get("customer");
+      if (studentParam) {
+        setActiveTab("students");
+        const allSt = getStoredStudents();
+        const found = allSt.find(
+          (s) => s.registration_number === studentParam || s.id === studentParam
+        );
+        if (found) {
+          setTargetStudent(found);
+          const suggested = Math.min(found.remaining_fee || 50000, 100000);
+          setPaymentAmount(suggested > 0 ? suggested : 50000);
+          setSelectedTranche("Tranche 1");
+          setPaymentDesignation(
+            found.remaining_fee === 0
+              ? "Régularisation complémentaire"
+              : `Frais de scolarité - Tranche 1 (${found.class_name || "Formation"})`
+          );
+          setDepositorName(found.emergency_contact_name || found.tutor_name || found.parent_father_name || "Parent d'Élève");
+          setDepositorPhone(found.emergency_contact_phone || found.tutor_phone || found.phone || "");
+          setStudentProofFile(null);
+          setIsStudentPaymentModalOpen(true);
+        }
+      } else if (customerParam) {
+        setActiveTab("customers");
+        const allCust = getStoredCustomers();
+        const found = allCust.find(
+          (c) => c.code === customerParam || c.id === customerParam
+        );
+        if (found) {
+          setTargetCustomer(found);
+          const bal = Number(found.balance);
+          setCustAmount(bal > 0 ? bal : 35000);
+          setCustDesignation(bal > 0 ? `Règlement Solde Séjour — ${found.full_name}` : `Hébergement & Séjour Hôtel — ${found.full_name}`);
+          setCustDepositorName(found.full_name);
+          setCustDepositorPhone(found.phone);
+          setCustomerProofFile(null);
+          setIsCustomerPaymentModalOpen(true);
+        }
+      }
+    }
 
     window.addEventListener(AVENIDA_DATA_UPDATED_EVENT, refreshAllData);
     window.addEventListener("storage", refreshAllData);
@@ -180,18 +241,52 @@ export default function PaymentsPage() {
     });
   }, [receipts, searchTerm]);
 
+  const handleStudentProofUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setStudentProofFile({
+        name: file.name,
+        size: file.size,
+        formattedSize: `${(file.size / 1024).toFixed(0)} Ko`,
+        type: file.type || "document",
+        dataUrl: typeof reader.result === "string" ? reader.result : undefined,
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCustomerProofUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCustomerProofFile({
+        name: file.name,
+        size: file.size,
+        formattedSize: `${(file.size / 1024).toFixed(0)} Ko`,
+        type: file.type || "document",
+        dataUrl: typeof reader.result === "string" ? reader.result : undefined,
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
   // Action d'encaissement élève
   const openStudentCashIn = (student: Student) => {
     setTargetStudent(student);
     const suggested = Math.min(student.remaining_fee || 50000, 100000);
     setPaymentAmount(suggested > 0 ? suggested : 50000);
+    setSelectedTranche("Tranche 1");
     setPaymentDesignation(
       student.remaining_fee === 0
         ? "Régularisation complémentaire"
-        : `Frais de scolarité - Tranche (${student.class_name || "BTS"})`
+        : `Frais de scolarité - Tranche 1 (${student.class_name || "Formation"})`
     );
-    setDepositorName(student.emergency_contact_name || student.tutor_name || "Parent d'Élève");
+    setDepositorName(student.emergency_contact_name || student.tutor_name || student.parent_father_name || "Parent d'Élève");
     setDepositorPhone(student.emergency_contact_phone || student.tutor_phone || student.phone || "");
+    setStudentProofFile(null);
     setIsStudentPaymentModalOpen(true);
   };
 
@@ -210,19 +305,22 @@ export default function PaymentsPage() {
         reference: newRef,
         student_name: `${targetStudent.last_name} ${targetStudent.first_name}`,
         student_matricule: targetStudent.registration_number,
-        class_name: targetStudent.class_name.split(" ")[0] || "BTS",
+        class_name: targetStudent.class_name.split(" ")[0] || "Formation",
         designation: paymentDesignation,
         amount_paid: amt,
         total_due: targetStudent.total_fee,
         remaining_due: newRem,
         depositor_name: depositorName || targetStudent.emergency_contact_name || "Parent d'Élève",
-        depositor_id_card: "TG-LOM-2024-9912",
+        depositor_id_card: "TG-JUSTIFICATIF-VERIFIE",
         depositor_phone: depositorPhone || targetStudent.emergency_contact_phone || "+228 90 00 00 00",
         depositor_role: depositorRole,
         payment_method: paymentMethod,
-        site: "LOMÉ",
+        site: "DIRECTION GÉNÉRALE",
         date: formatReceiptDateTime(),
         cashier_name: cashierName,
+        proof_file_name: studentProofFile?.name,
+        proof_file_url: studentProofFile?.dataUrl,
+        proof_file_size: studentProofFile?.formattedSize,
       };
 
       const updatedReceipts = await saveAndSyncReceipt(newReceipt);
@@ -241,10 +339,12 @@ export default function PaymentsPage() {
   // Action d'encaissement client hôtel
   const openCustomerCashIn = (customer: HotelCustomer) => {
     setTargetCustomer(customer);
-    setCustAmount(35000);
-    setCustDesignation(`Hébergement & Séjour Hôtel — ${customer.full_name}`);
+    const bal = Number(customer.balance);
+    setCustAmount(bal > 0 ? bal : 35000);
+    setCustDesignation(bal > 0 ? `Règlement Solde Séjour & Prestations — ${customer.full_name}` : `Hébergement & Séjour Hôtel — ${customer.full_name}`);
     setCustDepositorName(customer.full_name);
     setCustDepositorPhone(customer.phone);
+    setCustomerProofFile(null);
     setIsCustomerPaymentModalOpen(true);
   };
 
@@ -264,6 +364,9 @@ export default function PaymentsPage() {
         depositor_name: custDepositorName || targetCustomer.full_name,
         depositor_phone: custDepositorPhone || targetCustomer.phone,
         cashier_name: cashierName,
+        proof_file_name: customerProofFile?.name,
+        proof_file_url: customerProofFile?.dataUrl,
+        proof_file_size: customerProofFile?.formattedSize,
       });
 
       refreshAllData();
@@ -298,7 +401,7 @@ export default function PaymentsPage() {
                   GUICHET UNIQUE &bull; CAISSE &amp; TRÉSORERIE CENTRALE
                 </span>
                 <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
-                  Site Officiel LOMÉ
+                  Service Comptabilité &amp; Trésorerie Centrale
                 </span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-black text-[#0C356A] font-serif tracking-tight mt-1">
@@ -838,10 +941,10 @@ export default function PaymentsPage() {
             <div className="flex items-center justify-between border-b pb-3">
               <div>
                 <h2 className="text-base font-black text-[#0C356A] font-serif">
-                  Encaisser Frais de Scolarité &bull; Caisse Lomé
+                  Encaisser Frais de Scolarité par Tranche &bull; Caisse &amp; Trésorerie
                 </h2>
                 <p className="text-xs text-slate-500">
-                  Déduction automatique immédiate dans la base de l'élève &amp; comptabilité
+                  Enregistrement comptable de la tranche, déduction instantanée et archivage du justificatif
                 </p>
               </div>
               <button
@@ -893,15 +996,46 @@ export default function PaymentsPage() {
                 </select>
               </div>
 
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Désignation du Versement</label>
-                <input
-                  type="text"
-                  value={paymentDesignation}
-                  onChange={(e) => setPaymentDesignation(e.target.value)}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium"
-                  required
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Tranche de Paiement</label>
+                  <select
+                    value={selectedTranche}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setSelectedTranche(val);
+                      if (val === "Tranche 1") {
+                        setPaymentDesignation(`Frais de scolarité - Tranche 1 (${targetStudent.class_name || "Formation"})`);
+                      } else if (val === "Tranche 2") {
+                        setPaymentDesignation(`Frais de scolarité - Tranche 2 (${targetStudent.class_name || "Formation"})`);
+                      } else if (val === "Tranche 3") {
+                        setPaymentDesignation(`Frais de scolarité - Tranche 3 (${targetStudent.class_name || "Formation"})`);
+                      } else if (val === "Solde Total") {
+                        setPaymentDesignation(`Règlement Définitif et Solde Intégral (${targetStudent.class_name || "Formation"})`);
+                        setPaymentAmount(targetStudent.remaining_fee || 50000);
+                      } else {
+                        setPaymentDesignation(`Frais de scolarité - Versement libre (${targetStudent.class_name || "Formation"})`);
+                      }
+                    }}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900"
+                  >
+                    <option value="Tranche 1">Tranche 1 (Inscription / Rentrée)</option>
+                    <option value="Tranche 2">Tranche 2 (Deuxième Versement)</option>
+                    <option value="Tranche 3">Tranche 3 (Troisième Versement)</option>
+                    <option value="Solde Total">Solde Intégral Définitif</option>
+                    <option value="Libre">Versement Libre / Acompte</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Désignation du Versement</label>
+                  <input
+                    type="text"
+                    value={paymentDesignation}
+                    onChange={(e) => setPaymentDesignation(e.target.value)}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium"
+                    required
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -1011,6 +1145,45 @@ export default function PaymentsPage() {
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium"
                   />
                 </div>
+              </div>
+
+              {/* Preuve de Paiement / Justificatif Élève */}
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
+                <label className="block font-bold text-slate-700">
+                  Preuve de Versement / Pièce Justificative (Bordereau bancaire, Reçu T-Money/Flooz, Chèque)
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="file"
+                    id="student-proof-file"
+                    accept=".pdf,.jpg,.jpeg,.png,.webp"
+                    onChange={handleStudentProofUpload}
+                    className="hidden"
+                  />
+                  <label
+                    htmlFor="student-proof-file"
+                    className="px-3.5 py-2 bg-white border border-slate-300 hover:border-blue-500 rounded-xl text-slate-700 font-bold cursor-pointer flex items-center gap-1.5 transition text-xs shadow-2xs"
+                  >
+                    <UploadCloud className="w-4 h-4 text-[#0C356A]" />
+                    <span>{studentProofFile ? "Remplacer la preuve" : "Joindre une pièce justificative"}</span>
+                  </label>
+                  {studentProofFile && (
+                    <div className="flex items-center gap-2 text-xs text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200 flex-1 truncate">
+                      <FileCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span className="truncate font-semibold">{studentProofFile.name} ({studentProofFile.formattedSize})</span>
+                      <button
+                        type="button"
+                        onClick={() => setStudentProofFile(null)}
+                        className="text-slate-400 hover:text-red-500 ml-auto shrink-0 font-bold text-sm px-1"
+                      >
+                        &times;
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <p className="text-[10px] text-slate-500">
+                  ✓ Cette pièce sera archivée automatiquement dans le dossier école de l&apos;élève et consultable par la direction et le superviseur.
+                </p>
               </div>
 
               <div className="pt-3 flex justify-end gap-2.5 border-t border-slate-100">
@@ -1134,6 +1307,45 @@ export default function PaymentsPage() {
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl"
                   />
                 </div>
+              </div>
+
+              {/* Preuve de Règlement Client Hôtel */}
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
+                <label className="block font-bold text-slate-700">
+                  Preuve de Règlement (Bordereau, Reçu T-Money/Flooz, Chèque)
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="file"
+                    id="customer-proof-file"
+                    accept=".pdf,.jpg,.jpeg,.png,.webp"
+                    onChange={handleCustomerProofUpload}
+                    className="hidden"
+                  />
+                  <label
+                    htmlFor="customer-proof-file"
+                    className="px-3.5 py-2 bg-white border border-slate-300 hover:border-red-500 rounded-xl text-slate-700 font-bold cursor-pointer flex items-center gap-1.5 transition text-xs shadow-2xs"
+                  >
+                    <UploadCloud className="w-4 h-4 text-[#DC2626]" />
+                    <span>{customerProofFile ? "Remplacer la preuve" : "Joindre un justificatif"}</span>
+                  </label>
+                  {customerProofFile && (
+                    <div className="flex items-center gap-2 text-xs text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200 flex-1 truncate">
+                      <FileCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span className="truncate font-semibold">{customerProofFile.name} ({customerProofFile.formattedSize})</span>
+                      <button
+                        type="button"
+                        onClick={() => setCustomerProofFile(null)}
+                        className="text-slate-400 hover:text-red-500 ml-auto shrink-0 font-bold text-sm px-1"
+                      >
+                        &times;
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <p className="text-[10px] text-slate-500">
+                  ✓ Cette pièce sera archivée dans la fiche du client hôtel et rattachée à son relevé.
+                </p>
               </div>
 
               <div className="pt-3 flex justify-end gap-2.5 border-t border-slate-100">

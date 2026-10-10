@@ -155,8 +155,13 @@ export function OfficialPaymentReceiptModal({
                 : "REÇU OFFICIEL DE VERSEMENT D'ÉCOLAGE"}
             </h1>
             <p className="text-[11px] text-slate-500 font-medium">
-              Opération enregistrée le : <strong className="text-slate-800 font-mono">{receipt.date}</strong> &bull; Site : <strong>{receipt.site || "LOMÉ"}</strong>
+              Opération enregistrée le : <strong className="text-slate-800 font-mono">{receipt.date}</strong> &bull; Service : <strong>Caisse Écolage &amp; Trésorerie Centrale</strong>
             </p>
+            {receipt.proof_file_name && (
+              <p className="text-[10px] text-emerald-800 font-bold mt-1 bg-emerald-50 inline-block px-2.5 py-0.5 rounded-full border border-emerald-200">
+                📎 Justificatif de versement archivé au dossier : {receipt.proof_file_name} ({receipt.proof_file_size || "Vérifié"})
+              </p>
+            )}
           </div>
 
           {/* 2. Coordonnées de l'Apprenant / Client & Déposant */}

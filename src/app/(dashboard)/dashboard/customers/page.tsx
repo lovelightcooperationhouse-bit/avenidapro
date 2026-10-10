@@ -702,10 +702,10 @@ export default function CustomersPage() {
                   )}
 
                   <Link
-                    href="/dashboard/payments"
+                    href={`/dashboard/payments?customer=${selectedCustomer.code}`}
                     className="py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition flex items-center gap-1"
                   >
-                    <span>Caisse &rarr;</span>
+                    <span>Caisse & Trésorerie &rarr;</span>
                   </Link>
                 </div>
 
@@ -739,7 +739,7 @@ export default function CustomersPage() {
                               {rec.date} &bull; Mode : {rec.payment_method}
                             </div>
                           </div>
-                          <div className="flex items-center gap-2.5">
+                          <div className="flex items-center gap-2">
                             <div className="text-right">
                               <span className="font-mono font-bold text-emerald-700 block text-xs">
                                 +{formatFCFA(rec.amount_paid)}
@@ -751,11 +751,33 @@ export default function CustomersPage() {
                             <button
                               type="button"
                               onClick={() => setReceiptToView(rec)}
-                              className="p-1.5 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                              className="p-1.5 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer"
                               title="Visualiser et imprimer le reçu officiel avec échelonnement"
                             >
                               <Printer className="w-3.5 h-3.5" />
                             </button>
+                            {rec.proof_file_url && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveDocPreview({
+                                    id: `proof-${rec.reference}`,
+                                    key: `proof-${rec.reference}`,
+                                    name: rec.proof_file_name || `Preuve de versement ${rec.reference}`,
+                                    size: 0,
+                                    formattedSize: rec.proof_file_size || "Pièce jointe",
+                                    type: "application/pdf",
+                                    dataUrl: rec.proof_file_url,
+                                    uploadedAt: rec.date,
+                                    category: "Justificatifs Financiers & Reçus de Caisse",
+                                  });
+                                }}
+                                className="p-1.5 text-emerald-700 hover:text-white hover:bg-emerald-600 rounded-lg transition cursor-pointer"
+                                title="Consulter la pièce justificative archivée"
+                              >
+                                <Paperclip className="w-3.5 h-3.5" />
+                              </button>
+                            )}
                           </div>
                         </div>
                       ))}

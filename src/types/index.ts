@@ -157,6 +157,9 @@ export interface PaymentReceipt {
   site: string;
   date: string;
   cashier_name: string;
+  proof_file_name?: string;
+  proof_file_url?: string;
+  proof_file_size?: string;
 }
 
 export interface AbsenceTicket {

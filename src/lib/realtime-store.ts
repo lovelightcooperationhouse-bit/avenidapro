@@ -1189,11 +1189,28 @@ export async function saveAndSyncReceipt(receipt: PaymentReceipt): Promise<Payme
         ...(targetStudent.payment_installments || []).filter((i) => i.receipt_reference !== receipt.reference),
       ];
 
+      let updatedDocs = { ...(targetStudent.uploaded_documents || {}) };
+      if (receipt.proof_file_url) {
+        const docKey = `proof_tuition_${receipt.reference.replace(/[^a-zA-Z0-9]/g, "")}_${Date.now()}`;
+        updatedDocs[docKey] = {
+          key: docKey,
+          id: docKey,
+          name: receipt.proof_file_name || `Bordereau / Preuve Paiement ${receipt.reference}`,
+          size: 0,
+          formattedSize: receipt.proof_file_size || "Document joint",
+          type: "document",
+          dataUrl: receipt.proof_file_url,
+          uploadedAt: new Date().toISOString(),
+          category: "Justificatifs Financiers & Reçus de Caisse",
+        };
+      }
+
       const updatedStudent: Student = {
         ...targetStudent,
         paid_fee: newPaid,
         remaining_fee: newRemaining,
         payment_installments: updatedInstallments,
+        uploaded_documents: updatedDocs,
       };
 
       currentStudents[studentIndex] = updatedStudent;
@@ -1205,6 +1222,7 @@ export async function saveAndSyncReceipt(receipt: PaymentReceipt): Promise<Payme
         .update({
           paid_fee: newPaid,
           remaining_fee: newRemaining,
+          uploaded_documents: updatedDocs,
           raw_data: { ...updatedStudent },
         })
         .eq("registration_number", targetStudent.registration_number);
@@ -1229,12 +1247,15 @@ export async function saveAndSyncReceipt(receipt: PaymentReceipt): Promise<Payme
       amount: receipt.amount_paid,
       description: `Encaissement Scolarité — ${receipt.student_name} (${receipt.student_matricule}) • ${receipt.designation}`,
       date: (receipt.date || new Date().toISOString()).split(" ")[0].split("T")[0],
-      recorded_by: receipt.cashier_name || "Caisse Scolaire Lomé",
+      recorded_by: receipt.cashier_name || "Caisse Scolaire & Trésorerie",
       payment_mode:
         receipt.payment_method === "Stripe"
           ? "Virement"
           : (receipt.payment_method as "Espèces" | "Mobile Money" | "Virement" | "Chèque") || "Espèces",
       receipt_number: receipt.reference,
+      receipt_document_url: receipt.proof_file_url,
+      receipt_document_name: receipt.proof_file_name,
+      receipt_document_size: receipt.proof_file_size,
     };
     await saveAndSyncFinance(newFinanceEntry);
   } catch (err) {
@@ -1267,6 +1288,9 @@ export async function saveAndSyncCustomerPayment(params: {
   depositor_name?: string;
   depositor_phone?: string;
   cashier_name?: string;
+  proof_file_name?: string;
+  proof_file_url?: string;
+  proof_file_size?: string;
 }): Promise<PaymentReceipt> {
   const ref = `#AV-HOT-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
   const amt = Number(params.amount) || 0;
@@ -1288,9 +1312,12 @@ export async function saveAndSyncCustomerPayment(params: {
     depositor_phone: params.depositor_phone || params.customer_phone || "+228 90 00 00 00",
     depositor_role: "Client / Entreprise",
     payment_method: params.payment_method,
-    site: "LOMÉ",
+    site: "DIRECTION GÉNÉRALE",
     date: formatReceiptDateTime(),
-    cashier_name: params.cashier_name || "Caisse Centrale Avenida Lomé",
+    cashier_name: params.cashier_name || "Caisse Centrale & Trésorerie",
+    proof_file_name: params.proof_file_name,
+    proof_file_url: params.proof_file_url,
+    proof_file_size: params.proof_file_size,
   };
 
   await saveAndSyncReceipt(newReceipt);
@@ -1303,10 +1330,26 @@ export async function saveAndSyncCustomerPayment(params: {
       if (cIdx !== -1) {
         const cust = allCustomers[cIdx];
         const newBalance = Math.max(0, (Number(cust.balance) || 0) - amt);
+        let custDocs = { ...(cust.uploaded_documents || {}) };
+        if (params.proof_file_url) {
+          const docKey = `proof_hotel_${newReceipt.reference.replace(/[^a-zA-Z0-9]/g, "")}_${Date.now()}`;
+          custDocs[docKey] = {
+            key: docKey,
+            id: docKey,
+            name: params.proof_file_name || `Bordereau / Reçu ${newReceipt.reference}`,
+            size: 0,
+            formattedSize: params.proof_file_size || "Document joint",
+            type: "document",
+            dataUrl: params.proof_file_url,
+            uploadedAt: new Date().toISOString(),
+            category: "Justificatifs Financiers & Reçus de Caisse",
+          };
+        }
         const updatedCust: HotelCustomer = {
           ...cust,
           total_spent: (Number(cust.total_spent) || 0) + amt,
           balance: newBalance,
+          uploaded_documents: custDocs,
         };
         allCustomers[cIdx] = updatedCust;
         safeSetStorage("avenida_custom_customers", allCustomers);
@@ -1316,6 +1359,7 @@ export async function saveAndSyncCustomerPayment(params: {
           .update({
             total_spent: updatedCust.total_spent,
             balance: newBalance,
+            uploaded_documents: custDocs,
             raw_data: { ...updatedCust },
           })
           .eq("id", cust.id);
@@ -1359,12 +1403,15 @@ export async function saveAndSyncCustomerPayment(params: {
       amount: amt,
       description: `Encaissement Hôtel — ${params.customer_name} • ${params.designation}`,
       date: new Date().toISOString().split("T")[0],
-      recorded_by: params.cashier_name || "Caisse Centrale Avenida Lomé",
+      recorded_by: params.cashier_name || "Caisse Centrale & Trésorerie",
       payment_mode:
         params.payment_method === "Stripe"
           ? "Virement"
           : (params.payment_method as "Espèces" | "Mobile Money" | "Virement" | "Chèque") || "Espèces",
       receipt_number: newReceipt.reference,
+      receipt_document_url: params.proof_file_url,
+      receipt_document_name: params.proof_file_name,
+      receipt_document_size: params.proof_file_size,
     };
     await saveAndSyncFinance(newFinanceEntry);
   } catch (err) {
