@@ -42,6 +42,7 @@ import { useSchoolYear } from "@/context/SchoolYearContext";
 import { Student, StudentReportCard, PaymentReceipt, AbsenceTicket, LateTicket } from "@/types";
 import { ReportCardModal } from "@/components/shared/ReportCardModal";
 import { StudentRegistrationModal } from "@/components/shared/StudentRegistrationModal";
+import { OfficialPaymentReceiptModal } from "@/components/shared/OfficialPaymentReceiptModal";
 import { DirectorPendingApprovalsBanner } from "@/components/shared/DirectorPendingApprovalsBanner";
 import { EditWithDirectorApprovalModal } from "@/components/shared/EditWithDirectorApprovalModal";
 import { StudentDocumentsModal } from "@/components/shared/StudentDocumentsModal";
@@ -56,6 +57,9 @@ import {
   syncStudentsFromSupabase,
   saveAndSyncStudent,
   saveAndSyncReceipt,
+  getStoredReceipts,
+  syncReceiptsFromSupabase,
+  formatReceiptDateTime,
   getStoredAbsences,
   syncAbsencesFromSupabase,
   getStoredLates,
@@ -85,6 +89,19 @@ export default function StudentsPage() {
   const [docUploadError, setDocUploadError] = useState<string | null>(null);
   const [newDocTitle, setNewDocTitle] = useState("");
   const [newDocCategory, setNewDocCategory] = useState("Dossier Scolaire");
+
+  // Règlements d'Écolage & Reçus Officiels
+  const [allReceipts, setAllReceipts] = useState<PaymentReceipt[]>([]);
+  const [receiptToView, setReceiptToView] = useState<PaymentReceipt | null>(null);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState<number>(50000);
+  const [paymentDesignation, setPaymentDesignation] = useState("Frais de scolarité (Tranche)");
+  const [paymentMethod, setPaymentMethod] = useState<"Espèces" | "Stripe" | "Mobile Money" | "Virement">("Espèces");
+  const [paymentDepositorName, setPaymentDepositorName] = useState("");
+  const [paymentDepositorPhone, setPaymentDepositorPhone] = useState("");
+  const [paymentDepositorRole, setPaymentDepositorRole] = useState("Parent / Tuteur");
+  const [paymentCashierName, setPaymentCashierName] = useState("Caisse Scolaire Lomé");
+  const [isSubmittingPayment, setIsSubmittingPayment] = useState(false);
 
   // Vie Scolaire & Assiduité Élève
   const [allAbsences, setAllAbsences] = useState<AbsenceTicket[]>([]);
@@ -174,23 +191,32 @@ export default function StudentsPage() {
     setAllStudents(getStoredStudents());
     setAllAbsences(getStoredAbsences());
     setAllLates(getStoredLates());
+    setAllReceipts(getStoredReceipts());
 
     Promise.all([
       syncStudentsFromSupabase(),
       syncAbsencesFromSupabase(),
       syncLatesFromSupabase(),
+      syncReceiptsFromSupabase(),
     ]).then(([list]) => {
       if (list && list.length > 0) {
         setAllStudents(list);
       }
       setAllAbsences(getStoredAbsences());
       setAllLates(getStoredLates());
+      setAllReceipts(getStoredReceipts());
     });
 
     const handleUpdate = () => {
-      setAllStudents(getStoredStudents());
+      const freshStudents = getStoredStudents();
+      setAllStudents(freshStudents);
       setAllAbsences(getStoredAbsences());
       setAllLates(getStoredLates());
+      setAllReceipts(getStoredReceipts());
+      if (selectedStudent) {
+        const found = freshStudents.find((s) => s.id === selectedStudent.id);
+        if (found) setSelectedStudent(found);
+      }
     };
     window.addEventListener(AVENIDA_DATA_UPDATED_EVENT, handleUpdate);
     window.addEventListener("storage", handleUpdate);
@@ -198,7 +224,68 @@ export default function StudentsPage() {
       window.removeEventListener(AVENIDA_DATA_UPDATED_EVENT, handleUpdate);
       window.removeEventListener("storage", handleUpdate);
     };
-  }, []);
+  }, [selectedStudent]);
+
+  // Filtrage de tous les reçus et versements passés de l'élève
+  const selectedStudentReceipts = useMemo(() => {
+    if (!selectedStudent) return [];
+    const regNum = (selectedStudent.registration_number || "").toLowerCase().trim();
+    const fullName = `${selectedStudent.last_name} ${selectedStudent.first_name}`.toLowerCase().trim();
+    return allReceipts.filter((r) => {
+      const rMat = (r.student_matricule || "").toLowerCase().trim();
+      const rName = (r.student_name || "").toLowerCase().trim();
+      return (regNum && rMat === regNum) || (fullName && rName === fullName);
+    });
+  }, [allReceipts, selectedStudent]);
+
+  // Enregistrement d'un versement d'écolage direct pour l'élève
+  const handleMakeStudentPayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedStudent || paymentAmount <= 0) return;
+    setIsSubmittingPayment(true);
+
+    try {
+      const prevPaid = Number(selectedStudent.paid_fee) || 0;
+      const totalDue = Number(selectedStudent.total_fee) || (prevPaid + Number(selectedStudent.remaining_fee || 0)) || 370000;
+      const newRemaining = Math.max(0, Number(selectedStudent.remaining_fee) - paymentAmount);
+
+      const newReceipt: PaymentReceipt = {
+        id: `rec-${Date.now()}`,
+        reference: `#AV2022-${Math.floor(1000 + Math.random() * 9000)}`,
+        student_name: `${selectedStudent.last_name} ${selectedStudent.first_name}`,
+        student_matricule: selectedStudent.registration_number,
+        class_name: selectedStudent.class_name,
+        designation: paymentDesignation.trim() || "Frais de scolarité (Tranche)",
+        amount_paid: Number(paymentAmount),
+        total_due: totalDue,
+        remaining_due: newRemaining,
+        depositor_name: paymentDepositorName.trim() || selectedStudent.emergency_contact_name || "Parent / Tuteur",
+        depositor_id_card: "PIÈCE TUTEUR",
+        depositor_phone: paymentDepositorPhone.trim() || selectedStudent.emergency_contact_phone || selectedStudent.phone || "+228 90 00 00 00",
+        depositor_role: paymentDepositorRole,
+        payment_method: paymentMethod,
+        site: "LOMÉ",
+        date: formatReceiptDateTime(),
+        cashier_name: paymentCashierName || "Caisse Scolaire Lomé",
+      };
+
+      await saveAndSyncReceipt(newReceipt);
+
+      // Mise à jour de l'état local
+      const updatedStudents = getStoredStudents();
+      const found = updatedStudents.find((s) => s.id === selectedStudent.id);
+      if (found) setSelectedStudent(found);
+      setAllStudents(updatedStudents);
+      setAllReceipts(getStoredReceipts());
+
+      setIsSubmittingPayment(false);
+      setIsPaymentModalOpen(false);
+      setReceiptToView(newReceipt);
+    } catch (err) {
+      console.error("Erreur enregistrement versement élève:", err);
+      setIsSubmittingPayment(false);
+    }
+  };
 
   const handleOpenStudentReport = (st: Student) => {
     const existing = getReportCardsFromStorage().find(
@@ -888,42 +975,191 @@ export default function StudentsPage() {
                 </div>
               </div>
 
-              {/* Bilan Financier */}
+              {/* Bilan Financier, Échelonnement & Reçus d'Écolage */}
               <div>
-                <h3 className="text-xs font-black uppercase tracking-wider text-[#0C356A] border-b pb-1 mb-2.5">
-                  Bilan Écolage & Situation Caisse
-                </h3>
+                <div className="flex items-center justify-between border-b pb-1 mb-2.5">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-[#0C356A] flex items-center gap-1.5">
+                    <CreditCard className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Situation Financière Réelle &amp; Échelonnement de Scolarité</span>
+                  </h3>
+                  <div className="flex items-center gap-1.5">
+                    {Number(selectedStudent.remaining_fee) === 0 ? (
+                      <span className="px-2 py-0.5 bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-full font-black text-[10px] uppercase tracking-wider flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                        100% Soldé
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 rounded-full font-bold text-[10px]">
+                        {selectedStudent.total_fee > 0
+                          ? `${Math.round(((Number(selectedStudent.paid_fee) || 0) / Number(selectedStudent.total_fee)) * 100)}% réglé`
+                          : "En cours"}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Barre de progression financière */}
+                <div className="mb-3 bg-slate-100 rounded-full h-2 overflow-hidden border border-slate-200">
+                  <div
+                    className={`h-full transition-all duration-500 ${
+                      Number(selectedStudent.remaining_fee) === 0 ? "bg-emerald-500" : "bg-[#0C356A]"
+                    }`}
+                    style={{
+                      width: `${Math.min(
+                        100,
+                        selectedStudent.total_fee > 0
+                          ? Math.round(((Number(selectedStudent.paid_fee) || 0) / Number(selectedStudent.total_fee)) * 100)
+                          : 0
+                      )}%`,
+                    }}
+                  />
+                </div>
+
+                {/* 3 Blocs KPI */}
                 <div className="grid grid-cols-3 gap-3 bg-blue-50/50 p-3.5 rounded-2xl border border-blue-200">
                   <div>
-                    <span className="text-[10px] text-slate-500 font-bold block">Total Écolage Dû</span>
+                    <span className="text-[10px] text-slate-500 font-bold block">Total Scolarité Dû</span>
                     <span className="font-mono font-black text-slate-900 text-sm">
                       {formatFCFA(selectedStudent.total_fee)}
                     </span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-emerald-700 font-bold block">Montant Réglé</span>
+                    <span className="text-[10px] text-emerald-700 font-bold block">Total Déjà Réglé</span>
                     <span className="font-mono font-black text-emerald-800 text-sm">
                       {formatFCFA(selectedStudent.paid_fee)}
                     </span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-rose-700 font-bold block">Solde Restant</span>
-                    <span className="font-mono font-black text-rose-800 text-sm">
+                    <span className="text-[10px] text-rose-700 font-bold block">Solde Restant à Payer</span>
+                    <span
+                      className={`font-mono font-black text-sm ${
+                        Number(selectedStudent.remaining_fee) === 0 ? "text-emerald-700" : "text-[#DC2626]"
+                      }`}
+                    >
                       {formatFCFA(selectedStudent.remaining_fee)}
                     </span>
                   </div>
                 </div>
-                <div className="mt-2.5 p-3 bg-blue-50/70 border border-blue-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px]">
-                  <div className="flex items-center gap-2 text-[#0C356A] font-semibold">
-                    <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Statut financier certifié par la Caisse &amp; Trésorerie Centrale (Lecture seule Pôle Scolaire)</span>
-                  </div>
+
+                {/* Boutons d'Action Directs : Encaisser Versement & Reçu Définitif */}
+                <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPaymentAmount(
+                        selectedStudent.remaining_fee > 0
+                          ? Math.min(50000, Number(selectedStudent.remaining_fee))
+                          : 25000
+                      );
+                      setPaymentDesignation(
+                        selectedStudent.remaining_fee > 0
+                          ? `Frais de scolarité (Tranche suivante)`
+                          : `Règlement scolarité complémentaire`
+                      );
+                      setPaymentDepositorName(
+                        selectedStudent.parent_father_name ||
+                          selectedStudent.emergency_contact_name ||
+                          "Parent / Tuteur"
+                      );
+                      setPaymentDepositorPhone(
+                        selectedStudent.emergency_contact_phone || selectedStudent.phone || ""
+                      );
+                      setIsPaymentModalOpen(true);
+                    }}
+                    className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-xs transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>+ Effectuer un Versement d&apos;Écolage</span>
+                  </button>
+
+                  {Number(selectedStudent.remaining_fee) === 0 && selectedStudentReceipts.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setReceiptToView(selectedStudentReceipts[selectedStudentReceipts.length - 1])}
+                      className="px-3.5 py-2 bg-[#0C356A] hover:bg-[#164E87] text-white rounded-xl font-bold text-xs transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95"
+                    >
+                      <Award className="w-3.5 h-3.5 text-amber-300" />
+                      <span>Imprimer Reçu Définitif (Solde Intégral)</span>
+                    </button>
+                  )}
+
                   <Link
                     href="/dashboard/payments"
-                    className="px-3 py-1.5 bg-[#0C356A] hover:bg-[#164E87] text-white rounded-lg font-bold text-xs transition-colors shrink-0 text-center"
+                    className="px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl font-bold text-xs transition-colors text-center ml-auto"
                   >
-                    Guichet Caisse &rarr;
+                    Guichet Caisse Centrale &rarr;
                   </Link>
+                </div>
+
+                {/* Historique Horodaté de l'Échelonnement des Paiements Effectués */}
+                <div className="mt-3.5 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-black uppercase text-slate-700 tracking-wider">
+                      Échelonnement &amp; Tranches Réglées ({selectedStudentReceipts.length})
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-mono">Date &amp; Heure de chaque opération</span>
+                  </div>
+
+                  {selectedStudentReceipts.length > 0 ? (
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                      {selectedStudentReceipts.map((rec, idx) => (
+                        <div
+                          key={rec.id || idx}
+                          className="p-2.5 bg-slate-50 hover:bg-blue-50/40 rounded-xl border border-slate-200 transition-colors flex items-center justify-between gap-3 text-xs"
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0 font-bold font-mono text-[11px]">
+                              T{idx + 1}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-extrabold text-slate-900 truncate">
+                                  {rec.designation || "Frais d'écolage"}
+                                </span>
+                                <span className="text-[10px] font-mono text-[#0C356A] font-bold bg-white px-1.5 py-0.2 rounded border border-slate-200">
+                                  {rec.reference}
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-slate-500 font-mono flex items-center gap-1.5 mt-0.5">
+                                <span>{rec.date}</span>
+                                <span>&bull;</span>
+                                <span className="text-slate-600">{rec.payment_method}</span>
+                                <span>&bull;</span>
+                                <span>
+                                  Reste après versement :{" "}
+                                  <strong className={rec.remaining_due === 0 ? "text-emerald-700" : "text-[#DC2626]"}>
+                                    {formatFCFA(rec.remaining_due)}
+                                  </strong>
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="font-mono font-black text-emerald-700 text-xs">
+                              {formatFCFA(rec.amount_paid)}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setReceiptToView(rec)}
+                              className="px-2 py-1 bg-white hover:bg-[#0C356A] text-[#0C356A] hover:text-white border border-blue-200 rounded-lg text-[10px] font-bold transition-colors flex items-center gap-1 cursor-pointer shadow-2xs"
+                              title="Consulter et imprimer le reçu officiel avec historique"
+                            >
+                              <Eye className="w-3 h-3" />
+                              <span>Reçu</span>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-slate-50 rounded-xl border border-dashed border-slate-300 text-center text-xs text-slate-500 space-y-1">
+                      <p className="font-bold text-slate-700">Aucun versement d&apos;écolage enregistré</p>
+                      <p className="text-[11px]">
+                        Utilisez le bouton &laquo; + Effectuer un Versement d&apos;Écolage &raquo; ci-dessus pour enregistrer la 1ère tranche.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1420,6 +1656,203 @@ export default function StudentsPage() {
           }}
         />
       )}
+
+      {/* MODAL ENCAISSEMENT DIRECT D'ÉCOLAGE ÉLÈVE AVEC DÉDUCTION INSTANTANÉE */}
+      {isPaymentModalOpen && selectedStudent && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-200 space-y-4 my-8">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div>
+                <span className="text-[10px] font-black uppercase text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                  Caisse Scolaire &bull; Versement Écolage
+                </span>
+                <h3 className="text-base font-black text-[#0C356A] mt-1 font-serif">
+                  Encaisser pour : {selectedStudent.last_name} {selectedStudent.first_name}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPaymentModalOpen(false)}
+                className="p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Récapitulatif situation financière actuelle */}
+            <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-1.5 text-xs">
+              <div className="flex justify-between items-center">
+                <span className="font-bold text-slate-800">Classe : {selectedStudent.class_name} ({selectedStudent.program_code})</span>
+                <span className="font-mono text-[#0C356A] font-bold bg-white px-2 py-0.5 rounded border border-slate-200">
+                  {selectedStudent.registration_number}
+                </span>
+              </div>
+              <div className="flex justify-between text-slate-600">
+                <span>Total Scolarité : <strong>{formatFCFA(selectedStudent.total_fee)}</strong></span>
+                <span>Déjà versé : <strong className="text-emerald-700">{formatFCFA(selectedStudent.paid_fee)}</strong></span>
+              </div>
+              <div className="flex justify-between border-t border-slate-200 pt-1.5 font-bold">
+                <span className="text-slate-700">Reste actuel avant ce paiement :</span>
+                <span className="text-[#DC2626]">{formatFCFA(selectedStudent.remaining_fee)}</span>
+              </div>
+            </div>
+
+            <form onSubmit={handleMakeStudentPayment} className="space-y-3.5 text-xs">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Motif / Désignation du Versement *</label>
+                <input
+                  type="text"
+                  required
+                  value={paymentDesignation}
+                  onChange={(e) => setPaymentDesignation(e.target.value)}
+                  placeholder="ex: Frais de scolarité (Tranche 2)"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Montant Versé Maintenant (F CFA) *</label>
+                  <input
+                    type="number"
+                    min={1000}
+                    step={1000}
+                    required
+                    value={paymentAmount}
+                    onChange={(e) => setPaymentAmount(Number(e.target.value))}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-black text-slate-900 font-mono text-sm focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Mode de Règlement *</label>
+                  <select
+                    value={paymentMethod}
+                    onChange={(e) => setPaymentMethod(e.target.value as any)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 focus:outline-none"
+                  >
+                    <option value="Espèces">Espèces (Guichet)</option>
+                    <option value="Mobile Money">Mobile Money (Flooz / T-Money)</option>
+                    <option value="Virement">Virement Bancaire</option>
+                    <option value="Stripe">Carte Bancaire / Stripe</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Simulation dynamique du nouveau solde */}
+              {(() => {
+                const simulatedRem = Math.max(0, Number(selectedStudent.remaining_fee) - Number(paymentAmount));
+                const willBeSettled = simulatedRem === 0;
+                return (
+                  <div
+                    className={`p-3 rounded-xl border text-xs flex items-center justify-between ${
+                      willBeSettled
+                        ? "bg-emerald-50 border-emerald-300 text-emerald-900"
+                        : "bg-blue-50 border-blue-200 text-blue-900"
+                    }`}
+                  >
+                    <div>
+                      <span className="font-bold">Nouveau solde après cette opération : </span>
+                      <strong className={willBeSettled ? "text-emerald-700" : "text-[#DC2626]"}>
+                        {formatFCFA(simulatedRem)}
+                      </strong>
+                    </div>
+                    {willBeSettled ? (
+                      <span className="px-2 py-0.5 bg-emerald-600 text-white text-[10px] font-black rounded-md uppercase">
+                        Sera 100% Soldé !
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 bg-blue-200 text-blue-900 text-[10px] font-bold rounded-md">
+                        Paiement Partiel
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Nom du Déposant / Payeur</label>
+                  <input
+                    type="text"
+                    value={paymentDepositorName}
+                    onChange={(e) => setPaymentDepositorName(e.target.value)}
+                    placeholder="Nom complet"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Téléphone du Déposant</label>
+                  <input
+                    type="text"
+                    value={paymentDepositorPhone}
+                    onChange={(e) => setPaymentDepositorPhone(e.target.value)}
+                    placeholder="+228..."
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Qualité / Lien avec l&apos;Élève</label>
+                  <select
+                    value={paymentDepositorRole}
+                    onChange={(e) => setPaymentDepositorRole(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 focus:outline-none"
+                  >
+                    <option>Parent / Tuteur</option>
+                    <option>Père</option>
+                    <option>Mère</option>
+                    <option>Élève lui-même</option>
+                    <option>Parrain / Entreprise</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Caissier Référent</label>
+                  <input
+                    type="text"
+                    value={paymentCashierName}
+                    onChange={(e) => setPaymentCashierName(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-3 flex justify-end gap-2.5 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setIsPaymentModalOpen(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl font-bold text-slate-700 transition-colors cursor-pointer"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingPayment}
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black shadow-md flex items-center gap-2 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                >
+                  {isSubmittingPayment ? (
+                    <span>Traitement en cours...</span>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-4 h-4 text-white" />
+                      <span>Valider &amp; Émettre Reçu Officiel</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DU REÇU OFFICIEL AVEC HISTORIQUE D'ÉCHELONNEMENT & TAMPON DÉFINITIF */}
+      <OfficialPaymentReceiptModal
+        receipt={receiptToView}
+        isOpen={!!receiptToView}
+        onClose={() => setReceiptToView(null)}
+        allEntityReceipts={allReceipts}
+      />
     </div>
   );
 }

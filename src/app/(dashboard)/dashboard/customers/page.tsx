@@ -25,12 +25,14 @@ import {
   BedDouble,
   FolderOpen,
   ShieldCheck,
+  Plus,
 } from "lucide-react";
 import Link from "next/link";
 import { MOCK_CUSTOMERS } from "@/lib/mock-data";
-import { HotelCustomer } from "@/types";
+import { HotelCustomer, PaymentReceipt } from "@/types";
 import { formatFCFA } from "@/lib/utils";
 import { CustomerAttestationModal } from "@/components/shared/CustomerAttestationModal";
+import { OfficialPaymentReceiptModal } from "@/components/shared/OfficialPaymentReceiptModal";
 import { DirectorPendingApprovalsBanner } from "@/components/shared/DirectorPendingApprovalsBanner";
 import { EditWithDirectorApprovalModal } from "@/components/shared/EditWithDirectorApprovalModal";
 import { createClient } from "@/lib/supabase/client";
@@ -44,6 +46,9 @@ import {
   getStoredCustomers,
   saveAndSyncCustomer,
   syncCustomersFromSupabase,
+  getStoredReceipts,
+  syncReceiptsFromSupabase,
+  saveAndSyncCustomerPayment,
   AVENIDA_DATA_UPDATED_EVENT,
   broadcastDataChange,
 } from "@/lib/realtime-store";
@@ -60,17 +65,35 @@ export default function CustomersPage() {
   const [newCustDocCategory, setNewCustDocCategory] = useState("Pièce d'Identité");
   const [custDocError, setCustDocError] = useState<string | null>(null);
 
+  // Règlements & Reçus Clients
+  const [allReceipts, setAllReceipts] = useState<PaymentReceipt[]>([]);
+  const [receiptToView, setReceiptToView] = useState<PaymentReceipt | null>(null);
+  const [isCustomerPayOpen, setIsCustomerPayOpen] = useState(false);
+  const [custPayAmount, setCustPayAmount] = useState<number>(35000);
+  const [custPayDesignation, setCustPayDesignation] = useState("Règlement Prestation & Séjour Hôtel");
+  const [custPayMethod, setCustPayMethod] = useState<"Espèces" | "Stripe" | "Mobile Money" | "Virement">("Espèces");
+  const [custPayDepositor, setCustPayDepositor] = useState("");
+  const [custPayPhone, setCustPayPhone] = useState("");
+  const [isCustSubmitting, setIsCustSubmitting] = useState(false);
+
   useEffect(() => {
     setCustomers(getStoredCustomers());
-    syncCustomersFromSupabase().then((list) => {
+    setAllReceipts(getStoredReceipts());
+
+    Promise.all([
+      syncCustomersFromSupabase(),
+      syncReceiptsFromSupabase(),
+    ]).then(([list]) => {
       if (list && list.length > 0) {
         setCustomers(list);
       }
+      setAllReceipts(getStoredReceipts());
     });
 
     const handleUpdate = () => {
       const freshList = getStoredCustomers();
       setCustomers(freshList);
+      setAllReceipts(getStoredReceipts());
       if (selectedCustomer) {
         const found = freshList.find((c) => c.id === selectedCustomer.id);
         if (found) setSelectedCustomer(found);
@@ -262,6 +285,62 @@ export default function CustomersPage() {
     setIdDocError(null);
     setIsModalOpen(false);
     setSelectedCustomerForAttestation(added);
+  };
+
+  const selectedCustomerReceipts = selectedCustomer
+    ? allReceipts.filter(
+        (r) =>
+          r.student_matricule === selectedCustomer.code ||
+          r.student_name.toLowerCase().trim() === selectedCustomer.full_name.toLowerCase().trim() ||
+          ((r as any).student_id && (r as any).student_id === selectedCustomer.id) ||
+          (r.class_name.toLowerCase().includes("hôtel") &&
+            r.depositor_name.toLowerCase().trim() === selectedCustomer.full_name.toLowerCase().trim())
+      )
+    : [];
+
+  const handleConfirmCustomerPaymentInDrawer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCustomer) return;
+    const amt = Number(custPayAmount);
+    if (!amt || amt <= 0) {
+      alert("Veuillez saisir un montant valide.");
+      return;
+    }
+
+    setIsCustSubmitting(true);
+    try {
+      const receipt = await saveAndSyncCustomerPayment({
+        customer_id: selectedCustomer.id,
+        customer_name: selectedCustomer.full_name,
+        customer_phone: selectedCustomer.phone,
+        customer_code: selectedCustomer.code,
+        room_number: selectedCustomer.active_room_number || "Hôtel",
+        reservation_id: selectedCustomer.active_reservation_id,
+        amount: amt,
+        designation: custPayDesignation.trim() || "Règlement Séjour & Prestations Hôtelières",
+        payment_method: custPayMethod,
+        depositor_name: custPayDepositor.trim() || selectedCustomer.full_name,
+        depositor_phone: custPayPhone.trim() || selectedCustomer.phone,
+        cashier_name: "Caisse Réception & Hôtel Avenida Lomé",
+      });
+
+      broadcastDataChange();
+      setAllReceipts(getStoredReceipts());
+      const freshCustomers = getStoredCustomers();
+      setCustomers(freshCustomers);
+      const freshSelected = freshCustomers.find((c) => c.id === selectedCustomer.id);
+      if (freshSelected) {
+        setSelectedCustomer(freshSelected);
+      }
+
+      setIsCustomerPayOpen(false);
+      setReceiptToView(receipt);
+    } catch (err) {
+      console.error("Erreur enregistrement règlement client:", err);
+      alert("Erreur lors de l'enregistrement du règlement.");
+    } finally {
+      setIsCustSubmitting(false);
+    }
   };
 
   return (
@@ -563,11 +642,17 @@ export default function CustomersPage() {
 
               {/* 2. Situation Financière & Compte Client */}
               <div>
-                <h3 className="text-xs font-black uppercase tracking-wider text-[#DC2626] border-b pb-1 mb-2.5 flex items-center justify-between">
-                  <span>Situation Financière & Dépenses Hôtelières</span>
-                  <span className="text-[10px] text-emerald-700 font-bold">Synchronisé Caisse</span>
-                </h3>
-                <div className="grid grid-cols-3 gap-3 bg-red-50/40 p-3.5 rounded-2xl border border-red-200">
+                <div className="flex items-center justify-between border-b pb-1 mb-2.5">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-[#DC2626] flex items-center gap-1.5">
+                    <CreditCard className="w-3.5 h-3.5" />
+                    <span>Situation Financière & Règlements Hôteliers</span>
+                  </h3>
+                  <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                    Synchronisé Caisse & Supabase
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3 bg-red-50/40 p-3.5 rounded-2xl border border-red-200 mb-3">
                   <div>
                     <span className="text-[10px] text-slate-500 font-bold block">Total Dépensé Cumulé</span>
                     <span className="font-mono font-black text-emerald-800 text-sm">
@@ -581,24 +666,101 @@ export default function CustomersPage() {
                     </span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-500 font-bold block">Solde Débiteur</span>
-                    <span className={`font-mono font-black text-sm ${Number(selectedCustomer.balance) > 0 ? "text-[#DC2626]" : "text-slate-800"}`}>
-                      {formatFCFA(Number(selectedCustomer.balance) || 0)}
+                    <span className="text-[10px] text-slate-500 font-bold block">Solde Restant à Régler</span>
+                    <span className={`font-mono font-black text-sm ${Number(selectedCustomer.balance) > 0 ? "text-[#DC2626]" : "text-emerald-700 font-bold"}`}>
+                      {Number(selectedCustomer.balance) > 0 ? formatFCFA(Number(selectedCustomer.balance)) : "0 F CFA (Soldé)"}
                     </span>
                   </div>
                 </div>
 
-                <div className="mt-2.5 p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 text-slate-700 text-[11px]">
-                    <CreditCard className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Règlement direct de facture et émission de reçu officiel de caisse</span>
-                  </div>
-                  <Link
-                    href={`/dashboard/payments`}
-                    className="px-3 py-1.5 bg-[#DC2626] hover:bg-[#b91c1c] text-white rounded-lg font-bold text-xs transition-colors shrink-0 flex items-center gap-1"
+                {/* Actions de Paiement & Reçu Définitif */}
+                <div className="flex flex-wrap items-center gap-2 mb-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCustPayAmount(Number(selectedCustomer.balance) > 0 ? Number(selectedCustomer.balance) : 35000);
+                      setCustPayDepositor(selectedCustomer.full_name);
+                      setCustPayPhone(selectedCustomer.phone);
+                      setCustPayDesignation(Number(selectedCustomer.balance) > 0 ? "Règlement Solde Séjour / Prestations" : "Acompte / Prestation Hôtel");
+                      setIsCustomerPayOpen(true);
+                    }}
+                    className="flex-1 py-2 px-3 bg-[#DC2626] hover:bg-[#b91c1c] text-white text-xs font-bold rounded-xl shadow-xs transition flex items-center justify-center gap-1.5"
                   >
-                    <span>Caisse Centrale &rarr;</span>
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>+ Encaisser / Régler Séjour</span>
+                  </button>
+
+                  {Number(selectedCustomer.balance) === 0 && selectedCustomerReceipts.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setReceiptToView(selectedCustomerReceipts[0])}
+                      className="py-2 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition flex items-center gap-1.5"
+                    >
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      <span>Reçu Définitif (Facture Acquittée)</span>
+                    </button>
+                  )}
+
+                  <Link
+                    href="/dashboard/payments"
+                    className="py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition flex items-center gap-1"
+                  >
+                    <span>Caisse &rarr;</span>
                   </Link>
+                </div>
+
+                {/* Historique échelonné des reçus et règlements du client */}
+                <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-2">
+                  <div className="flex items-center justify-between text-[11px] font-bold text-slate-700">
+                    <span className="flex items-center gap-1">
+                      <FileText className="w-3 h-3 text-[#DC2626]" />
+                      Échelonnement des Règlements & Reçus ({selectedCustomerReceipts.length})
+                    </span>
+                    <span className="text-[10px] text-slate-400">Date, heure & montants</span>
+                  </div>
+
+                  {selectedCustomerReceipts.length === 0 ? (
+                    <div className="p-3 text-center text-[11px] text-slate-400 bg-white rounded-xl border border-dashed border-slate-200">
+                      Aucun reçu d'encaissement enregistré pour ce client. Cliquez sur "+ Encaisser / Régler Séjour" pour effectuer un versement.
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5 max-h-44 overflow-y-auto">
+                      {selectedCustomerReceipts.map((rec) => (
+                        <div
+                          key={rec.id}
+                          className="bg-white p-2.5 rounded-xl border border-slate-200 flex items-center justify-between text-xs hover:border-slate-300 transition"
+                        >
+                          <div>
+                            <div className="font-bold text-slate-900 flex items-center gap-2">
+                              <span className="font-mono text-[10px] text-red-600 font-bold">{rec.reference}</span>
+                              <span className="text-slate-700">{rec.designation}</span>
+                            </div>
+                            <div className="text-[10px] text-slate-400 font-mono mt-0.5">
+                              {rec.date} &bull; Mode : {rec.payment_method}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2.5">
+                            <div className="text-right">
+                              <span className="font-mono font-bold text-emerald-700 block text-xs">
+                                +{formatFCFA(rec.amount_paid)}
+                              </span>
+                              <span className="text-[10px] text-slate-500 font-mono">
+                                Reste : {formatFCFA(rec.remaining_due)}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setReceiptToView(rec)}
+                              className="p-1.5 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                              title="Visualiser et imprimer le reçu officiel avec échelonnement"
+                            >
+                              <Printer className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1083,6 +1245,141 @@ export default function CustomersPage() {
             }
           }}
         />
+      )}
+
+      {/* Modal Reçu de Paiement Officiel avec Échelonnement & Quittance Définitive */}
+      {receiptToView && (
+        <OfficialPaymentReceiptModal
+          receipt={receiptToView}
+          allEntityReceipts={selectedCustomerReceipts.length > 0 ? selectedCustomerReceipts : allReceipts}
+          isOpen={!!receiptToView}
+          onClose={() => setReceiptToView(null)}
+        />
+      )}
+
+      {/* Modal Règlement Client & Encaissement Séjour */}
+      {isCustomerPayOpen && selectedCustomer && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border-2 border-red-200">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-red-100 text-[#DC2626] flex items-center justify-center font-bold">
+                  <CreditCard className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900 font-serif">Encaisser un Règlement Client</h3>
+                  <p className="text-xs text-slate-500">{selectedCustomer.full_name} &bull; Réf: {selectedCustomer.code}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCustomerPayOpen(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 flex items-center justify-center text-sm font-bold"
+              >
+                &times;
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmCustomerPaymentInDrawer} className="space-y-4 pt-4">
+              <div className="bg-red-50/50 p-3 rounded-2xl border border-red-200 flex justify-between items-center text-xs">
+                <div>
+                  <span className="text-slate-500 font-bold block text-[10px]">SOLDE ACTUEL DÉBITEUR</span>
+                  <span className="font-mono font-black text-[#DC2626] text-sm">
+                    {formatFCFA(Number(selectedCustomer.balance) || 0)}
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="text-slate-500 font-bold block text-[10px]">TOTAL DÉPENSÉ</span>
+                  <span className="font-mono font-black text-emerald-800 text-sm">
+                    {formatFCFA(Number(selectedCustomer.total_spent) || 0)}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  Montant à Encaisser (FCFA) *
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  step="500"
+                  required
+                  value={custPayAmount}
+                  onChange={(e) => setCustPayAmount(Number(e.target.value))}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl font-mono font-black text-base text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#DC2626]"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">
+                  Désignation / Motif de l'encaissement *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={custPayDesignation}
+                  onChange={(e) => setCustPayDesignation(e.target.value)}
+                  placeholder="Ex: Règlement nuitées, Restauration, Prestation..."
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#DC2626]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">Mode de Paiement</label>
+                  <select
+                    value={custPayMethod}
+                    onChange={(e) => setCustPayMethod(e.target.value as any)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#DC2626]"
+                  >
+                    <option value="Espèces">Espèces (Caisse)</option>
+                    <option value="Mobile Money">T-Money / Flooz</option>
+                    <option value="Virement">Virement / Carte Bancaire</option>
+                    <option value="Stripe">Stripe En Ligne</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">Téléphone de Contact</label>
+                  <input
+                    type="text"
+                    value={custPayPhone}
+                    onChange={(e) => setCustPayPhone(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#DC2626]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Nom du Déposant / Payeur</label>
+                <input
+                  type="text"
+                  value={custPayDepositor}
+                  onChange={(e) => setCustPayDepositor(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#DC2626]"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsCustomerPayOpen(false)}
+                  className="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={isCustSubmitting}
+                  className="px-5 py-2 text-xs font-bold text-white bg-[#DC2626] hover:bg-[#b91c1c] rounded-xl shadow-md transition disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  <CreditCard className="w-4 h-4" />
+                  <span>{isCustSubmitting ? "Traitement..." : "Valider l'Encaissement & Émettre Reçu"}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );

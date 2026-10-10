@@ -1174,10 +1174,26 @@ export async function saveAndSyncReceipt(receipt: PaymentReceipt): Promise<Payme
       const newPaid = prevPaid + Number(receipt.amount_paid);
       const newRemaining = Math.max(0, totalDue - newPaid);
 
+      const newInstallment = {
+        id: `inst-${Date.now()}`,
+        receipt_reference: receipt.reference,
+        amount: Number(receipt.amount_paid),
+        date: receipt.date,
+        designation: receipt.designation,
+        payment_method: receipt.payment_method,
+        remaining_after: newRemaining,
+      };
+
+      const updatedInstallments = [
+        newInstallment,
+        ...(targetStudent.payment_installments || []).filter((i) => i.receipt_reference !== receipt.reference),
+      ];
+
       const updatedStudent: Student = {
         ...targetStudent,
         paid_fee: newPaid,
         remaining_fee: newRemaining,
+        payment_installments: updatedInstallments,
       };
 
       currentStudents[studentIndex] = updatedStudent;
@@ -1189,6 +1205,7 @@ export async function saveAndSyncReceipt(receipt: PaymentReceipt): Promise<Payme
         .update({
           paid_fee: newPaid,
           remaining_fee: newRemaining,
+          raw_data: { ...updatedStudent },
         })
         .eq("registration_number", targetStudent.registration_number);
 
@@ -1237,8 +1254,10 @@ export async function saveAndSyncReceipt(receipt: PaymentReceipt): Promise<Payme
 
 export async function saveAndSyncCustomerPayment(params: {
   customer_id?: string;
+  customer_code?: string;
   customer_name: string;
   customer_phone?: string;
+  room_number?: string;
   reservation_id?: string;
   amount: number;
   total_due?: number;
@@ -1283,14 +1302,23 @@ export async function saveAndSyncCustomerPayment(params: {
       const cIdx = allCustomers.findIndex((c) => c.id === params.customer_id || c.code === params.customer_id);
       if (cIdx !== -1) {
         const cust = allCustomers[cIdx];
+        const newBalance = Math.max(0, (Number(cust.balance) || 0) - amt);
         const updatedCust: HotelCustomer = {
           ...cust,
           total_spent: (Number(cust.total_spent) || 0) + amt,
+          balance: newBalance,
         };
         allCustomers[cIdx] = updatedCust;
         safeSetStorage("avenida_custom_customers", allCustomers);
         const supabase = createClient();
-        await supabase.from("hotel_customers").update({ total_spent: updatedCust.total_spent }).eq("id", cust.id);
+        await supabase
+          .from("hotel_customers")
+          .update({
+            total_spent: updatedCust.total_spent,
+            balance: newBalance,
+            raw_data: { ...updatedCust },
+          })
+          .eq("id", cust.id);
       }
     } catch (err) {
       console.warn("Update customer balance error:", err);

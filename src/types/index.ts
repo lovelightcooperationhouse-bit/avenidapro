@@ -101,6 +101,15 @@ export interface Student {
   payment_method?: string;
   registration_fee?: number;
   installments_count?: number;
+  payment_installments?: Array<{
+    id: string;
+    receipt_reference: string;
+    amount: number;
+    date: string;
+    designation: string;
+    payment_method: string;
+    remaining_after: number;
+  }>;
   notes?: string;
   raw_data?: Record<string, any>;
 }

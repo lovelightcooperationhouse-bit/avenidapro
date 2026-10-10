@@ -29,6 +29,7 @@ import {
 import { PaymentReceipt, Student, HotelCustomer, HotelReservation } from "@/types";
 import { formatFCFA } from "@/lib/utils";
 import { AvenidaLogo } from "@/components/shared/AvenidaLogo";
+import { OfficialPaymentReceiptModal } from "@/components/shared/OfficialPaymentReceiptModal";
 import {
   getStoredReceipts,
   saveAndSyncReceipt,
@@ -819,164 +820,14 @@ export default function PaymentsPage() {
       )}
 
       {/* ───────────────────────────────────────────────────────────────────────────── */}
-      {/* 7. MODAL OFFICIEL DU REÇU AVENIDA (DATE & HEURE + MENTION SOLDÉ / RESTE DÛ)    */}
+      {/* 7. MODAL OFFICIEL DU REÇU AVENIDA (DATE & HEURE + ÉCHELONNEMENT + SOLDE DÉFINITIF) */}
       {/* ───────────────────────────────────────────────────────────────────────────── */}
-      {selectedReceipt && (
-        <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-xs z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl border-2 border-slate-300 relative animate-scale-up space-y-5 my-8">
-            <button
-              onClick={() => setSelectedReceipt(null)}
-              className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-700 rounded-full hover:bg-slate-100 cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            {/* En-tête Officiel avec Logo Avenida & Cachet Duplicata */}
-            <div className="border-b-2 border-slate-900 pb-4 flex items-start justify-between">
-              <AvenidaLogo size="sm" showText={true} />
-              <div className="text-right">
-                <span className="inline-block border-2 border-[#DC2626] text-[#DC2626] px-3 py-1 text-xs font-black tracking-widest uppercase">
-                  DUPLICATA OFFICIEL DE CAISSE
-                </span>
-                <p className="text-[11px] text-slate-600 mt-1">
-                  Site Dékon : <strong>30, Rue d'Almeida Leopold, Lomé - Togo</strong>
-                </p>
-              </div>
-            </div>
-
-            {/* Titre & Référence Reçu */}
-            <div className="text-center space-y-1">
-              <h2 className="text-xl sm:text-2xl font-black tracking-wider uppercase underline font-serif text-[#0C356A]">
-                REÇU DE CAISSE &bull; QUITTANCE DE PAIEMENT
-              </h2>
-              <p className="text-xs text-slate-600">
-                Numéro d'Opération Officiel : <strong className="font-mono text-slate-900">{selectedReceipt.reference}</strong>
-              </p>
-            </div>
-
-            {/* Horodatage Certifié : Date ET Heure exacte du paiement */}
-            <div className="bg-blue-50/80 p-3 rounded-xl border border-blue-200 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs">
-              <div className="flex items-center gap-2 text-[#0C356A] font-bold">
-                <Calendar className="w-4 h-4 text-blue-700" />
-                <span>Horodatage Certifié :</span>
-                <span className="font-mono bg-white px-2 py-0.5 rounded border border-blue-300 text-slate-900">
-                  {selectedReceipt.date}
-                </span>
-              </div>
-              <div className="text-slate-600 text-[11px]">
-                Mode de règlement : <strong className="text-slate-900">{selectedReceipt.payment_method}</strong>
-              </div>
-            </div>
-
-            {/* Informations Bénéficiaire */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs bg-slate-50 p-4 rounded-xl border border-slate-200">
-              <div>
-                <p className="text-slate-500 font-bold uppercase text-[10px]">Identité du Bénéficiaire</p>
-                <p className="text-sm font-bold text-slate-900 mt-0.5">{selectedReceipt.student_name}</p>
-                <p className="font-mono text-[#0C356A] font-bold mt-0.5">Matricule : {selectedReceipt.student_matricule}</p>
-                <p className="text-slate-600">Classe / Pôle : {selectedReceipt.class_name}</p>
-              </div>
-              <div className="text-left sm:text-right">
-                <p className="text-slate-500 font-bold uppercase text-[10px]">Informations Déposant</p>
-                <p className="font-bold text-slate-900 mt-0.5">{selectedReceipt.depositor_name}</p>
-                <p className="text-slate-600">{selectedReceipt.depositor_role} &bull; Tél: {selectedReceipt.depositor_phone}</p>
-                <p className="text-slate-500 text-[11px]">Pièce : {selectedReceipt.depositor_id_card}</p>
-              </div>
-            </div>
-
-            {/* Ligne Financière */}
-            <table className="w-full text-xs text-left border border-slate-200">
-              <thead className="bg-[#0C356A] text-white font-bold">
-                <tr>
-                  <th className="p-2.5 border">Désignation de l'Opération</th>
-                  <th className="p-2.5 border text-right">Écolage / Dû</th>
-                  <th className="p-2.5 border text-right bg-emerald-800">Montant Encaissé</th>
-                  <th className="p-2.5 border text-right">Reste Après Opération</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td className="p-2.5 border font-semibold text-slate-900">{selectedReceipt.designation}</td>
-                  <td className="p-2.5 border text-right font-bold text-slate-700">
-                    {formatFCFA(selectedReceipt.total_due)}
-                  </td>
-                  <td className="p-2.5 border text-right font-black text-emerald-700 bg-emerald-50 text-sm">
-                    {formatFCFA(selectedReceipt.amount_paid)}
-                  </td>
-                  <td className="p-2.5 border text-right font-black text-sm">
-                    {selectedReceipt.remaining_due === 0 ? (
-                      <span className="text-emerald-700">0 F CFA</span>
-                    ) : (
-                      <span className="text-[#DC2626]">{formatFCFA(selectedReceipt.remaining_due)}</span>
-                    )}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-
-            {/* 🌟 GRAND TAMPON OFFICIEL DE STATUT DU SOLDE AUTOMATIQUE */}
-            <div className="pt-2">
-              {selectedReceipt.remaining_due === 0 ? (
-                <div className="p-4 bg-emerald-50 border-2 border-emerald-500 rounded-2xl flex items-center justify-between gap-4 text-emerald-900 shadow-xs">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-sm">
-                      <Check className="w-6 h-6 stroke-[3]" />
-                    </div>
-                    <div>
-                      <p className="font-black text-sm sm:text-base tracking-wide uppercase text-emerald-900 font-serif">
-                        SCOLARITÉ INTÉGRALEMENT SOLDÉE
-                      </p>
-                      <p className="text-xs text-emerald-700 font-medium">
-                        Quittus financier validé &bull; Reste à payer : 0 F CFA
-                      </p>
-                    </div>
-                  </div>
-                  <span className="hidden sm:inline-block px-3 py-1 bg-emerald-600 text-white text-xs font-black rounded-lg uppercase tracking-wider">
-                    SOLDÉ ✓
-                  </span>
-                </div>
-              ) : (
-                <div className="p-4 bg-amber-50 border-2 border-amber-500 rounded-2xl flex items-center justify-between gap-4 text-amber-900 shadow-xs">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-sm">
-                      <Clock className="w-6 h-6 stroke-[3]" />
-                    </div>
-                    <div>
-                      <p className="font-black text-sm sm:text-base tracking-wide uppercase text-amber-900 font-serif">
-                        PAIEMENT PARTIEL COMPTABILISÉ
-                      </p>
-                      <p className="text-xs text-amber-800 font-bold">
-                        Reste à payer : <span className="text-[#DC2626] font-black text-sm">{formatFCFA(selectedReceipt.remaining_due)}</span>
-                      </p>
-                    </div>
-                  </div>
-                  <span className="hidden sm:inline-block px-3 py-1 bg-amber-600 text-white text-xs font-black rounded-lg uppercase tracking-wider">
-                    EN COURS
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* Signatures & Impression */}
-            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 pt-4 border-t border-slate-200">
-              <div className="text-xs text-slate-500 space-y-1">
-                <p>Caissier Opérateur : <strong>{selectedReceipt.cashier_name}</strong></p>
-                <p className="text-[10px] text-slate-400">Cachet &amp; Signature électronique certifiée par la Comptabilité</p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => window.print()}
-                  className="px-5 py-2.5 bg-[#0C356A] hover:bg-[#164E87] text-white font-bold text-xs rounded-xl flex items-center gap-2 shadow-md transition-all cursor-pointer"
-                >
-                  <Printer className="w-4 h-4 text-blue-200" />
-                  <span>Imprimer Reçu Officiel</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <OfficialPaymentReceiptModal
+        receipt={selectedReceipt}
+        isOpen={!!selectedReceipt}
+        onClose={() => setSelectedReceipt(null)}
+        allEntityReceipts={receipts}
+      />
 
       {/* ───────────────────────────────────────────────────────────────────────────── */}
       {/* 8. MODAL ENCAISSEMENT ÉLÈVE AVEC DÉDUCTION INSTANTANÉE                         */}
