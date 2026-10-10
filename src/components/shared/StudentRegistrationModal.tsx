@@ -260,16 +260,19 @@ export function StudentRegistrationModal({
               <div>
                 <span className="text-[10px] text-slate-500">Parent / Tuteur :</span>{" "}
                 <strong>
-                  {enrollmentDetails?.parentName || student.emergency_contact_name || "Parent d'Élève"}
+                  {student.tutor_name || student.parent_father_name || student.parent_mother_name || enrollmentDetails?.parentName || student.emergency_contact_name || "Parent d'Élève"}
                 </strong>
-                {enrollmentDetails?.parentPhone && (
-                  <p className="text-slate-600 text-[10px]">Tél : {enrollmentDetails.parentPhone}</p>
+                {(student.tutor_phone || student.parent_father_phone || student.parent_mother_phone || enrollmentDetails?.parentPhone) && (
+                  <p className="text-slate-600 text-[10px]">Tél : {student.tutor_phone || student.parent_father_phone || student.parent_mother_phone || enrollmentDetails?.parentPhone}</p>
                 )}
               </div>
               <div>
                 <span className="text-[10px] text-slate-500">Contact en Cas d&apos;Urgence :</span>{" "}
                 <strong>{student.emergency_contact_name || "—"}</strong>{" "}
                 <span className="text-slate-600">({student.emergency_contact_phone || "—"})</span>
+                {student.blood_group && (
+                  <p className="text-red-700 text-[10px] font-bold">Groupe Sanguin : {student.blood_group}</p>
+                )}
               </div>
             </div>
           </div>

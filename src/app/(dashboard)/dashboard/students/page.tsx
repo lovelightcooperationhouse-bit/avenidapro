@@ -51,6 +51,7 @@ import {
 import {
   getStoredStudents,
   syncStudentsFromSupabase,
+  saveAndSyncStudent,
   broadcastDataChange,
   AVENIDA_DATA_UPDATED_EVENT,
 } from "@/lib/realtime-store";
@@ -124,18 +125,13 @@ export default function StudentsPage() {
       setSelectedStudent(updatedStudent);
       const updatedList = allStudents.map((s) => (s.id === updatedStudent.id ? updatedStudent : s));
       setAllStudents(updatedList);
-      try {
-        localStorage.setItem("avenida_custom_students", JSON.stringify(updatedList));
-      } catch (e) {
-        console.warn("Storage full", e);
-      }
-      broadcastDataChange();
+      await saveAndSyncStudent(updatedStudent);
       setNewDocTitle("");
     };
     reader.readAsDataURL(file);
   };
 
-  const handleRemoveStudentDocument = (docKey: string) => {
+  const handleRemoveStudentDocument = async (docKey: string) => {
     if (!selectedStudent || !selectedStudent.uploaded_documents) return;
     const remainingDocs = { ...selectedStudent.uploaded_documents };
     delete remainingDocs[docKey];
@@ -147,12 +143,7 @@ export default function StudentsPage() {
     setSelectedStudent(updatedStudent);
     const updatedList = allStudents.map((s) => (s.id === updatedStudent.id ? updatedStudent : s));
     setAllStudents(updatedList);
-    try {
-      localStorage.setItem("avenida_custom_students", JSON.stringify(updatedList));
-    } catch (e) {
-      console.warn("Storage error", e);
-    }
-    broadcastDataChange();
+    await saveAndSyncStudent(updatedStudent);
   };
 
   useEffect(() => {

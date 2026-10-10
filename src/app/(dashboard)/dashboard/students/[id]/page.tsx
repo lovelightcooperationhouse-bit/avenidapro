@@ -314,6 +314,50 @@ export default function StudentDetailPage({
               </span>
               <span className="text-slate-500 text-[11px] block mt-0.5">{student.email}</span>
             </div>
+            {student.id_card_number && (
+              <div>
+                <span className="text-slate-400 block text-[10px] uppercase font-bold">Pièce d&apos;Identité / CNI</span>
+                <span className="font-semibold text-slate-800">{student.id_card_number}</span>
+              </div>
+            )}
+            {(student.parent_father_name || student.parent_mother_name || student.tutor_name) && (
+              <div className="p-3 bg-blue-50/60 rounded-xl border border-blue-200">
+                <span className="text-[#0C356A] block text-[10px] uppercase font-black">
+                  Responsable Légal / Parents & Tuteur
+                </span>
+                {student.parent_father_name && (
+                  <p className="text-slate-800 text-[11px] mt-0.5">
+                    <strong>Père :</strong> {student.parent_father_name} {student.parent_father_phone ? `(${student.parent_father_phone})` : ""}
+                  </p>
+                )}
+                {student.parent_mother_name && (
+                  <p className="text-slate-800 text-[11px] mt-0.5">
+                    <strong>Mère :</strong> {student.parent_mother_name} {student.parent_mother_phone ? `(${student.parent_mother_phone})` : ""}
+                  </p>
+                )}
+                {student.tutor_name && (
+                  <p className="text-slate-800 text-[11px] mt-0.5">
+                    <strong>Tuteur :</strong> {student.tutor_name} {student.tutor_phone ? `(${student.tutor_phone})` : ""}
+                  </p>
+                )}
+              </div>
+            )}
+            {(student.blood_group || student.allergies || student.medical_notes) && (
+              <div className="p-3 bg-amber-50/60 rounded-xl border border-amber-200">
+                <span className="text-amber-900 block text-[10px] uppercase font-black">
+                  Informations Médicales
+                </span>
+                {student.blood_group && (
+                  <p className="text-red-700 text-[11px] font-bold">Groupe Sanguin : {student.blood_group}</p>
+                )}
+                {student.allergies && (
+                  <p className="text-slate-700 text-[11px]">Allergies : {student.allergies}</p>
+                )}
+                {student.medical_notes && (
+                  <p className="text-slate-600 text-[11px]">Notes : {student.medical_notes}</p>
+                )}
+              </div>
+            )}
             <div className="p-3 bg-red-50 rounded-xl border border-red-200">
               <span className="text-[#DC2626] block text-[10px] uppercase font-black">
                 Personne à Prévenir en Urgence

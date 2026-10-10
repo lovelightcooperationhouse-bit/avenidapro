@@ -28,14 +28,19 @@ import {
   calculateClassRankings,
   syncReportCardsFromSupabase,
 } from "@/lib/report-cards-data";
-import { getStoredStudents } from "@/lib/realtime-store";
+import {
+  getStoredStudents,
+  getStoredGrades,
+  syncGradesFromSupabase,
+  saveAndSyncGrade,
+} from "@/lib/realtime-store";
 import { ReportCardModal } from "@/components/shared/ReportCardModal";
 import { GradeEntryModal } from "@/components/shared/GradeEntryModal";
 
 export default function GradesPage() {
   const [activeTab, setActiveTab] = useState<"bulletins" | "devoirs">("bulletins");
   const [reportCards, setReportCards] = useState<StudentReportCard[]>([]);
-  const [grades, setGrades] = useState<GradeRecord[]>(MOCK_GRADES);
+  const [grades, setGrades] = useState<GradeRecord[]>([]);
 
   // Filters for Report Cards
   const [selectedClass, setSelectedClass] = useState<string>("ALL");
@@ -61,13 +66,20 @@ export default function GradesPage() {
     appreciation: "Bonne application des règles d'hygiène et de sécurité.",
   });
 
-  // Load report cards on mount and sync with Supabase
+  // Load report cards and grades on mount and sync with Supabase
   useEffect(() => {
-    const loaded = getReportCardsFromStorage();
-    setReportCards(loaded);
+    const loadedCards = getReportCardsFromStorage();
+    setReportCards(loadedCards);
     syncReportCardsFromSupabase().then((remote) => {
       if (remote && remote.length > 0) {
         setReportCards(remote);
+      }
+    });
+
+    setGrades(getStoredGrades());
+    syncGradesFromSupabase().then((remote) => {
+      if (remote && remote.length > 0) {
+        setGrades(remote);
       }
     });
   }, []);
@@ -129,7 +141,7 @@ export default function GradesPage() {
     setIsEntryModalOpen(true);
   };
 
-  const handleAddSingleGrade = (e: React.FormEvent) => {
+  const handleAddSingleGrade = async (e: React.FormEvent) => {
     e.preventDefault();
     const created: GradeRecord = {
       id: `grd-${Date.now()}`,
@@ -144,7 +156,8 @@ export default function GradesPage() {
       teacher_name: newGrade.teacher_name,
       appreciation: newGrade.appreciation,
     };
-    setGrades([created, ...grades]);
+    const updated = await saveAndSyncGrade(created);
+    setGrades(updated);
     setIsSingleGradeModalOpen(false);
   };
 

@@ -74,6 +74,35 @@ export interface Student {
     }
   >;
   id_card_or_passport_url?: string;
+  id_card_number?: string;
+  address?: string;
+  city?: string;
+  phone_secondary?: string;
+  previous_school?: string;
+  last_diploma?: string;
+  last_class?: string;
+  average_last_year?: string;
+  transfer_reason?: string;
+  year_level?: string;
+  specialty?: string;
+  parent_father_name?: string;
+  parent_father_phone?: string;
+  parent_father_profession?: string;
+  parent_mother_name?: string;
+  parent_mother_phone?: string;
+  parent_mother_profession?: string;
+  tutor_name?: string;
+  tutor_phone?: string;
+  tutor_profession?: string;
+  tutor_relation?: string;
+  blood_group?: string;
+  allergies?: string;
+  medical_notes?: string;
+  payment_method?: string;
+  registration_fee?: number;
+  installments_count?: number;
+  notes?: string;
+  raw_data?: Record<string, any>;
 }
 
 export type RoomStatus =

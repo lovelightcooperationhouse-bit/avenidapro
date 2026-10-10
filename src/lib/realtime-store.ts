@@ -12,6 +12,7 @@ import {
   MOCK_LATES,
   MOCK_SALARIES,
   MOCK_INVENTORY,
+  MOCK_GRADES,
 } from "@/lib/mock-data";
 import {
   Student,
@@ -27,6 +28,7 @@ import {
   LateTicket,
   SalaryRecord,
   InventoryItem,
+  GradeRecord,
 } from "@/types";
 import { createClient } from "@/lib/supabase/client";
 import { notifyDirector } from "@/lib/notifications";
@@ -116,6 +118,35 @@ export async function syncStudentsFromSupabase(): Promise<Student[]> {
       paid_fee: Number(row.paid_fee) || 0,
       remaining_fee: Number(row.remaining_fee) || 0,
       uploaded_documents: row.uploaded_documents || {},
+      id_card_number: row.id_card_number || undefined,
+      address: row.address || undefined,
+      city: row.city || undefined,
+      phone_secondary: row.phone_secondary || undefined,
+      previous_school: row.previous_school || undefined,
+      last_diploma: row.last_diploma || undefined,
+      last_class: row.last_class || undefined,
+      average_last_year: row.average_last_year || undefined,
+      transfer_reason: row.transfer_reason || undefined,
+      year_level: row.year_level || undefined,
+      specialty: row.specialty || undefined,
+      parent_father_name: row.parent_father_name || undefined,
+      parent_father_phone: row.parent_father_phone || undefined,
+      parent_father_profession: row.parent_father_profession || undefined,
+      parent_mother_name: row.parent_mother_name || undefined,
+      parent_mother_phone: row.parent_mother_phone || undefined,
+      parent_mother_profession: row.parent_mother_profession || undefined,
+      tutor_name: row.tutor_name || undefined,
+      tutor_phone: row.tutor_phone || undefined,
+      tutor_profession: row.tutor_profession || undefined,
+      tutor_relation: row.tutor_relation || undefined,
+      blood_group: row.blood_group || undefined,
+      allergies: row.allergies || undefined,
+      medical_notes: row.medical_notes || undefined,
+      payment_method: row.payment_method || undefined,
+      registration_fee: Number(row.registration_fee) || 0,
+      installments_count: Number(row.installments_count) || 1,
+      notes: row.notes || undefined,
+      raw_data: row.raw_data || undefined,
     }));
 
     // Fusionner avec les élèves locaux non-mocks
@@ -174,6 +205,35 @@ export async function saveAndSyncStudent(student: Student): Promise<Student[]> {
       photo_url: student.photo_url || null,
       status: student.status || "actif",
       uploaded_documents: student.uploaded_documents || {},
+      id_card_number: student.id_card_number || null,
+      address: student.address || null,
+      city: student.city || null,
+      phone_secondary: student.phone_secondary || null,
+      previous_school: student.previous_school || null,
+      last_diploma: student.last_diploma || null,
+      last_class: student.last_class || null,
+      average_last_year: student.average_last_year || null,
+      transfer_reason: student.transfer_reason || null,
+      year_level: student.year_level || null,
+      specialty: student.specialty || null,
+      parent_father_name: student.parent_father_name || null,
+      parent_father_phone: student.parent_father_phone || null,
+      parent_father_profession: student.parent_father_profession || null,
+      parent_mother_name: student.parent_mother_name || null,
+      parent_mother_phone: student.parent_mother_phone || null,
+      parent_mother_profession: student.parent_mother_profession || null,
+      tutor_name: student.tutor_name || null,
+      tutor_phone: student.tutor_phone || null,
+      tutor_profession: student.tutor_profession || null,
+      tutor_relation: student.tutor_relation || null,
+      blood_group: student.blood_group || null,
+      allergies: student.allergies || null,
+      medical_notes: student.medical_notes || null,
+      payment_method: student.payment_method || null,
+      registration_fee: student.registration_fee || 0,
+      installments_count: student.installments_count || 1,
+      notes: student.notes || null,
+      raw_data: student.raw_data || { ...student },
     };
 
     const { error } = await supabase
@@ -249,7 +309,9 @@ export async function syncEmployeesFromSupabase(): Promise<Employee[]> {
       experience_years: Number(row.experience_years) || 3,
       cv_summary: row.cv_summary || "",
       photo_url: row.photo_url || undefined,
+      uploaded_documents: row.uploaded_documents || {},
       status: row.status === "sorti" ? "inactif" : "actif",
+      raw_data: row.raw_data || undefined,
     }));
 
     const current = getStoredEmployees();
@@ -303,8 +365,10 @@ export async function saveAndSyncEmployee(employee: Employee): Promise<Employee[
         experience_years: employee.experience_years,
         cv_summary: employee.cv_summary,
         photo_url: employee.photo_url,
+        uploaded_documents: employee.uploaded_documents || {},
         hire_date: employee.hire_date,
         status: employee.status === "inactif" ? "sorti" : "actif",
+        raw_data: { ...employee },
       },
       { onConflict: "matricule" }
     );
@@ -362,6 +426,7 @@ export async function syncCustomersFromSupabase(): Promise<HotelCustomer[]> {
       total_spent: Number(row.total_spent) || 0,
       is_vip: Boolean(row.is_vip),
       created_at: row.created_at || new Date().toISOString(),
+      id_card_document: row.id_card_document || undefined,
     }));
 
     const current = getStoredCustomers();
@@ -408,6 +473,8 @@ export async function saveAndSyncCustomer(customer: HotelCustomer): Promise<Hote
         total_stays: customer.total_stays || 1,
         total_spent: customer.total_spent || 0,
         is_vip: customer.is_vip || false,
+        id_card_document: customer.id_card_document || null,
+        raw_data: { ...customer },
       },
       { onConflict: "phone" }
     );
@@ -464,6 +531,8 @@ export async function syncFinancesFromSupabase(): Promise<FinancialEntry[]> {
       payment_mode: row.payment_method || "Espèces",
       receipt_number: row.receipt_number,
       receipt_document_url: row.receipt_document_url,
+      receipt_document_name: row.receipt_document_name || undefined,
+      receipt_document_size: row.receipt_document_size || undefined,
     }));
 
     const current = getStoredFinances();
@@ -504,6 +573,9 @@ export async function saveAndSyncFinance(entry: FinancialEntry): Promise<Financi
         recorded_by: entry.recorded_by,
         receipt_number: entry.receipt_number || null,
         receipt_document_url: entry.receipt_document_url || null,
+        receipt_document_name: entry.receipt_document_name || null,
+        receipt_document_size: entry.receipt_document_size || null,
+        raw_data: { ...entry },
       },
       { onConflict: "reference" }
     );
@@ -1045,6 +1117,8 @@ export async function saveAndSyncSalary(record: SalaryRecord): Promise<SalaryRec
         payment_method: record.payment_method,
         payment_date: record.payment_date,
         status: record.status,
+        period_name: record.period_month,
+        raw_data: { ...record },
       },
       { onConflict: "slip_ref" }
     );
@@ -1135,6 +1209,7 @@ export async function saveAndSyncInventoryItem(item: InventoryItem): Promise<Inv
         supplier: item.supplier,
         last_restock_date: item.last_restock_date,
         location: item.location,
+        raw_data: { ...item },
       },
       { onConflict: "sku" }
     );
@@ -1171,3 +1246,87 @@ export async function updateInventoryQuantity(
   broadcastDataChange();
   return updatedList;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 11. NOTES & ÉVALUATIONS INDIVIDUELLES
+// ─────────────────────────────────────────────────────────────────────────────
+export function getStoredGrades(): GradeRecord[] {
+  if (typeof window === "undefined") return MOCK_GRADES;
+  try {
+    const raw = localStorage.getItem("avenida_custom_grades");
+    if (!raw) return MOCK_GRADES;
+    const parsed = JSON.parse(raw) as GradeRecord[];
+    if (!Array.isArray(parsed) || parsed.length === 0) return MOCK_GRADES;
+    return parsed;
+  } catch (err) {
+    console.warn("Erreur lecture notes locales:", err);
+    return MOCK_GRADES;
+  }
+}
+
+export async function syncGradesFromSupabase(): Promise<GradeRecord[]> {
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase.from("grades").select("*");
+    if (error || !data || data.length === 0) return getStoredGrades();
+
+    const remote: GradeRecord[] = data.map((row: any) => ({
+      id: row.id,
+      student_name: row.student_name || "Élève Avenida",
+      student_matricule: row.student_matricule || "",
+      class_name: row.class_name || "Classe",
+      subject: row.subject || "Discipline",
+      evaluation_type: row.evaluation_type || "Devoir Écrit",
+      score: Number(row.score) || 0,
+      coefficient: Number(row.coefficient) || 1,
+      date: row.date || new Date().toISOString().split("T")[0],
+      teacher_name: row.teacher_name || "Formateur",
+      appreciation: row.appreciation || row.note || "",
+    }));
+
+    const current = getStoredGrades();
+    const remoteIds = new Set(remote.map((g) => g.id));
+    const merged = [...remote, ...current.filter((c) => !remoteIds.has(c.id))];
+    safeSetStorage("avenida_custom_grades", merged);
+    broadcastDataChange();
+    return merged;
+  } catch (err) {
+    console.warn("Sync Supabase notes échouée:", err);
+    return getStoredGrades();
+  }
+}
+
+export async function saveAndSyncGrade(grade: GradeRecord): Promise<GradeRecord[]> {
+  const current = getStoredGrades();
+  const filtered = current.filter((g) => g.id !== grade.id);
+  const updatedList = [grade, ...filtered];
+  safeSetStorage("avenida_custom_grades", updatedList);
+
+  try {
+    const supabase = createClient();
+    const { error } = await supabase.from("grades").upsert(
+      {
+        student_name: grade.student_name,
+        student_matricule: grade.student_matricule,
+        class_name: grade.class_name,
+        subject: grade.subject,
+        evaluation_type: grade.evaluation_type,
+        score: grade.score,
+        coefficient: grade.coefficient,
+        date: grade.date,
+        teacher_name: grade.teacher_name,
+        appreciation: grade.appreciation,
+        note: grade.appreciation,
+        raw_data: { ...grade },
+      }
+    );
+    if (error) console.error("❌ Erreur enregistrement Supabase (notes) :", error.message);
+    else console.log("✅ Note synchronisée dans Supabase :", grade.student_name, grade.score);
+  } catch (err) {
+    console.warn("Sync Supabase note non bloquante:", err);
+  }
+
+  broadcastDataChange();
+  return updatedList;
+}
+
