@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BarChart3,
+  BellRing,
   ClipboardCheck,
   IdCard,
   MonitorPlay,
@@ -201,6 +202,12 @@ export function Sidebar() {
           badge: "DG",
           badgeColor: "bg-red-100 text-red-800 border-red-200",
           allowedRoles: ["directeur_general"],
+        },
+        {
+          label: "Alertes & annonces",
+          href: "/dashboard/alertes",
+          icon: BellRing,
+          allowedRoles: ["directeur_general", "directeur_pedagogique", "comptable", "ressources_humaines", "responsable_hotel"],
         },
         {
           label: "Recherche par matricule",

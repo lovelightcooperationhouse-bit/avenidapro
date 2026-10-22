@@ -9,7 +9,7 @@ import { createClient } from "@/lib/supabase/server";
  *
  * Variables d'environnement (Vercel) :
  *   SUPABASE_SERVICE_ROLE_KEY            obligatoire pour lire les adresses des destinataires
- *   RESEND_API_KEY, NOTIFY_FROM_EMAIL    e-mails (ex. « Hôtel École Avenida <notifications@hotelecoleavenida.com> »)
+ *   RESEND_API_KEY, NOTIFY_FROM_EMAIL    e-mails (ex. « Hôtel École Avenida <notifications@hotelecoleavenida.net> »)
  *   AFRICASTALKING_USERNAME, AFRICASTALKING_API_KEY, AFRICASTALKING_SENDER_ID (facultatif)   SMS
  *   CRON_SECRET                          autorise l'appel par la tâche planifiée
  */
@@ -36,7 +36,7 @@ async function dispatch() {
   if (!url || !serviceKey) return { email: "non configuré", sms: "non configuré", reason: "SUPABASE_SERVICE_ROLE_KEY manquant" };
 
   const admin = createAdmin(url, serviceKey, { auth: { persistSession: false } });
-  const site = process.env.NEXT_PUBLIC_APP_URL || "https://hotelecoleavenida.vercel.app";
+  const site = process.env.NEXT_PUBLIC_APP_URL || "https://www.hotelecoleavenida.net";
   const result = { emails: 0, sms: 0, emailProvider: !!resendKey, smsProvider: !!(atUser && atKey) };
 
   if (resendKey) {
@@ -64,7 +64,7 @@ async function dispatch() {
   }
 
   if (atUser && atKey) {
-    const { data } = await admin.from("notifications").select("id, title, body, profiles(phone)").eq("sms_status", "pending").in("kind", ["presence", "permission", "paiement", "carte"]).order("created_at").limit(50);
+    const { data } = await admin.from("notifications").select("id, title, body, profiles(phone)").eq("sms_status", "pending").in("kind", ["presence", "permission", "paiement", "carte", "alerte"]).order("created_at").limit(50);
     for (const n of data ?? []) {
       const phone = (n.profiles as unknown as { phone: string | null } | null)?.phone?.replace(/[^\d+]/g, "");
       if (!phone || phone.length < 8) {
