@@ -10,7 +10,9 @@ import { createClient } from "@/lib/supabase/server";
  * Variables d'environnement (Vercel) :
  *   SUPABASE_SERVICE_ROLE_KEY            obligatoire pour lire les adresses des destinataires
  *   RESEND_API_KEY, NOTIFY_FROM_EMAIL    e-mails (ex. « Hôtel École Avenida <notifications@hotelecoleavenida.net> »)
- *   AFRICASTALKING_USERNAME, AFRICASTALKING_API_KEY, AFRICASTALKING_SENDER_ID (facultatif)   SMS
+ *   SMS, au choix (Twilio prioritaire si configuré) :
+ *     TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN et TWILIO_MESSAGING_SERVICE_SID ou TWILIO_FROM (numéro ou nom d'expéditeur)
+ *     AFRICASTALKING_USERNAME, AFRICASTALKING_API_KEY, AFRICASTALKING_SENDER_ID (facultatif)
  *   CRON_SECRET                          autorise l'appel par la tâche planifiée
  */
 export async function POST(request: NextRequest) {
@@ -31,13 +33,12 @@ async function dispatch() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const resendKey = process.env.RESEND_API_KEY;
-  const atUser = process.env.AFRICASTALKING_USERNAME;
-  const atKey = process.env.AFRICASTALKING_API_KEY;
+  const sendSms = smsSender();
   if (!url || !serviceKey) return { email: "non configuré", sms: "non configuré", reason: "SUPABASE_SERVICE_ROLE_KEY manquant" };
 
   const admin = createAdmin(url, serviceKey, { auth: { persistSession: false } });
   const site = process.env.NEXT_PUBLIC_APP_URL || "https://www.hotelecoleavenida.net";
-  const result = { emails: 0, sms: 0, emailProvider: !!resendKey, smsProvider: !!(atUser && atKey) };
+  const result = { emails: 0, sms: 0, emailProvider: !!resendKey, smsProvider: sendSms?.provider ?? false };
 
   if (resendKey) {
     const { data } = await admin.from("notifications").select("id, title, body, link, profiles(email, first_name)").eq("email_status", "pending").order("created_at").limit(50);
@@ -63,7 +64,7 @@ async function dispatch() {
     }
   }
 
-  if (atUser && atKey) {
+  if (sendSms) {
     const { data } = await admin.from("notifications").select("id, title, body, profiles(phone)").eq("sms_status", "pending").in("kind", ["presence", "permission", "paiement", "carte", "alerte"]).order("created_at").limit(50);
     for (const n of data ?? []) {
       const phone = (n.profiles as unknown as { phone: string | null } | null)?.phone?.replace(/[^\d+]/g, "");
@@ -72,18 +73,48 @@ async function dispatch() {
         continue;
       }
       const to = phone.startsWith("+") ? phone : `+228${phone}`;
-      const form = new URLSearchParams({ username: atUser, to, message: `AVENIDA : ${n.title}. ${n.body ?? ""}`.slice(0, 300) });
-      if (process.env.AFRICASTALKING_SENDER_ID) form.set("from", process.env.AFRICASTALKING_SENDER_ID);
-      const res = await fetch("https://api.africastalking.com/version1/messaging", {
-        method: "POST",
-        headers: { apiKey: atKey, Accept: "application/json", "Content-Type": "application/x-www-form-urlencoded" },
-        body: form,
-      });
+      const res = await sendSms.send(to, `AVENIDA : ${n.title}. ${n.body ?? ""}`.slice(0, 300));
       await admin.from("notifications").update({ sms_status: res.ok ? "sent" : "failed" }).eq("id", n.id);
       if (res.ok) result.sms += 1;
     }
   }
   return result;
+}
+
+/** Fournisseur SMS configuré : Twilio en priorité, sinon Africa's Talking ; null si aucun. */
+function smsSender() {
+  const { TWILIO_ACCOUNT_SID: sid, TWILIO_AUTH_TOKEN: tok, TWILIO_MESSAGING_SERVICE_SID: service, TWILIO_FROM: from } = process.env;
+  if (sid && tok && (service || from)) {
+    return {
+      provider: "twilio",
+      send: (to: string, message: string) => {
+        const form = new URLSearchParams({ To: to, Body: message });
+        if (service) form.set("MessagingServiceSid", service);
+        else form.set("From", from!);
+        return fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
+          method: "POST",
+          headers: { Authorization: `Basic ${Buffer.from(`${sid}:${tok}`).toString("base64")}`, "Content-Type": "application/x-www-form-urlencoded" },
+          body: form,
+        });
+      },
+    };
+  }
+  const { AFRICASTALKING_USERNAME: atUser, AFRICASTALKING_API_KEY: atKey, AFRICASTALKING_SENDER_ID: atFrom } = process.env;
+  if (atUser && atKey) {
+    return {
+      provider: "africastalking",
+      send: (to: string, message: string) => {
+        const form = new URLSearchParams({ username: atUser, to, message });
+        if (atFrom) form.set("from", atFrom);
+        return fetch("https://api.africastalking.com/version1/messaging", {
+          method: "POST",
+          headers: { apiKey: atKey, Accept: "application/json", "Content-Type": "application/x-www-form-urlencoded" },
+          body: form,
+        });
+      },
+    };
+  }
+  return null;
 }
 
 const esc = (s: string | null) => (s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
