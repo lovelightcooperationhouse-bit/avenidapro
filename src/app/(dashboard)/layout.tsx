@@ -23,8 +23,11 @@ export default function DashboardLayout({
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       router.replace("/connexion");
+    } else if (!isLoading && user && user.home !== "/dashboard") {
+      // Élèves, parents, professeurs et candidats ont leur propre espace
+      router.replace("/espace");
     }
-  }, [isLoading, isAuthenticated, router]);
+  }, [isLoading, isAuthenticated, user, router]);
 
   // Loading state while checking session
   if (isLoading) {

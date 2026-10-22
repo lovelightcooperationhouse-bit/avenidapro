@@ -46,7 +46,7 @@ export default function HomePage() {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleQuickRedirect = () => {
-    router.push("/dashboard");
+    router.push(user?.home ?? "/espace");
   };
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
@@ -67,7 +67,7 @@ export default function HomePage() {
       const res = await login(identity, password);
       setIsLoading(false);
       if (res.success) {
-        router.push("/dashboard");
+        router.push(res.home ?? "/espace");
       } else {
         setErrorMessage(res.message || "Identifiants incorrects. Veuillez réessayer.");
       }
@@ -90,8 +90,8 @@ export default function HomePage() {
       setErrorMessage("Veuillez renseigner votre adresse e-mail professionnelle.");
       return;
     }
-    if (regPassword.length < 6) {
-      setErrorMessage("Le mot de passe doit comporter au moins 6 caractères.");
+    if (regPassword.length < 8) {
+      setErrorMessage("Le mot de passe doit comporter au moins 8 caractères.");
       return;
     }
     if (regPassword !== regConfirmPassword) {
@@ -109,10 +109,12 @@ export default function HomePage() {
       });
       setIsLoading(false);
       if (res.success) {
-        setSuccessMessage("Compte validé avec succès ! Redirection vers votre espace...");
-        setTimeout(() => {
-          router.push("/dashboard");
-        }, 1000);
+        if (res.message) {
+          setSuccessMessage(res.message);
+        } else {
+          setSuccessMessage("Compte créé ! Redirection vers votre espace...");
+          setTimeout(() => router.push("/espace"), 1000);
+        }
       } else {
         setErrorMessage(res.message || "Impossible d'activer ce compte.");
       }

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  MessageSquare,
   LayoutDashboard,
   GraduationCap,
   Users,
@@ -169,6 +170,7 @@ export function Sidebar() {
         "comptable",
         "ressources_humaines",
         "responsable_hotel",
+        "personnel",
       ],
       items: [
         {
@@ -181,6 +183,20 @@ export function Sidebar() {
             "comptable",
             "ressources_humaines",
             "responsable_hotel",
+            "personnel",
+          ],
+        },
+        {
+          label: "Messagerie",
+          href: "/dashboard/messages",
+          icon: MessageSquare,
+          allowedRoles: [
+            "directeur_general",
+            "directeur_pedagogique",
+            "comptable",
+            "ressources_humaines",
+            "responsable_hotel",
+            "personnel",
           ],
         },
       ],
@@ -223,19 +239,19 @@ export function Sidebar() {
       title: "PÔLE HÔTELLERIE & HÉBERGEMENT",
       color: "red",
       icon: BedDouble,
-      allowedRoles: ["directeur_general", "responsable_hotel"],
+      allowedRoles: ["directeur_general", "responsable_hotel", "personnel"],
       items: [
         {
           label: "Plan des Chambres",
           href: "/dashboard/hotel",
           icon: BedDouble,
-          allowedRoles: ["directeur_general", "responsable_hotel"],
+          allowedRoles: ["directeur_general", "responsable_hotel", "personnel"],
         },
         {
           label: "Réservations & Séjours",
           href: "/dashboard/reservations",
           icon: CalendarDays,
-          allowedRoles: ["directeur_general", "responsable_hotel"],
+          allowedRoles: ["directeur_general", "responsable_hotel", "personnel"],
         },
         {
           label: "Fichier Clients Hôtel",
@@ -275,7 +291,7 @@ export function Sidebar() {
       title: "RESSOURCES HUMAINES & STOCKS",
       color: "amber",
       icon: Briefcase,
-      allowedRoles: ["directeur_general", "ressources_humaines", "comptable"],
+      allowedRoles: ["directeur_general", "ressources_humaines", "comptable", "personnel"],
       items: [
         {
           label: "Personnel & Formateurs",
@@ -293,7 +309,7 @@ export function Sidebar() {
           label: "Économat & Stocks",
           href: "/dashboard/inventory",
           icon: Boxes,
-          allowedRoles: ["directeur_general", "comptable"],
+          allowedRoles: ["directeur_general", "comptable", "personnel"],
         },
       ],
     },

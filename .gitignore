@@ -32,3 +32,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# identifiants des comptes (jamais dans git)
+*.local.txt
