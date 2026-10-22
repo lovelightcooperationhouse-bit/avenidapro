@@ -19,7 +19,9 @@ export function DesktopNav() {
   const navRef = useRef<HTMLElement>(null);
 
   // Fermeture au changement de page et au clic à l'extérieur
-  useEffect(() => setOpen(null), [pathname]);
+  useEffect(() => {
+    setOpen(null);
+  }, [pathname]);
   useEffect(() => {
     const onDown = (e: PointerEvent) => {
       if (!navRef.current?.contains(e.target as Node)) setOpen(null);

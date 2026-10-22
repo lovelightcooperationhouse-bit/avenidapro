@@ -3,6 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  BarChart3,
+  ClipboardCheck,
+  IdCard,
+  MonitorPlay,
+  PiggyBank,
+  ScanSearch,
   ClipboardList,
   Inbox,
   MessageSquare,
@@ -189,6 +195,20 @@ export function Sidebar() {
           ],
         },
         {
+          label: "Pilotage & rapports",
+          href: "/dashboard/pilotage",
+          icon: BarChart3,
+          badge: "DG",
+          badgeColor: "bg-red-100 text-red-800 border-red-200",
+          allowedRoles: ["directeur_general"],
+        },
+        {
+          label: "Recherche par matricule",
+          href: "/dashboard/recherche",
+          icon: ScanSearch,
+          allowedRoles: ["directeur_general", "directeur_pedagogique", "comptable", "ressources_humaines", "responsable_hotel"],
+        },
+        {
           label: "Demandes du site",
           href: "/dashboard/demandes",
           icon: Inbox,
@@ -206,6 +226,26 @@ export function Sidebar() {
             "responsable_hotel",
             "personnel",
           ],
+        },
+      ],
+    },
+    {
+      title: "ESPACES NUMÉRIQUES",
+      color: "red",
+      icon: MonitorPlay,
+      allowedRoles: ["directeur_general", "directeur_pedagogique", "responsable_hotel", "personnel"],
+      items: [
+        {
+          label: "Espace École (cours en ligne)",
+          href: "/espace/ecole",
+          icon: GraduationCap,
+          allowedRoles: ["directeur_general", "directeur_pedagogique"],
+        },
+        {
+          label: "Espace Hôtel (personnel)",
+          href: "/espace/hotel",
+          icon: BedDouble,
+          allowedRoles: ["directeur_general", "responsable_hotel", "personnel"],
         },
       ],
     },
@@ -228,6 +268,18 @@ export function Sidebar() {
           href: "/dashboard/students",
           icon: Users,
           allowedRoles: ["directeur_general", "directeur_pedagogique"],
+        },
+        {
+          label: "Correspondance & permissions",
+          href: "/dashboard/correspondance",
+          icon: ClipboardCheck,
+          allowedRoles: ["directeur_general", "directeur_pedagogique"],
+        },
+        {
+          label: "Cartes & badges",
+          href: "/dashboard/cartes",
+          icon: IdCard,
+          allowedRoles: ["directeur_general", "directeur_pedagogique", "ressources_humaines"],
         },
         {
           label: "Filières & Diplômes",
@@ -307,7 +359,7 @@ export function Sidebar() {
       title: "RESSOURCES HUMAINES & STOCKS",
       color: "amber",
       icon: Briefcase,
-      allowedRoles: ["directeur_general", "ressources_humaines", "comptable", "personnel"],
+      allowedRoles: ["directeur_general", "ressources_humaines", "comptable", "personnel", "directeur_pedagogique", "responsable_hotel"],
       items: [
         {
           label: "Personnel & Formateurs",
@@ -320,6 +372,12 @@ export function Sidebar() {
           href: "/dashboard/salaries",
           icon: Wallet,
           allowedRoles: ["directeur_general", "ressources_humaines", "comptable"],
+        },
+        {
+          label: "Économat & budget",
+          href: "/dashboard/economat",
+          icon: PiggyBank,
+          allowedRoles: ["directeur_general", "directeur_pedagogique", "comptable", "responsable_hotel"],
         },
         {
           label: "Économat & Stocks",

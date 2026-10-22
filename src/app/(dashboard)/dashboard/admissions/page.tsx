@@ -4,6 +4,7 @@ import { CheckCircle2, Download, FileText, Inbox, Loader2, Mail, Phone, Search, 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { fees, formations } from "@/content/site";
+import { issueCard } from "@/lib/cards";
 import { APPLICATION_STATUS, DOC_LABELS, fmtDateTime, type Application, type ApplicationDocument, type ApplicationStatus } from "@/lib/admissions";
 import { createClient } from "@/lib/supabase/client";
 import { cn, formatFCFA } from "@/lib/utils";
@@ -46,7 +47,9 @@ export default function AdmissionsDashboardPage() {
   }, [apps, filter, query]);
 
   const selected = apps.find((a) => a.id === selectedId) ?? null;
-  useEffect(() => setNotes(selected?.staff_notes ?? ""), [selected]);
+  useEffect(() => {
+    setNotes(selected?.staff_notes ?? "");
+  }, [selected]);
 
   const counts = useMemo(() => {
     const c: Record<string, number> = { toutes: apps.length };
@@ -69,18 +72,23 @@ export default function AdmissionsDashboardPage() {
     if (!selected) return;
     setBusy(true);
     const supabase = createClient();
-    const { data: existing } = await supabase.from("students").select("registration_number");
+    // Matricule par filière (ex. CAP26-0001), attribué par la base sans doublon
+    const { data: matricule, error: mErr } = await supabase.rpc("next_matricule", { program: selected.program_code });
+    if (mErr || !matricule) {
+      setBusy(false);
+      setFeedback("Attribution du matricule impossible.");
+      return;
+    }
     const year = new Date().getFullYear() % 100;
-    const max = Math.max(800, ...(existing ?? []).map((s) => parseInt(String(s.registration_number), 10)).filter((n) => !Number.isNaN(n)));
-    const n = max + 1;
+    const n = parseInt(String(matricule).split("-")[1], 10);
     const f = formations.find((x) => x.code === selected.program_code);
     const supplies = selected.program_code === "CFA" ? fees.suppliesCfa : fees.suppliesDiploma;
     const total = f ? f.registration + f.tuition + supplies : 0;
     const { data: student, error } = await supabase
       .from("students")
       .insert({
-        registration_number: `${n}AVN-${year}`,
-        student_number: `ETU-20${year}-${String(n).padStart(5, "0")}`,
+        registration_number: matricule as string,
+        student_number: `ETU-20${year}-${selected.program_code}-${String(n).padStart(4, "0")}`,
         first_name: selected.first_name,
         last_name: selected.last_name.toUpperCase(),
         gender: selected.gender,
@@ -116,8 +124,12 @@ export default function AdmissionsDashboardPage() {
       return;
     }
     await supabase.from("applications").update({ status: "inscrite", student_id: student.id }).eq("id", selected.id);
+    // Carte scolaire émise automatiquement (QR de vérification, notification à la famille)
+    const card = user ? await issueCard({ type: "eleve", id: student.id }, user.id) : null;
     setBusy(false);
-    setFeedback(`Dossier élève créé : matricule ${student.registration_number}. Il apparaît dans « Dossiers des élèves ».`);
+    setFeedback(
+      `Dossier élève créé : matricule ${student.registration_number}${card && !card.error ? ", carte scolaire émise" : ""}. Il apparaît dans « Dossiers des élèves » ; la fiche d'inscription est disponible.`
+    );
     load();
   };
 

@@ -1,6 +1,7 @@
 "use client";
 
-import { Home, KeyRound, LayoutDashboard, LogOut, MessageSquare, UserRound } from "lucide-react";
+import { BedDouble, Bell, ClipboardCheck, FileText, GraduationCap, Home, IdCard, KeyRound, LayoutDashboard, LogOut, MessageSquare, UserRound } from "lucide-react";
+import { NotificationBell } from "@/components/espace/NotificationBell";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -26,12 +27,20 @@ export default function EspaceLayout({ children }: { children: React.ReactNode }
     );
   }
 
+  // Rubriques selon le rôle : École pour élèves et enseignants, Hôtel pour le personnel, correspondance et carte pour les familles
+  const role = user?.role;
   const nav = [
-    { href: "/espace", label: "Mon espace", icon: Home },
-    { href: "/espace/messages", label: "Messages", icon: MessageSquare },
-    { href: "/espace/profil", label: "Mon profil", icon: UserRound },
-    { href: "/espace/mot-de-passe", label: "Mot de passe", icon: KeyRound },
-  ];
+    { href: "/espace", label: "Mon espace", icon: Home, show: true },
+    { href: "/espace/ecole", label: "Espace École", icon: GraduationCap, show: ["eleve", "professeur", "directeur_pedagogique", "directeur_general"].includes(role ?? "") },
+    { href: "/espace/hotel", label: "Espace Hôtel", icon: BedDouble, show: ["personnel", "responsable_hotel", "directeur_general"].includes(role ?? "") },
+    { href: "/espace/correspondance", label: "Correspondance", icon: ClipboardCheck, show: ["eleve", "parent", "professeur"].includes(role ?? "") },
+    { href: "/espace/fiche", label: "Fiche d'inscription", icon: FileText, show: ["eleve", "parent"].includes(role ?? "") },
+    { href: "/espace/carte", label: role === "eleve" || role === "parent" ? "Carte scolaire" : "Carte de travail", icon: IdCard, show: role !== "candidat" },
+    { href: "/espace/notifications", label: "Notifications", icon: Bell, show: true },
+    { href: "/espace/messages", label: "Messages", icon: MessageSquare, show: true },
+    { href: "/espace/profil", label: "Mon profil", icon: UserRound, show: true },
+    { href: "/espace/mot-de-passe", label: "Mot de passe", icon: KeyRound, show: true },
+  ].filter((n) => n.show);
 
   return (
     <div className="min-h-dvh bg-slate-50">
@@ -46,6 +55,7 @@ export default function EspaceLayout({ children }: { children: React.ReactNode }
                   Espace de gestion
                 </Link>
               )}
+              <NotificationBell />
               <div className="hidden text-right sm:block">
                 <p className="text-sm font-bold text-avenida-blue">{user.fullName}</p>
                 <p className="text-xs font-semibold text-vif">{user.roleLabel}</p>
@@ -65,7 +75,7 @@ export default function EspaceLayout({ children }: { children: React.ReactNode }
         {user && (
           <nav aria-label="Espace personnel" className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4 sm:px-6">
             {nav.map((n) => {
-              const active = pathname === n.href;
+              const active = n.href === "/espace" ? pathname === n.href : pathname.startsWith(n.href) || (n.href === "/espace/ecole" && pathname.startsWith("/espace/salle"));
               return (
                 <Link
                   key={n.href}

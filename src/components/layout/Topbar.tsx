@@ -21,6 +21,7 @@ import { usePathname } from "next/navigation";
 import { useSchoolYear } from "@/context/SchoolYearContext";
 import { useAuth } from "@/context/AuthContext";
 import { useMobileNav } from "@/context/MobileNavContext";
+import { NotificationBell } from "@/components/espace/NotificationBell";
 
 export function Topbar() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -187,6 +188,7 @@ export function Topbar() {
 
           {/* Profil Utilisateur & Déconnexion */}
           <div className="flex items-center gap-2 pl-1.5 sm:pl-2 border-l border-slate-200">
+            <NotificationBell />
             <div
               title={`${user?.fullName || "Utilisateur"} (${user?.roleLabel || "Directeur Général"})`}
               className={`w-8 h-8 rounded-xl bg-gradient-to-br ${

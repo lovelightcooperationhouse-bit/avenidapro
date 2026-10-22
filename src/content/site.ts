@@ -14,6 +14,7 @@ import {
   Home,
   Info,
   MessageSquare,
+  MonitorPlay,
   ShieldCheck,
   Sparkles,
   Users,
@@ -114,6 +115,7 @@ export const mainNav: NavEntry[] = [
       { label: "Spécialités", description: "Cuisine, restaurant, réception, hébergement", href: "/ecole#specialites", icon: ChefHat },
       { label: "Pédagogie", description: "Apprendre dans un vrai hôtel", href: "/ecole#pedagogie", icon: Sparkles },
       { label: "Cours du jour et du soir", description: "Des horaires adaptés à chacun", href: "/ecole#horaires", icon: Clock },
+      { label: "Espace École (en ligne)", description: "Cours, devoirs et visio de votre filière", href: "/espace/ecole", icon: MonitorPlay },
     ],
   },
   {
@@ -133,6 +135,7 @@ export const mainNav: NavEntry[] = [
       { label: "Chambres", description: "Séjourner à l'Hôtel École", href: "/hotel#chambres", icon: BedDouble },
       { label: "Restaurant & bar", description: "Une table tenue par nos élèves", href: "/hotel#restaurant", icon: Utensils },
       { label: "Demande de réservation", description: "Réponse rapide de la réception", href: "/hotel#reserver", icon: ConciergeBell },
+      { label: "Espace Hôtel (personnel)", description: "Consignes, documents et réunions par service", href: "/espace/hotel", icon: Users },
     ],
   },
   { label: "À propos", href: "/a-propos" },

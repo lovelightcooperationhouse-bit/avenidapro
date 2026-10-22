@@ -13,7 +13,9 @@ export function MobileNav() {
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  useEffect(() => setOpen(false), [pathname]);
+  useEffect(() => {
+    setOpen(false);
+  }, [pathname]);
 
   // Bloque le défilement de la page et ferme avec Échap
   useEffect(() => {

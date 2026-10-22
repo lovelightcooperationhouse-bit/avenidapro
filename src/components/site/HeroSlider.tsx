@@ -33,7 +33,9 @@ export function HeroSlider() {
   const touchX = useRef<number | null>(null);
   const next = useNextIntake();
 
-  useEffect(() => setReduceMotion(window.matchMedia("(prefers-reduced-motion: reduce)").matches), []);
+  useEffect(() => {
+    setReduceMotion(window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  }, []);
 
   const go = useCallback((delta: number) => setIndex((i) => (i + delta + slides.length) % slides.length), []);
 

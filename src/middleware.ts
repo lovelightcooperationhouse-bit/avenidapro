@@ -45,7 +45,7 @@ export async function middleware(request: NextRequest) {
     return redirectTo("/connexion");
   }
 
-  if (pathname.startsWith("/dashboard")) {
+  if (pathname.startsWith("/dashboard") || pathname.startsWith("/impression")) {
     const { data: profile } = await supabase.from("profiles").select("role, is_active").eq("id", user.id).maybeSingle();
     if (!profile || profile.is_active === false) return redirectTo("/connexion");
     if (!isStaffRole(profile.role)) return redirectTo("/espace");
@@ -55,5 +55,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/espace/:path*"],
+  matcher: ["/dashboard/:path*", "/espace/:path*", "/impression/:path*"],
 };
