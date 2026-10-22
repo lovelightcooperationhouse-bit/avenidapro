@@ -6,7 +6,9 @@ import { siteConfig } from "@/content/site";
 import { cn } from "@/lib/utils";
 
 export type CardData = {
-  type: "eleve" | "personnel";
+  type: "eleve" | "personnel" | "client";
+  /** Numéro de la carte (CE26-0001, CT26-0001, CF26-0001). */
+  cardNumber?: string | null;
   token: string;
   version: number;
   issuedAt: string;
@@ -45,6 +47,7 @@ export function IdCard({ data, side = "both", className }: { data: CardData; sid
   }, [data.token]);
 
   const isStudent = data.type === "eleve";
+  const isClient = data.type === "client";
   const photoOk = data.photo && !data.photo.includes("default.png");
 
   const front = (
@@ -58,7 +61,7 @@ export function IdCard({ data, side = "both", className }: { data: CardData; sid
           <p className="font-serif text-[9px] font-bold tracking-wider">HÔTEL ÉCOLE</p>
           <p className="font-serif text-sm font-extrabold tracking-wider text-[#FF3B47]">AVENIDA</p>
         </div>
-        <p className="relative ml-auto rounded-full bg-[#E30613] px-2 py-0.5 text-[8px] font-extrabold tracking-widest uppercase">{isStudent ? "Carte scolaire" : "Carte de travail"}</p>
+        <p className="relative ml-auto rounded-full bg-[#E30613] px-2 py-0.5 text-[8px] font-extrabold tracking-widest uppercase">{isStudent ? "Carte scolaire" : isClient ? "Carte de fidélité" : "Carte de travail"}</p>
       </div>
       <span aria-hidden className="flex h-[3px]">
         <span className="flex-1 bg-[#0C356A]" />
@@ -88,8 +91,9 @@ export function IdCard({ data, side = "both", className }: { data: CardData; sid
           <p className="truncate text-[9px] text-slate-500">{data.line2}</p>
           <div className="mt-auto flex items-end justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-[7px] font-bold tracking-widest text-slate-400 uppercase">Matricule</p>
+              <p className="text-[7px] font-bold tracking-widest text-slate-400 uppercase">{isClient ? "N° de fidélité" : "Matricule"}</p>
               <p className="font-mono text-[13px] font-extrabold tracking-wider">{data.matricule}</p>
+              {data.cardNumber && !isClient && <p className="font-mono text-[8px] font-bold text-slate-500">Carte n° {data.cardNumber}</p>}
               <p className="text-[7px] text-slate-400">
                 V{data.version} · {new Date(data.issuedAt).toLocaleDateString("fr-FR")}
                 {data.validUntil ? ` · valable jusqu'au ${new Date(data.validUntil).toLocaleDateString("fr-FR")}` : ""}
@@ -123,7 +127,7 @@ export function IdCard({ data, side = "both", className }: { data: CardData; sid
       </div>
       <div className="relative rounded-lg bg-white/10 p-2 text-[7.5px] leading-snug text-white/85">
         Cette carte est personnelle. Elle doit être présentée à l&apos;entrée et sur demande. Scannez le QR code pour vérifier sa validité et la situation
-        {isStudent ? " de l'élève" : " du salarié"} en temps réel. En cas de perte, prévenez immédiatement l&apos;administration.
+        {isStudent ? " de l'élève" : isClient ? " du client" : " du salarié"} en temps réel.{isClient ? " Présentez-la à la réception pour bénéficier de vos avantages fidélité." : ""} En cas de perte, prévenez immédiatement l&apos;administration.
       </div>
       <span aria-hidden className="absolute inset-x-0 bottom-0 flex h-1">
         <span className="flex-1 bg-[#0C356A]" />

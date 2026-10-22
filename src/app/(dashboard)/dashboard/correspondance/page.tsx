@@ -15,7 +15,7 @@ type Row = PermissionRow & { students: { first_name: string; last_name: string; 
 /** Fiche de correspondance côté administration : demandes de permission des parents et appel de toutes les classes. */
 export default function CorrespondanceAdminPage() {
   const { user } = useAuth();
-  const [tab, setTab] = useState<"permissions" | "appel">("permissions");
+  const [tab, setTab] = useState<"permissions" | "appel" | "registre">("registre");
   const [rows, setRows] = useState<Row[] | null>(null);
   const [classes, setClasses] = useState<string[]>([]);
   const [responses, setResponses] = useState<Record<string, string>>({});
@@ -78,10 +78,11 @@ export default function CorrespondanceAdminPage() {
         ))}
       </dl>
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         {[
           { key: "permissions" as const, label: `Demandes de permission${pending ? ` (${pending})` : ""}` },
           { key: "appel" as const, label: "Appel des classes" },
+          { key: "registre" as const, label: "Registre : absences, retards, permissions" },
         ].map((t) => (
           <button key={t.key} type="button" onClick={() => setTab(t.key)} className={cn("rounded-xl px-4 py-2.5 text-sm font-bold ring-1", tab === t.key ? "bg-[#0C356A] text-white ring-[#0C356A]" : "bg-white text-slate-600 ring-slate-200")}>
             {t.label}
@@ -90,6 +91,7 @@ export default function CorrespondanceAdminPage() {
       </div>
 
       {tab === "appel" && user && <RollCall classes={classes} recorderId={user.id} />}
+      {tab === "registre" && <Registre classes={classes} />}
 
       {tab === "permissions" &&
         (!rows ? (
@@ -150,5 +152,108 @@ export default function CorrespondanceAdminPage() {
           </ul>
         ))}
     </div>
+  );
+}
+
+type Entry = { id: string; date: string; status: string; note: string | null; student_id: string; students: { first_name: string; last_name: string; class_name: string | null; registration_number: string | null } | null };
+
+/** Registre de correspondance : toutes les absences, retards et permissions, filtrables et imprimables. */
+function Registre({ classes }: { classes: string[] }) {
+  const [rows, setRows] = useState<Entry[] | null>(null);
+  const [cls, setCls] = useState("");
+  const [kind, setKind] = useState("");
+  const [from, setFrom] = useState(() => new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10));
+  const [to, setTo] = useState(() => new Date().toISOString().slice(0, 10));
+
+  useEffect(() => {
+    setRows(null);
+    let query = createClient()
+      .from("student_attendance")
+      .select("id, date, status, note, student_id, students(first_name, last_name, class_name, registration_number)")
+      .neq("status", "present")
+      .gte("date", from)
+      .lte("date", to)
+      .order("date", { ascending: false });
+    if (kind) query = query.eq("status", kind);
+    query.then(({ data }) => setRows(((data ?? []) as unknown as Entry[]).filter((r) => !cls || r.students?.class_name === cls)));
+  }, [cls, kind, from, to]);
+
+  const label: Record<string, string> = { absent: "Absence", retard: "Retard", permission: "Permission" };
+  const tone: Record<string, string> = { absent: "bg-red-100 text-[#B8000F]", retard: "bg-amber-100 text-amber-800", permission: "bg-sky-100 text-sky-800" };
+  const count = (k: string) => (rows ?? []).filter((r) => r.status === k).length;
+
+  return (
+    <section className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5 print:border-0 print:p-0">
+      <div className="flex flex-wrap items-end gap-2 print:hidden">
+        <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">
+          Classe
+          <select value={cls} onChange={(e) => setCls(e.target.value)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm">
+            <option value="">Toutes</option>
+            {classes.map((c) => (
+              <option key={c}>{c}</option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">
+          Type
+          <select value={kind} onChange={(e) => setKind(e.target.value)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm">
+            <option value="">Tous</option>
+            <option value="absent">Absences</option>
+            <option value="retard">Retards</option>
+            <option value="permission">Permissions</option>
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">
+          Du
+          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm" />
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">
+          Au
+          <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm" />
+        </label>
+        <button type="button" onClick={() => window.print()} className="ml-auto rounded-full bg-[#0C356A] px-4 py-2 text-sm font-bold text-white">
+          Imprimer le registre
+        </button>
+      </div>
+      <p className="text-sm font-semibold text-slate-700">
+        {count("absent")} absence(s) · {count("retard")} retard(s) · {count("permission")} jour(s) de permission
+      </p>
+      {rows === null ? (
+        <Loader2 aria-label="Chargement" className="size-5 animate-spin" />
+      ) : rows.length === 0 ? (
+        <p className="text-sm text-slate-500">Aucune absence, retard ou permission sur la période.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[40rem] text-sm">
+            <thead>
+              <tr className="bg-slate-50 text-left text-xs text-slate-500 uppercase">
+                <th className="px-3 py-2">Date</th>
+                <th className="px-3 py-2">Matricule</th>
+                <th className="px-3 py-2">Élève</th>
+                <th className="px-3 py-2">Classe</th>
+                <th className="px-3 py-2">Type</th>
+                <th className="px-3 py-2">Motif / observation</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.id} className="border-t border-slate-100">
+                  <td className="px-3 py-2">{new Date(r.date).toLocaleDateString("fr-FR")}</td>
+                  <td className="px-3 py-2 font-mono text-xs font-bold text-[#E30613]">{r.students?.registration_number}</td>
+                  <td className="px-3 py-2 font-semibold">
+                    {r.students?.last_name} {r.students?.first_name}
+                  </td>
+                  <td className="px-3 py-2 text-slate-600">{r.students?.class_name}</td>
+                  <td className="px-3 py-2">
+                    <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-bold", tone[r.status])}>{label[r.status] ?? r.status}</span>
+                  </td>
+                  <td className="px-3 py-2 text-slate-600">{r.note}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   );
 }

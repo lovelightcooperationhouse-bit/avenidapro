@@ -1,6 +1,7 @@
 "use client";
 
-import { Printer } from "lucide-react";
+import { Download, Printer } from "lucide-react";
+import { elementToPdf } from "@/lib/pdf";
 import { useEffect, useState } from "react";
 import { EnrollmentSheet } from "@/components/cards/EnrollmentSheet";
 import { useAuth } from "@/context/AuthContext";
@@ -43,9 +44,21 @@ export default function MyEnrollmentPage() {
           <p className="mt-1 text-slate-600">Établie par l&apos;administration à partir du dossier validé. Imprimez-la ou enregistrez-la en PDF.</p>
         </div>
         {active && (
-          <button type="button" onClick={() => window.print()} className="inline-flex items-center gap-2 rounded-full bg-vif px-5 py-2.5 text-sm font-bold text-white hover:bg-vif-fonce">
-            <Printer aria-hidden className="size-4" /> Imprimer / PDF
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={async () => {
+                const el = document.getElementById("avenida-official-student-enrollment");
+                if (el) (await elementToPdf(el)).save("Fiche-inscription-Avenida.pdf");
+              }}
+              className="inline-flex items-center gap-2 rounded-full bg-avenida-blue px-5 py-2.5 text-sm font-bold text-white"
+            >
+              <Download aria-hidden className="size-4" /> Télécharger le PDF
+            </button>
+            <button type="button" onClick={() => window.print()} className="inline-flex items-center gap-2 rounded-full bg-vif px-5 py-2.5 text-sm font-bold text-white hover:bg-vif-fonce">
+              <Printer aria-hidden className="size-4" /> Imprimer
+            </button>
+          </div>
         )}
       </div>
       {ids && ids.length > 1 && (

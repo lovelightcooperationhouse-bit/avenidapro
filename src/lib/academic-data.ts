@@ -24,8 +24,9 @@ export function getAcademicYears(): AcademicYear[] {
 
   const years: AcademicYear[] = [];
 
-  // 2 années passées + année en cours + 3 années à venir = 6 années
-  for (let offset = -2; offset <= 3; offset++) {
+  // La plateforme démarre avec l'année 2026-2027 : pas d'années antérieures.
+  // Années passées depuis 2026 + année en cours + 2 années à venir.
+  for (let offset = Math.min(0, 2026 - schoolStartYear); offset <= 2; offset++) {
     const startYear = schoolStartYear + offset;
     const endYear = startYear + 1;
     const value = `${startYear}-${endYear}`;

@@ -3,11 +3,18 @@
 import { CheckCircle2, Download, FileText, Inbox, Loader2, Mail, Phone, Search, UserPlus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { fees, formations } from "@/content/site";
-import { issueCard } from "@/lib/cards";
+import { formations, fees } from "@/content/site";
+import { pingNotifications } from "@/lib/notify";
+import Link from "next/link";
 import { APPLICATION_STATUS, DOC_LABELS, fmtDateTime, type Application, type ApplicationDocument, type ApplicationStatus } from "@/lib/admissions";
 import { createClient } from "@/lib/supabase/client";
 import { cn, formatFCFA } from "@/lib/utils";
+
+/** Écolage annuel d'une filière : inscription + scolarité + fournitures. */
+const totalFor = (code: string) => {
+  const f = formations.find((x) => x.code === code);
+  return f ? f.registration + f.tuition + (code === "CFA" ? fees.suppliesCfa : fees.suppliesDiploma) : 0;
+};
 
 /** Gestion des pré-inscriptions déposées sur le site : étude, décision et création du dossier élève. */
 export default function AdmissionsDashboardPage() {
@@ -21,6 +28,7 @@ export default function AdmissionsDashboardPage() {
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState("");
+  const [enrolled, setEnrolled] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const supabase = createClient();
@@ -67,68 +75,24 @@ export default function AdmissionsDashboardPage() {
     load();
   };
 
-  /** Crée le dossier élève à partir de la pré-inscription acceptée (matricule suivant). */
+  /**
+   * Inscription définitive : la base crée l'élève dans sa filière et sa classe, le matricule,
+   * l'écolage (frais de la filière), la carte scolaire, et rattache les comptes de l'élève et du tuteur.
+   */
   const enroll = async () => {
     if (!selected) return;
     setBusy(true);
-    const supabase = createClient();
-    // Matricule par filière (ex. CAP26-0001), attribué par la base sans doublon
-    const { data: matricule, error: mErr } = await supabase.rpc("next_matricule", { program: selected.program_code });
-    if (mErr || !matricule) {
-      setBusy(false);
-      setFeedback("Attribution du matricule impossible.");
-      return;
-    }
-    const year = new Date().getFullYear() % 100;
-    const n = parseInt(String(matricule).split("-")[1], 10);
-    const f = formations.find((x) => x.code === selected.program_code);
-    const supplies = selected.program_code === "CFA" ? fees.suppliesCfa : fees.suppliesDiploma;
-    const total = f ? f.registration + f.tuition + supplies : 0;
-    const { data: student, error } = await supabase
-      .from("students")
-      .insert({
-        registration_number: matricule as string,
-        student_number: `ETU-20${year}-${selected.program_code}-${String(n).padStart(4, "0")}`,
-        first_name: selected.first_name,
-        last_name: selected.last_name.toUpperCase(),
-        gender: selected.gender,
-        birth_date: selected.birth_date,
-        birth_place: selected.birth_place,
-        nationality: selected.nationality,
-        residence_neighborhood: selected.neighborhood,
-        phone: selected.phone,
-        email: selected.email,
-        boarder_status: selected.boarding ? "interne" : "externe",
-        program_code: selected.program_code,
-        specialty: selected.specialty,
-        class_name: `${selected.program_code}1 - ${selected.specialty}`,
-        academic_year: `20${year} - 20${year + 1}`,
-        last_class: selected.last_class,
-        last_diploma: selected.last_diploma,
-        previous_school: selected.previous_school,
-        tutor_name: selected.guardian_name,
-        tutor_phone: selected.guardian_phone,
-        tutor_profession: selected.guardian_profession,
-        tutor_relation: selected.guardian_relation,
-        total_fee: total,
-        paid_fee: 0,
-        remaining_fee: total,
-        status: "actif",
-        notes: `Créé depuis la pré-inscription ${selected.reference ?? ""}`.trim(),
-      })
-      .select("id, registration_number")
-      .single();
-    if (error || !student) {
-      setBusy(false);
-      setFeedback("Création du dossier élève impossible : " + (error?.message ?? "erreur inconnue"));
-      return;
-    }
-    await supabase.from("applications").update({ status: "inscrite", student_id: student.id }).eq("id", selected.id);
-    // Carte scolaire émise automatiquement (QR de vérification, notification à la famille)
-    const card = user ? await issueCard({ type: "eleve", id: student.id }, user.id) : null;
+    const { data, error } = await createClient().rpc("enroll_application", { app: selected.id });
     setBusy(false);
+    if (error) return setFeedback("Inscription impossible : " + error.message);
+    const r = data as { student_id: string; matricule?: string; total?: number; student_account?: boolean; guardian_account?: boolean };
+    setEnrolled(r.student_id);
+    pingNotifications();
     setFeedback(
-      `Dossier élève créé : matricule ${student.registration_number}${card && !card.error ? ", carte scolaire émise" : ""}. Il apparaît dans « Dossiers des élèves » ; la fiche d'inscription est disponible.`
+      `Inscription définitive : matricule ${r.matricule}, écolage ${formatFCFA(r.total ?? 0)}, carte scolaire émise.` +
+        (r.student_account ? " Compte de l'élève rattaché." : "") +
+        (r.guardian_account ? " Compte du tuteur rattaché." : "") +
+        " Envoyez maintenant la fiche d'inscription."
     );
     load();
   };
@@ -245,6 +209,7 @@ export default function AdmissionsDashboardPage() {
                 ["Établissement précédent", selected.previous_school ?? "—"],
                 ["Parent / tuteur", selected.guardian_name ? `${selected.guardian_name} (${selected.guardian_relation ?? "—"})` : "—"],
                 ["Téléphone parent", selected.guardian_phone ?? "—"],
+                ["E-mail parent", selected.guardian_email ?? "—"],
                 ["Profession parent", selected.guardian_profession ?? "—"],
               ].map(([k, v]) => (
                 <div key={k}>
@@ -308,8 +273,19 @@ export default function AdmissionsDashboardPage() {
             {selected.status === "acceptee" && (
               <button type="button" disabled={busy} onClick={enroll} className="flex items-center justify-center gap-2 rounded-xl bg-[#0C356A] px-4 py-3 text-sm font-bold text-white hover:bg-[#072042]">
                 {busy ? <Loader2 aria-hidden className="size-4 animate-spin" /> : <UserPlus aria-hidden className="size-4" />}
-                Inscrire : créer le dossier élève ({formatFCFA((formations.find((f) => f.code === selected.program_code)?.registration ?? 0))} d&apos;inscription)
+                Valider l&apos;inscription définitive (écolage {formatFCFA(totalFor(selected.program_code))})
               </button>
+            )}
+
+            {(enrolled || selected.student_id) && (
+              <div className="flex flex-wrap gap-2 rounded-xl bg-slate-50 p-3">
+                <Link href={`/impression/fiche/${enrolled ?? selected.student_id}`} target="_blank" className="inline-flex items-center gap-2 rounded-full bg-[#E30613] px-4 py-2 text-sm font-bold text-white">
+                  <FileText aria-hidden className="size-4" /> Fiche d&apos;inscription : imprimer, télécharger, envoyer
+                </Link>
+                <Link href={`/dashboard/recherche?q=${encodeURIComponent(selected.last_name)}`} className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-bold text-[#0C356A] ring-1 ring-slate-200">
+                  Dossier de l&apos;élève
+                </Link>
+              </div>
             )}
 
             {feedback && (

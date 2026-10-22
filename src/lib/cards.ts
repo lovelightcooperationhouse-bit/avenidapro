@@ -30,7 +30,9 @@ export type EmployeeRow = {
   status: string | null;
 };
 
-export type CardRow = { id: string; holder_type: "eleve" | "personnel"; student_id: string | null; employee_id: string | null; token: string; version: number; issued_at: string; valid_until: string | null; revoked: boolean };
+export type CustomerRow = { id: string; first_name: string; last_name: string; full_name: string | null; phone: string | null; email: string | null; nationality: string | null; total_stays: number | null; total_spent: number | null; is_vip: boolean | null; loyalty_points: number | null };
+
+export type CardRow = { id: string; holder_type: "eleve" | "personnel" | "client"; student_id: string | null; employee_id: string | null; customer_id?: string | null; card_number?: string | null; token: string; version: number; issued_at: string; valid_until: string | null; revoked: boolean };
 
 /** Même règle que la base (student_payment_ok) : part attendue sur 8 tranches à partir d'octobre. */
 export function paymentOk(s: Pick<StudentRow, "total_fee" | "paid_fee" | "remaining_fee" | "academic_year">) {
@@ -55,6 +57,23 @@ export const studentCardData = (s: StudentRow, c: CardRow): CardData => ({
   line1: s.class_name ?? s.program_code ?? "Élève",
   line2: `Année scolaire ${s.academic_year ?? ""}`.trim(),
   paymentOk: paymentOk(s),
+  cardNumber: c.card_number,
+});
+
+/** Niveau de fidélité selon les séjours (Or : 10 séjours ou client VIP, Argent : 4 séjours). */
+export const loyaltyLevel = (c: Pick<CustomerRow, "total_stays" | "is_vip">) => ((c.total_stays ?? 0) >= 10 || c.is_vip ? "Or" : (c.total_stays ?? 0) >= 4 ? "Argent" : "Classique");
+
+export const customerCardData = (cu: CustomerRow, c: CardRow): CardData => ({
+  type: "client",
+  token: c.token,
+  version: c.version,
+  issuedAt: c.issued_at,
+  validUntil: c.valid_until,
+  name: cu.full_name ?? `${cu.first_name} ${cu.last_name}`,
+  photo: null,
+  matricule: c.card_number ?? "—",
+  line1: `Membre ${loyaltyLevel(cu)} · ${cu.loyalty_points ?? 0} points`,
+  line2: "Hôtel Avenida · Lomé",
 });
 
 export const employeeCardData = (e: EmployeeRow, c: CardRow): CardData => ({
@@ -68,6 +87,7 @@ export const employeeCardData = (e: EmployeeRow, c: CardRow): CardData => ({
   matricule: e.matricule ?? "—",
   line1: e.role_title ?? e.position ?? "Personnel",
   line2: e.department ?? (e.sector === "hotel" ? "Hôtel Avenida" : e.sector === "ecole" ? "École Avenida" : "Avenida"),
+  cardNumber: c.card_number,
 });
 
 /** Fin de l'année scolaire en cours (31 juillet) : validité par défaut des cartes élèves. */
@@ -81,9 +101,9 @@ export const schoolYearEnd = () => {
  * Émet une carte ou la met à jour. `regenerate` change le QR code (l'ancienne carte devient invalide),
  * sinon seule la version augmente (informations actualisées).
  */
-export async function issueCard(holder: { type: "eleve"; id: string } | { type: "personnel"; id: string }, issuedBy: string, regenerate = false) {
+export async function issueCard(holder: { type: "eleve" | "personnel" | "client"; id: string }, issuedBy: string, regenerate = false) {
   const supabase = createClient();
-  const col = holder.type === "eleve" ? "student_id" : "employee_id";
+  const col = holder.type === "eleve" ? "student_id" : holder.type === "client" ? "customer_id" : "employee_id";
   const { data: existing } = await supabase.from("id_cards").select("*").eq(col, holder.id).maybeSingle<CardRow>();
   if (!existing) {
     return supabase.from("id_cards").insert({ holder_type: holder.type, [col]: holder.id, issued_by: issuedBy, valid_until: holder.type === "eleve" ? schoolYearEnd() : null });

@@ -35,3 +35,6 @@ next-env.d.ts
 
 # identifiants des comptes (jamais dans git)
 *.local.txt
+
+# Sauvegardes locales de la base (données personnelles)
+sauvegardes/

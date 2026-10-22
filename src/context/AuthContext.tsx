@@ -3,6 +3,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { allowedDashboardPaths } from "@/components/layout/navigation";
 import { roleConfig, type RoleType } from "@/lib/roles";
 
 export type { RoleType };
@@ -211,7 +212,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const canAccessPath = (path: string): boolean => {
     if (!user) return false;
     if (user.role === "directeur_general") return path.startsWith("/dashboard");
-    return user.allowedPaths.some((allowed) => path === allowed || path.startsWith(allowed + "/"));
+    // Pages autorisées = pages du menu de son rôle ; « /dashboard » n'ouvre que l'accueil
+    const allowed = new Set([...allowedDashboardPaths(user.role), ...user.allowedPaths]);
+    return [...allowed].some((a) => path === a || (a !== "/dashboard" && path.startsWith(a + "/")));
   };
 
   return (

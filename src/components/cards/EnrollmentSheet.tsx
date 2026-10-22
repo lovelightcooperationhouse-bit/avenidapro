@@ -142,7 +142,7 @@ export function EnrollmentSheet({ studentId }: { studentId: string }) {
           {[
             ["Père", s.parent_father_name, s.parent_father_phone, s.parent_father_profession],
             ["Mère", s.parent_mother_name, s.parent_mother_phone, s.parent_mother_profession],
-            [`Tuteur ${s.tutor_relation ? `(${s.tutor_relation})` : ""}`, s.tutor_name, s.tutor_phone, s.tutor_profession],
+            [`Tuteur ${s.tutor_relation ? `(${s.tutor_relation})` : ""}`, s.tutor_name, [s.tutor_phone, s.guardian_email].filter(Boolean).join(" · "), s.tutor_profession],
             ["Contact d'urgence", s.emergency_contact_name, s.emergency_contact_phone, ""],
           ]
             .filter((r) => r[1])

@@ -40,6 +40,7 @@ type Form = {
   previous_school: string;
   guardian_name: string;
   guardian_phone: string;
+  guardian_email: string;
   guardian_relation: string;
   guardian_profession: string;
   message: string;
@@ -65,6 +66,7 @@ const empty: Form = {
   previous_school: "",
   guardian_name: "",
   guardian_phone: "",
+  guardian_email: "",
   guardian_relation: "",
   guardian_profession: "",
   message: "",
@@ -126,6 +128,7 @@ export function PreinscriptionForm() {
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email.trim())) e.push("Indiquez une adresse e-mail valide.");
     }
     if (s === 2 && form.guardian_phone && form.guardian_phone.replace(/\D/g, "").length < 8) e.push("Le téléphone du parent semble incomplet.");
+    if (s === 2 && form.guardian_email.trim() && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.guardian_email.trim())) e.push("L'e-mail du parent semble incorrect.");
     if (s === 3) {
       Object.values(files).forEach((f) => {
         if (f && f.size > MAX_SIZE) e.push(`« ${f.name} » dépasse 10 Mo.`);
@@ -177,6 +180,7 @@ export function PreinscriptionForm() {
       previous_school: clean(form.previous_school),
       guardian_name: clean(form.guardian_name),
       guardian_phone: clean(form.guardian_phone),
+      guardian_email: clean(form.guardian_email.toLowerCase()),
       guardian_relation: clean(form.guardian_relation),
       guardian_profession: clean(form.guardian_profession),
       message: clean(form.message),
@@ -417,6 +421,9 @@ export function PreinscriptionForm() {
             </Field>
             <Field label="Téléphone du parent">
               <input type="tel" value={form.guardian_phone} onChange={(e) => set("guardian_phone", e.target.value)} placeholder="+228 …" className={field} />
+            </Field>
+            <Field label="E-mail du parent (pour recevoir la fiche d'inscription)">
+              <input type="email" value={form.guardian_email} onChange={(e) => set("guardian_email", e.target.value)} autoComplete="off" placeholder="parent@exemple.com" className={field} />
             </Field>
             <Field label="Profession">
               <input value={form.guardian_profession} onChange={(e) => set("guardian_profession", e.target.value)} className={field} />

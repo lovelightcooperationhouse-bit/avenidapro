@@ -158,8 +158,9 @@ export const adminWorkflows: (Guide & { roles: RoleType[] })[] = [
     title: "Pré-inscriptions, inscriptions et cartes",
     intro: "Du formulaire public à la carte scolaire.",
     steps: [
-      { title: "Pré-inscriptions du site", text: "« Admissions » : étudiez le dossier, décidez ; « Inscrire » crée l'élève avec matricule par filière et sa carte.", href: "/dashboard/admissions" },
-      { title: "Fiche d'inscription", text: "Fiche définitive imprimable depuis la recherche par matricule ou le dossier validé.", href: "/dashboard/recherche" },
+      { title: "Pré-inscriptions du site", text: "« École → Pré-inscriptions » : étudiez le dossier et les pièces, acceptez, puis « Valider l'inscription définitive ». La base crée l'élève dans sa filière et sa classe, le matricule, l'écolage de la filière, la carte scolaire, et rattache les comptes de l'élève et du tuteur.", href: "/dashboard/admissions" },
+      { title: "Fiche d'inscription A4", text: "Bouton « Fiche d'inscription » : imprimer, télécharger en PDF, ou envoyer par e-mail à l'élève et au tuteur ; elle arrive aussi dans « Mes documents » de leurs espaces.", href: "/dashboard/eleves" },
+      { title: "Élèves par filière", text: "Tous les inscrits classés par filière et par classe, avec écolage, absences et carte en temps réel.", href: "/dashboard/eleves" },
       { title: "Cartes", text: "« Cartes & badges » : émettre, mettre à jour, régénérer le QR, révoquer, imprimer par lot. Cartes de correspondance depuis le dossier de l'élève.", href: "/dashboard/cartes" },
     ],
   },
@@ -189,7 +190,8 @@ export const adminWorkflows: (Guide & { roles: RoleType[] })[] = [
     title: "Finances et économat",
     intro: "Encaissements, dépenses, stock et budgets.",
     steps: [
-      { title: "Paiements", text: "Encaissement par tranche avec preuve ; le parent et l'élève voient leur solde et reçoivent une alerte.", href: "/dashboard/payments" },
+      { title: "Écolage", text: "« Écolage & finances → Écolage » : chaque élève inscrit y figure avec l'écolage de sa filière. « Encaisser » enregistre un acompte (espèces, T-Money, Flooz, virement…) : le reste à payer est recalculé automatiquement sur le matricule, le reçu s'imprime et la famille est prévenue.", href: "/dashboard/ecolage" },
+      { title: "Bourses et remises", text: "Crayon sur la ligne de l'élève : modifiez l'écolage annuel, le reste se recalcule.", href: "/dashboard/ecolage" },
       { title: "Économat", text: "Achats, entrées, sorties, stock restant et budget mensuel / annuel par département.", href: "/dashboard/economat" },
     ],
   },

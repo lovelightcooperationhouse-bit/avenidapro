@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -74,9 +74,9 @@ export default function DashboardLayout({
   // Fallback target path if user visits a forbidden route
   const defaultAllowedPath =
     user.role === "directeur_pedagogique"
-      ? "/dashboard/students"
+      ? "/dashboard/eleves"
       : user.role === "comptable"
-      ? "/dashboard/finances"
+      ? "/dashboard/ecolage"
       : user.role === "ressources_humaines"
       ? "/dashboard/employees"
       : user.role === "responsable_hotel"
@@ -87,9 +87,13 @@ export default function DashboardLayout({
     <SchoolYearProvider>
       <MobileNavProvider>
         <div className="flex min-h-screen bg-slate-50 overflow-x-hidden">
-          <Sidebar />
+          <Suspense fallback={null}>
+            <Sidebar />
+          </Suspense>
           <div className="flex-1 flex flex-col min-w-0 overflow-x-hidden">
-            <Topbar />
+            <Suspense fallback={<div className="h-28 border-b border-slate-200 bg-white" />}>
+              <Topbar />
+            </Suspense>
             <main className="flex-1 p-3 sm:p-5 md:p-8 max-w-7xl w-full mx-auto overflow-x-hidden">
               {!isAllowed ? (
                 <div className="bg-white rounded-2xl border border-red-200 p-6 sm:p-8 shadow-sm text-center max-w-2xl mx-auto my-8 sm:my-12">
