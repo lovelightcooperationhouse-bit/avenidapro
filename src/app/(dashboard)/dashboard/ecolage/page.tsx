@@ -1,6 +1,6 @@
 "use client";
 
-import { Banknote, CheckCircle2, ChevronDown, Loader2, Pencil, Printer, Receipt, Search, Wallet, XCircle } from "lucide-react";
+import { Banknote, CheckCircle2, ChevronDown, FileSpreadsheet, Loader2, Pencil, Printer, Receipt, Search, Wallet, XCircle } from "lucide-react";
 import Link from "next/link";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { fees, formations } from "@/content/site";
@@ -232,6 +232,9 @@ export default function EcolagePage() {
                                 <Pencil aria-hidden className="size-4" />
                               </button>
                             )}
+                            <Link href={`/impression/situation/${s.id}`} target="_blank" title="Fiche de situation financière" aria-label="Fiche de situation financière" className="rounded-full p-1.5 text-[#0C356A] hover:bg-slate-100">
+                              <FileSpreadsheet aria-hidden className="size-4" />
+                            </Link>
                             <button type="button" onClick={() => setOpen(open === s.id ? null : s.id)} aria-label="Historique des paiements" className="inline-flex items-center gap-1 rounded-full px-2 py-1.5 text-xs font-bold text-[#0C356A] hover:bg-slate-100">
                               {mine.length} <ChevronDown aria-hidden className={cn("size-4 transition-transform", open === s.id && "rotate-180")} />
                             </button>
@@ -249,7 +252,7 @@ export default function EcolagePage() {
                                   <li key={p.id} className="flex flex-wrap items-center gap-3">
                                     <Receipt aria-hidden className="size-4 text-slate-400" />
                                     <span className="font-mono text-xs">{p.receipt_number}</span>
-                                    <span>{new Date(p.payment_date ?? p.created_at).toLocaleDateString("fr-FR")}</span>
+                                    <span>{new Date(p.payment_date ?? p.created_at).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}</span>
                                     <span className="font-bold text-emerald-700">{formatFCFA(Number(p.amount))}</span>
                                     <span className="text-slate-500">
                                       {p.designation} · {p.payment_method}

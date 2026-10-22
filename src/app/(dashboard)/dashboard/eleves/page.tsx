@@ -1,6 +1,6 @@
 "use client";
 
-import { ClipboardCheck, FileText, GraduationCap, IdCard, Loader2, Search, UserRound } from "lucide-react";
+import { ClipboardCheck, FileText, GraduationCap, IdCard, Loader2, Search, UserRound, Wallet } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { formations } from "@/content/site";
@@ -152,8 +152,11 @@ export default function ElevesPage() {
                       {s.status !== "actif" && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-slate-600">{s.status}</span>}
                     </span>
                     <span className="flex gap-1">
-                      <Link href={`/dashboard/recherche?q=${encodeURIComponent(s.registration_number ?? s.last_name)}`} title="Dossier complet" aria-label="Dossier complet" className="rounded-full p-2 text-[#0C356A] hover:bg-slate-100">
+                      <Link href={`/dashboard/eleves/${s.id}`} title="Dossier de l'élève" aria-label="Dossier complet" className="rounded-full p-2 text-[#0C356A] hover:bg-slate-100">
                         <UserRound aria-hidden className="size-4" />
+                      </Link>
+                      <Link href={`/impression/situation/${s.id}`} target="_blank" title="Fiche de situation financière" aria-label="Fiche de situation financière" className="rounded-full p-2 text-[#0C356A] hover:bg-slate-100">
+                        <Wallet aria-hidden className="size-4" />
                       </Link>
                       <Link href={`/impression/fiche/${s.id}`} target="_blank" title="Fiche d'inscription" aria-label="Fiche d'inscription" className="rounded-full p-2 text-[#0C356A] hover:bg-slate-100">
                         <FileText aria-hidden className="size-4" />

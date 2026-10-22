@@ -1,17 +1,17 @@
 "use client";
 
-import { Ban, Eye, IdCard as IdCardIcon, Loader2, Printer, RefreshCw, Search, Sparkles, X } from "lucide-react";
+import { Ban, CheckCircle2, Eye, IdCard as IdCardIcon, Loader2, Printer, RefreshCw, Search, Send, Sparkles, X } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { IdCard } from "@/components/cards/IdCard";
 import { useAuth } from "@/context/AuthContext";
-import { customerCardData, employeeCardData, issueCard, loyaltyLevel, paymentOk, studentCardData, type CardRow, type CustomerRow, type EmployeeRow, type StudentRow } from "@/lib/cards";
+import { customerCardData, employeeCardData, issueCard, CARD_REVIEW, loyaltyLevel, studentCardData, type CardRow, type CustomerRow, type EmployeeRow, type StudentRow, STUDENT_CARD_COLS, EMPLOYEE_CARD_COLS } from "@/lib/cards";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { pingNotifications } from "@/lib/notify";
 
-const STUDENT_COLS = "id, first_name, last_name, photo_url, registration_number, student_number, class_name, program_code, academic_year, status, total_fee, paid_fee, remaining_fee";
-const EMPLOYEE_COLS = "id, first_name, last_name, photo_url, matricule, role_title, position, department, sector, status";
+const STUDENT_COLS = STUDENT_CARD_COLS;
+const EMPLOYEE_COLS = EMPLOYEE_CARD_COLS;
 
 /** Cartes scolaires et cartes de travail : émission, mise à jour, régénération du QR, révocation et impression par lot. */
 function CardsAdmin() {
@@ -76,18 +76,18 @@ function CardsAdmin() {
       return students
         .filter((s) => group === "tous" || (s.class_name ?? "Sans classe") === group)
         .filter((s) => !q || `${s.first_name} ${s.last_name} ${s.registration_number} ${s.student_number}`.toLowerCase().includes(q))
-        .map((s) => ({ id: s.id, name: `${s.last_name.toUpperCase()} ${s.first_name}`, sub: s.class_name ?? "—", matricule: s.registration_number ?? "—", ok: paymentOk(s) }));
+        .map((s) => ({ id: s.id, name: `${s.last_name.toUpperCase()} ${s.first_name}`, sub: s.class_name ?? "—", matricule: s.registration_number ?? "—" }));
     }
     if (tab === "client") {
       return customers
         .filter((c) => group === "tous" || loyaltyLevel(c) === group)
         .filter((c) => !q || `${c.first_name} ${c.last_name} ${c.phone} ${c.email}`.toLowerCase().includes(q))
-        .map((c) => ({ id: c.id, name: `${c.last_name.toUpperCase()} ${c.first_name}`, sub: `${loyaltyLevel(c)} · ${c.total_stays ?? 0} séjour(s) · ${c.phone ?? ""}`, matricule: cards.find((x) => x.customer_id === c.id)?.card_number ?? "—", ok: undefined as boolean | undefined }));
+        .map((c) => ({ id: c.id, name: `${c.last_name.toUpperCase()} ${c.first_name}`, sub: `${loyaltyLevel(c)} · ${c.total_stays ?? 0} séjour(s) · ${c.phone ?? ""}`, matricule: cards.find((x) => x.customer_id === c.id)?.card_number ?? "—" }));
     }
     return employees
       .filter((e) => group === "tous" || (e.department ?? e.sector ?? "Sans département") === group)
       .filter((e) => !q || `${e.first_name} ${e.last_name} ${e.matricule}`.toLowerCase().includes(q))
-      .map((e) => ({ id: e.id, name: `${e.last_name.toUpperCase()} ${e.first_name}`, sub: e.role_title ?? e.position ?? "—", matricule: e.matricule ?? "—", ok: undefined as boolean | undefined }));
+      .map((e) => ({ id: e.id, name: `${e.last_name.toUpperCase()} ${e.first_name}`, sub: e.role_title ?? e.position ?? "—", matricule: e.matricule ?? "—" }));
   }, [tab, students, employees, customers, cards, group, query]);
 
   const run = async (ids: string[], regenerate = false) => {
@@ -109,6 +109,22 @@ function CardsAdmin() {
     const card = cardOf(id);
     if (!card || !window.confirm("Révoquer cette carte ? Le QR code ne sera plus valide.")) return;
     await createClient().from("id_cards").update({ revoked: true }).eq("id", card.id);
+    load();
+  };
+
+  const review = async (id: string, validate: boolean) => {
+    const card = cardOf(id);
+    if (!card) return;
+    const supabase = createClient();
+    let res;
+    if (validate) res = await supabase.rpc("validate_card", { card: card.id });
+    else {
+      const msg = window.prompt("Message joint pour le titulaire (facultatif) :", "Merci de vérifier les informations de votre carte.");
+      if (msg === null) return;
+      res = await supabase.rpc("request_card_review", { card: card.id, message: msg });
+    }
+    setMessage(res.error ? res.error.message : validate ? "Carte validée : envoyée dans l'espace du titulaire, avec notification." : "Carte envoyée pour vérification au titulaire.");
+    pingNotifications();
     load();
   };
 
@@ -235,7 +251,7 @@ function CardsAdmin() {
               </th>
               <th className="p-3">{tab === "eleve" ? "Élève" : tab === "client" ? "Client" : "Salarié"}</th>
               <th className="p-3">{tab === "client" ? "N° de carte" : "Matricule"}</th>
-              {tab === "eleve" && <th className="p-3">Scolarité</th>}
+              <th className="p-3">Vérification</th>
               <th className="p-3">Carte</th>
               <th className="p-3 text-right">Actions</th>
             </tr>
@@ -266,11 +282,15 @@ function CardsAdmin() {
                     <p className="text-xs text-slate-500">{r.sub}</p>
                   </td>
                   <td className="p-3 font-mono font-bold">{r.matricule}</td>
-                  {tab === "eleve" && (
-                    <td className="p-3">
-                      <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-bold", r.ok ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700")}>{r.ok ? "À jour" : "En attente"}</span>
-                    </td>
-                  )}
+                  <td className="p-3">
+                    {card && !card.revoked ? (
+                      <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-bold", CARD_REVIEW[card.review_status ?? "envoyee"]?.tone)} title={card.review_note ?? undefined}>
+                        {CARD_REVIEW[card.review_status ?? "envoyee"]?.label}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-slate-400">—</span>
+                    )}
+                  </td>
                   <td className="p-3">
                     {!card ? (
                       <span className="text-xs font-semibold text-slate-400">Non émise</span>
@@ -288,6 +308,14 @@ function CardsAdmin() {
                       </button>
                       {card && (
                         <>
+                          <button type="button" title="Envoyer au titulaire pour vérification" onClick={() => review(r.id, false)} className="rounded-lg p-2 text-sky-700 hover:bg-sky-50">
+                            <Send aria-hidden className="size-4" />
+                            <span className="sr-only">Envoyer pour vérification</span>
+                          </button>
+                          <button type="button" title="Valider et envoyer la carte" onClick={() => review(r.id, true)} className="rounded-lg p-2 text-emerald-700 hover:bg-emerald-50">
+                            <CheckCircle2 aria-hidden className="size-4" />
+                            <span className="sr-only">Valider</span>
+                          </button>
                           <button type="button" title="Aperçu" onClick={() => setPreview(r.id)} className="rounded-lg p-2 text-slate-600 hover:bg-slate-100">
                             <Eye aria-hidden className="size-4" />
                             <span className="sr-only">Aperçu</span>

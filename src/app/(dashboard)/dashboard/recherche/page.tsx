@@ -8,12 +8,12 @@ import { IdCard } from "@/components/cards/IdCard";
 import { AttendanceView } from "@/components/espace/AttendanceView";
 import { StudentFile } from "@/components/espace/StudentFile";
 import { useAuth } from "@/context/AuthContext";
-import { employeeCardData, issueCard, studentCardData, type CardRow, type EmployeeRow, type StudentRow } from "@/lib/cards";
+import { employeeCardData, issueCard, studentCardData, type CardRow, type EmployeeRow, type StudentRow, STUDENT_CARD_COLS, EMPLOYEE_CARD_COLS } from "@/lib/cards";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
-const STUDENT_COLS = "id, first_name, last_name, photo_url, registration_number, student_number, class_name, program_code, academic_year, status, total_fee, paid_fee, remaining_fee, phone";
-const EMPLOYEE_COLS = "id, first_name, last_name, photo_url, matricule, role_title, position, department, sector, status, phone, email, contract_type, hire_date";
+const STUDENT_COLS = STUDENT_CARD_COLS;
+const EMPLOYEE_COLS = EMPLOYEE_CARD_COLS;
 
 type Hit = { kind: "eleve"; row: StudentRow & { phone?: string | null } } | { kind: "personnel"; row: EmployeeRow & { phone?: string | null; email?: string | null; contract_type?: string | null; hire_date?: string | null } };
 

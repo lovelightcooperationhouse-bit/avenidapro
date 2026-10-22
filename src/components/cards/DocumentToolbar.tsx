@@ -1,13 +1,13 @@
 "use client";
 
-import { Download, Eye, Loader2, Printer } from "lucide-react";
+import { Download, Eye, ImageDown, Loader2, Printer } from "lucide-react";
 import { useState } from "react";
 import { ArchiveButton } from "@/components/documents/ArchiveButton";
 import type { ArchiveKind } from "@/lib/archives";
-import { elementToPdf } from "@/lib/pdf";
+import { elementToJpeg, elementToPdf } from "@/lib/pdf";
 
 /**
- * Barre d'actions d'un document imprimable : aperçu PDF, téléchargement, impression,
+ * Barre d'actions d'un document imprimable : aperçu PDF, téléchargement PDF ou JPEG, impression,
  * et archivage (le PDF généré est conservé dans les archives).
  */
 export function DocumentToolbar({
@@ -41,6 +41,24 @@ export function DocumentToolbar({
       </button>
       <button type="button" disabled={busy} onClick={() => run(async () => void (await makePdf()).save(`${fileName}.pdf`))} className={`${btn} bg-[#0C356A] text-white hover:bg-[#E30613]`}>
         <Download aria-hidden className="size-4" /> Télécharger le PDF
+      </button>
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() =>
+          run(async () => {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(await elementToJpeg(el));
+            a.download = `${fileName}.jpg`;
+            a.click();
+            setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+          })
+        }
+        className={`${btn} text-[#0C356A] ring-1 ring-slate-200 hover:text-[#E30613]`}
+      >
+        <ImageDown aria-hidden className="size-4" /> Image JPEG
       </button>
       <button type="button" onClick={() => window.print()} className={`${btn} bg-[#E30613] text-white`}>
         <Printer aria-hidden className="size-4" /> Imprimer

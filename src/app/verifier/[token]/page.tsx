@@ -87,10 +87,6 @@ export default function VerifyPage() {
 
             {r.type === "eleve" && (
               <div className="grid gap-3 px-6 pb-6">
-                <p className={cn("flex items-center gap-2 rounded-2xl p-3 text-sm font-bold", r.payment_ok ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-vif")}>
-                  <CreditCard aria-hidden className="size-5" />
-                  {r.payment_ok ? "Scolarité à jour" : "Paiement de la scolarité en attente"}
-                </p>
                 {r.student_id !== undefined && (
                   <>
                     <dl className="grid grid-cols-3 gap-2 text-center">
@@ -125,7 +121,7 @@ export default function VerifyPage() {
                         Retards (30 j) : <strong>{r.retards_30j}</strong>
                       </div>
                     </dl>
-                    <Link href={`/dashboard/recherche?q=${encodeURIComponent(r.matricule ?? "")}`} className="rounded-full bg-avenida-blue py-3 text-center text-sm font-bold text-white hover:bg-avenida-blue-950">
+                    <Link href={`/dashboard/eleves/${r.student_id}`} className="rounded-full bg-avenida-blue py-3 text-center text-sm font-bold text-white hover:bg-avenida-blue-950">
                       Ouvrir le dossier complet
                     </Link>
                   </>

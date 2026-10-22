@@ -49,7 +49,7 @@ const f2 = (n: number | null | undefined) => (n === null || n === undefined ? "�
 const d = (x: string | null) => (x ? new Date(x).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" }) : "—");
 
 /** URL de vérification publique d'un document (bulletin, reçu) encodée dans son QR code. */
-export const documentVerifyUrl = (kind: "bulletin" | "recu", token: string) => `${typeof window !== "undefined" ? window.location.origin : ""}/verifier/document/${kind}/${token}`;
+export const documentVerifyUrl = (kind: "bulletin" | "recu" | "situation", token: string) => `${typeof window !== "undefined" ? window.location.origin : ""}/verifier/document/${kind}/${token}`;
 
 /** Bulletin de notes trimestriel officiel (A4, une page) : uniquement les données de l'élève concerné. */
 export function ReportCardSheet({ id }: { id: string }) {

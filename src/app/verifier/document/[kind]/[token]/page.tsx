@@ -33,7 +33,19 @@ export default function VerifyDocumentPage() {
           ["Mention", String(r.mention ?? "—")],
           ["N° de bulletin", String(r.number ?? "")],
         ]
-      : [
+      : r.type === "situation"
+        ? [
+            ["Élève", String(r.name ?? "")],
+            ["Matricule", String(r.matricule ?? "")],
+            ["Classe", String(r.class ?? "")],
+            ["Année", String(r.year ?? "")],
+            ["Écolage annuel", formatFCFA(Number(r.total ?? 0))],
+            ["Total payé", formatFCFA(Number(r.paid ?? 0))],
+            ["Reste à payer", formatFCFA(Number(r.remaining ?? 0))],
+            ["Statut", String(r.status ?? "")],
+            ["Situation au", new Date(String(r.date)).toLocaleString("fr-FR")],
+          ]
+        : [
           ["Reçu n°", String(r.number ?? "")],
           ["Élève", String(r.name ?? "")],
           ["Matricule", String(r.matricule ?? "")],
@@ -60,7 +72,7 @@ export default function VerifyDocumentPage() {
           ) : r.valid ? (
             <>
               <p className="flex items-center gap-2 rounded-2xl bg-emerald-50 p-4 font-bold text-emerald-800">
-                <CheckCircle2 aria-hidden className="size-6" /> {r.type === "bulletin" ? "Bulletin authentique" : "Reçu authentique"}
+                <CheckCircle2 aria-hidden className="size-6" /> {r.type === "bulletin" ? "Bulletin authentique" : r.type === "situation" ? "Situation financière à jour" : "Reçu authentique"}
               </p>
               <dl className="mt-4 divide-y divide-slate-100 text-sm">
                 {rows.map(([k, v]) => (

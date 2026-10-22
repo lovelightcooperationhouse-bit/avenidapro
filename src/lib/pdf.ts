@@ -1,3 +1,10 @@
+/** Capture un élément de la page en image JPEG haute définition. */
+export async function elementToJpeg(el: HTMLElement) {
+  const { default: html2canvas } = await import("html2canvas");
+  const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: "#ffffff", windowWidth: el.scrollWidth });
+  return new Promise<Blob>((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Capture impossible"))), "image/jpeg", 0.92));
+}
+
 /**
  * Transforme un élément de la page en PDF A4 (portrait), sur plusieurs pages si nécessaire.
  * Les bibliothèques ne sont chargées qu'au moment de l'export.

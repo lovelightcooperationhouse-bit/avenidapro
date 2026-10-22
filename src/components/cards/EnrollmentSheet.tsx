@@ -2,7 +2,7 @@
 
 import QRCode from "qrcode";
 import { useEffect, useState, type ReactNode } from "react";
-import { fees, formations, siteConfig } from "@/content/site";
+import { fees, formations, requiredDocuments, siteConfig } from "@/content/site";
 import { createClient } from "@/lib/supabase/client";
 import { formatFCFA } from "@/lib/utils";
 import { verifyUrl } from "./IdCard";
@@ -13,6 +13,7 @@ type Student = Record<string, string | number | null | boolean | undefined> & {
   last_name: string;
 };
 
+const DOC_NAMES: Record<string, string> = Object.fromEntries(requiredDocuments.map((d) => [d.key, d.label]));
 const v = (x: unknown) => (x === null || x === undefined || x === "" ? "—" : String(x));
 const d = (x: unknown) => (x ? new Date(String(x)).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" }) : "—");
 
@@ -40,8 +41,8 @@ function Title({ n, children, red }: { n: number; children: ReactNode; red?: boo
  */
 export function EnrollmentSheet({ studentId }: { studentId: string }) {
   const [s, setS] = useState<Student | null | undefined>(undefined);
-  const [paid, setPaid] = useState<{ receipt_number: string | null; amount: number | null; payment_date: string | null; created_at: string; designation: string | null }[]>([]);
   const [qr, setQr] = useState<string | null>(null);
+  const [docs, setDocs] = useState<string[]>([]);
 
   useEffect(() => {
     const supabase = createClient();
@@ -49,12 +50,14 @@ export function EnrollmentSheet({ studentId }: { studentId: string }) {
       const { data } = await supabase.from("students").select("*").eq("id", studentId).maybeSingle();
       setS((data as Student) ?? null);
       if (data) {
-        const keys = [data.id, data.registration_number, data.student_number].filter(Boolean);
-        const [{ data: p }, { data: card }] = await Promise.all([
-          supabase.from("fee_payments").select("receipt_number, amount, payment_date, created_at, designation").in("student_id", keys).order("created_at"),
-          supabase.from("id_cards").select("token").eq("student_id", data.id).eq("revoked", false).maybeSingle(),
-        ]);
-        setPaid(p ?? []);
+        const { data: card } = await supabase.from("id_cards").select("token").eq("student_id", data.id).eq("revoked", false).maybeSingle();
+        // Pièces fournies : pré-inscription en ligne, sinon dossier de membre
+        if (data.application_id) {
+          const { data: ad } = await supabase.from("application_documents").select("doc_type, file_name").eq("application_id", data.application_id);
+          setDocs((ad ?? []).map((x) => DOC_NAMES[x.doc_type] ?? x.doc_type));
+        } else if (Array.isArray(data.uploaded_documents)) {
+          setDocs((data.uploaded_documents as { label?: string; name?: string }[]).map((x) => x.label ?? x.name ?? "Pièce"));
+        }
         if (card?.token) QRCode.toDataURL(verifyUrl(card.token), { margin: 0, width: 220 }).then(setQr);
       }
     })();
@@ -66,16 +69,6 @@ export function EnrollmentSheet({ studentId }: { studentId: string }) {
   const f = formations.find((x) => x.code === s.program_code);
   const supplies = s.program_code === "CFA" ? fees.suppliesCfa : fees.suppliesDiploma;
   const total = Number(s.total_fee ?? (f ? f.registration + f.tuition + supplies : 0));
-  const paidTotal = Number(s.paid_fee ?? paid.reduce((a, p) => a + (p.amount ?? 0), 0));
-  const remaining = Number(s.remaining_fee ?? Math.max(0, total - paidTotal));
-  const tuition = f?.tuition ?? Math.max(0, total - (f?.registration ?? 0) - supplies);
-  const startYear = parseInt(String(s.academic_year ?? "").slice(0, 4), 10) || new Date().getFullYear();
-  const schedule = Array.from({ length: 8 }, (_, i) => {
-    const date = new Date(startYear, 9 + i, 5);
-    const amount = Math.round(tuition / 8);
-    const cumulative = (f?.registration ?? 0) + supplies + amount * (i + 1);
-    return { n: i + 1, date, amount, settled: paidTotal >= cumulative };
-  });
   const photo = typeof s.photo_url === "string" && !s.photo_url.includes("default.png") ? s.photo_url : null;
   const parents = (
     [
@@ -194,71 +187,29 @@ export function EnrollmentSheet({ studentId }: { studentId: string }) {
           </tbody>
         </table>
 
-        <Title n={4} red>
-          Écolage et échéancier
-        </Title>
-        <div className="mt-[2mm] grid grid-cols-[1fr_1.35fr] gap-[5mm]">
-          <dl className="flex flex-col">
-            {[
-              ["Inscription", formatFCFA(f?.registration ?? 0)],
-              ["Fournitures", formatFCFA(supplies)],
-              ["Scolarité annuelle", formatFCFA(tuition)],
-              ["Écolage total", formatFCFA(total)],
-              ["Déjà payé", formatFCFA(paidTotal)],
-              ["Reste à payer", formatFCFA(remaining)],
-            ].map(([k, val], i) => (
-              <div key={k} className={`flex justify-between border-b border-slate-200 py-[3px] ${i === 3 ? "font-extrabold" : ""} ${i === 4 ? "font-bold text-emerald-700" : ""} ${i === 5 ? "font-extrabold text-[#E30613]" : ""}`}>
-                <dt>{k}</dt>
-                <dd>{val}</dd>
-              </div>
-            ))}
-            {s.boarder_status === "interne" && (
-              <p className="mt-1 text-[9px] text-slate-500">
-                Internat : {formatFCFA(fees.boardingMonthly)} / mois + {fees.boardingDepositMonths} mois de caution.
-              </p>
-            )}
-          </dl>
-          <table className="w-full text-left text-[10px]">
-            <thead className="text-[8.5px] text-slate-500 uppercase">
-              <tr className="border-b border-slate-300">
-                <th className="py-[2px]">Tranche</th>
-                <th>Échéance</th>
-                <th className="text-right">Montant</th>
-                <th className="text-right">État</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {schedule.map((t) => (
-                <tr key={t.n}>
-                  <td className="py-[2px] font-semibold">{t.n}</td>
-                  <td>{t.date.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" })}</td>
-                  <td className="text-right">{formatFCFA(t.amount)}</td>
-                  <td className={`text-right font-bold ${t.settled ? "text-emerald-700" : t.date < new Date() ? "text-[#E30613]" : "text-slate-400"}`}>
-                    {t.settled ? "Réglée" : t.date < new Date() ? "En retard" : "À venir"}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <Title n={4}>Santé et personne à prévenir</Title>
+        <dl className="mt-[2mm] grid grid-cols-2 gap-x-[5mm]">
+          <Row k="Groupe sanguin" val={v(s.blood_group)} />
+          <Row k="Allergies" val={v(s.allergies)} />
+          <Row k="Informations médicales" val={v(s.medical_notes)} wide />
+          <Row k="En cas d'urgence" val={[s.emergency_contact_name, s.emergency_contact_phone].filter(Boolean).join(" · ") || "—"} wide />
+        </dl>
 
-        {paid.length > 0 && (
-          <>
-            <Title n={5}>Paiements enregistrés</Title>
-            <table className="mt-[2mm] w-full text-left text-[10px]">
-              <tbody className="divide-y divide-slate-100">
-                {paid.slice(-6).map((p, i) => (
-                  <tr key={i}>
-                    <td className="py-[2px]">{d(p.payment_date ?? p.created_at)}</td>
-                    <td className="font-mono">{v(p.receipt_number)}</td>
-                    <td>{v(p.designation)}</td>
-                    <td className="text-right font-semibold">{formatFCFA(p.amount ?? 0)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </>
+        <Title n={5}>Pièces fournies au dossier</Title>
+        {docs.length === 0 ? (
+          <p className="mt-[2mm] text-slate-500">Aucune pièce enregistrée en ligne (pièces déposées au bureau des inscriptions).</p>
+        ) : (
+          <ul className="mt-[2mm] grid grid-cols-2 gap-x-[5mm] gap-y-[2px]">
+            {docs.map((dname, i) => (
+              <li key={i} className="flex items-center gap-1.5 border-b border-dotted border-slate-300 py-[2px]">
+                <span className="text-emerald-700">✔</span> {dname}
+              </li>
+            ))}
+          </ul>
         )}
+        <p className="mt-[3mm] text-[9.5px] text-slate-600">
+          Écolage annuel : <strong>{formatFCFA(total)}</strong>. Le détail des paiements et du reste à payer figure sur la <strong>fiche de situation financière</strong>, mise à jour à chaque paiement.
+        </p>
 
         <p className="mt-[4mm] rounded bg-slate-50 p-2 text-[9.5px] text-slate-700">
           L&apos;élève et ses parents ou tuteur certifient l&apos;exactitude des informations ci-dessus et s&apos;engagent à respecter le règlement intérieur de l&apos;Hôtel École Avenida : port de

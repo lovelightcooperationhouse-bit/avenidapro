@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { DocumentToolbar } from "@/components/cards/DocumentToolbar";
 import { IdCard, type CardData } from "@/components/cards/IdCard";
-import { customerCardData, employeeCardData, studentCardData, type CardRow, type CustomerRow, type EmployeeRow, type StudentRow } from "@/lib/cards";
+import { customerCardData, employeeCardData, studentCardData, type CardRow, type CustomerRow, type EmployeeRow, type StudentRow, STUDENT_CARD_COLS, EMPLOYEE_CARD_COLS } from "@/lib/cards";
 import { createClient } from "@/lib/supabase/client";
 
 /** Planche d'impression des cartes (recto / verso), réservée au personnel. */
@@ -23,13 +23,13 @@ function PrintSheet() {
       const col = type === "eleve" ? "student_id" : type === "client" ? "customer_id" : "employee_id";
       const { data: c } = await supabase.from("id_cards").select("*").in(col, ids).eq("revoked", false);
       if (type === "eleve") {
-        const { data: s } = await supabase.from("students").select("id, first_name, last_name, photo_url, registration_number, student_number, class_name, program_code, academic_year, status, total_fee, paid_fee, remaining_fee").in("id", ids);
+        const { data: s } = await supabase.from("students").select(STUDENT_CARD_COLS).in("id", ids);
         setCards((c ?? []).map((card: CardRow) => studentCardData((s ?? []).find((x) => x.id === card.student_id) as StudentRow, card)).filter((x) => x.name));
       } else if (type === "client") {
         const { data: cu } = await supabase.from("hotel_customers").select("id, first_name, last_name, full_name, phone, email, nationality, total_stays, total_spent, is_vip, loyalty_points").in("id", ids);
         setCards((c ?? []).map((card: CardRow) => customerCardData((cu ?? []).find((x) => x.id === card.customer_id) as CustomerRow, card)).filter((x) => x.name));
       } else {
-        const { data: e } = await supabase.from("employees").select("id, first_name, last_name, photo_url, matricule, role_title, position, department, sector, status").in("id", ids);
+        const { data: e } = await supabase.from("employees").select(EMPLOYEE_CARD_COLS).in("id", ids);
         setCards((c ?? []).map((card: CardRow) => employeeCardData((e ?? []).find((x) => x.id === card.employee_id) as EmployeeRow, card)).filter((x) => x.name));
       }
     })();
