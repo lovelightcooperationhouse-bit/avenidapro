@@ -3,7 +3,7 @@ import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
 
 const variants = {
-  red: "site-shine relative overflow-hidden bg-vif text-white shadow-lg shadow-vif/30 hover:bg-vif-fonce hover:shadow-xl hover:shadow-vif/40",
+  red: "relative overflow-hidden bg-vif text-white shadow-lg shadow-vif/30 hover:bg-vif-fonce hover:shadow-xl hover:shadow-vif/40",
   blue: "bg-avenida-blue text-white shadow-lg shadow-avenida-blue/25 hover:bg-avenida-blue-950",
   white: "bg-white text-avenida-blue-950 shadow-lg shadow-black/10 hover:bg-avenida-blue-50",
   gold: "bg-or text-avenida-blue-950 shadow-lg shadow-or/30 hover:bg-or-clair",

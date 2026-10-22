@@ -30,17 +30,17 @@ export function SiteHeader() {
         scrolled ? "border-slate-200 bg-white shadow-[0_10px_30px_-15px_rgb(6_21_46/0.35)]" : "border-transparent bg-white/90 backdrop-blur-md"
       )}
     >
-      <Container className="flex h-[4.5rem] items-center justify-between gap-3 lg:h-20 xl:h-[5.5rem]">
-        <SiteLogo />
+      <Container className="flex h-[4.5rem] items-center justify-between gap-3 lg:h-20 lg:px-4 xl:h-[5.5rem] xl:px-8">
+        <SiteLogo compact />
 
         <DesktopNav />
 
         <div className="flex shrink-0 items-center gap-2">
-          <ButtonLink href="/connexion" variant="outline" size="md" title="Mon espace (élèves, parents, professeurs, personnel)" aria-label="Mon espace" className="hidden px-3 md:inline-flex">
+          <ButtonLink href="/connexion" variant="outline" size="md" title="Mon espace (élèves, parents, professeurs, personnel)" aria-label="Mon espace" className="hidden px-3 md:inline-flex lg:hidden 2xl:inline-flex">
             <UserRound aria-hidden />
-            <span className="xl:hidden 2xl:inline">Mon espace</span>
+            Mon espace
           </ButtonLink>
-          <ButtonLink href="/preinscription" size="md" className="site-glow-gold h-10 px-3 text-xs sm:px-4 sm:text-sm xl:h-11 xl:px-5">
+          <ButtonLink href="/preinscription" size="md" className="h-10 px-3 text-xs sm:px-4 sm:text-sm xl:h-11 xl:px-5">
             <ClipboardList aria-hidden />
             Pré-inscription
           </ButtonLink>

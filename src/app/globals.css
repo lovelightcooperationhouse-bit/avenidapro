@@ -370,10 +370,6 @@ textarea.form-input-avenida {
   0% { transform: scale(1.18) translate3d(-2%, 1%, 0); }
   100% { transform: scale(1.02) translate3d(1%, -1%, 0); }
 }
-@keyframes site-shine {
-  from { transform: translateX(-120%) skewX(-20deg); }
-  to { transform: translateX(220%) skewX(-20deg); }
-}
 @keyframes site-pulse-dot {
   0% { box-shadow: 0 0 0 0 rgb(227 6 19 / 0.6); }
   100% { box-shadow: 0 0 0 12px rgb(227 6 19 / 0); }
@@ -384,14 +380,6 @@ textarea.form-input-avenida {
   .site-float-delay { animation: site-float 7s ease-in-out 1.2s infinite; }
   .site-zoom-pan { animation: site-zoom-pan 8s ease-out both; }
   .site-pulse-dot { animation: site-pulse-dot 1.8s ease-out infinite; }
-  .site-shine::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    width: 40%;
-    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.35), transparent);
-    animation: site-shine 3.5s ease-in-out 1s infinite;
-  }
 }
 
 /* Accordéon FAQ (<details>) */
@@ -414,14 +402,6 @@ textarea.form-input-avenida {
   70% { opacity: 1; transform: scale(1.06); }
   100% { opacity: 1; transform: scale(1); }
 }
-@keyframes site-gradient-pan {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-@keyframes site-border-spin {
-  to { --site-angle: 360deg; }
-}
 @keyframes site-wiggle {
   0%, 100% { transform: rotate(0); }
   20% { transform: rotate(-10deg); }
@@ -433,44 +413,17 @@ textarea.form-input-avenida {
   0%, 100% { transform: translateY(0) scale(1); }
   50% { transform: translateY(-6px) scale(1.06); }
 }
-@keyframes site-glow-gold {
-  0%, 100% { box-shadow: 0 0 0 0 rgb(242 183 5 / 0.55), 0 18px 40px -12px rgb(0 0 0 / 0.45); }
-  50% { box-shadow: 0 0 0 10px rgb(242 183 5 / 0), 0 18px 40px -12px rgb(0 0 0 / 0.45); }
-}
 @keyframes site-letter {
   0% { opacity: 0; transform: translateY(0.6em) rotate(6deg); }
   100% { opacity: 1; transform: none; }
-}
-
-@property --site-angle {
-  syntax: "<angle>";
-  initial-value: 0deg;
-  inherits: false;
 }
 
 @media (prefers-reduced-motion: no-preference) {
   .site-from-left { animation: site-from-left 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
   .site-from-right { animation: site-from-right 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
   .site-pop { animation: site-pop 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
-  .site-gradient-pan { background-size: 220% 220%; animation: site-gradient-pan 10s ease infinite; }
   .site-wiggle { animation: site-wiggle 2.6s ease-in-out infinite; transform-origin: 50% 80%; }
   .site-bob { animation: site-bob 3s ease-in-out infinite; }
-  .site-glow-gold { animation: site-glow-gold 2.2s ease-out infinite; }
   .site-letter { display: inline-block; animation: site-letter 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
   .site-kenburns-strong { animation: site-zoom-pan 7s ease-out both; }
-  /* Bordure lumineuse tournante (FAQ, encadrés) */
-  .site-glow-border { position: relative; isolation: isolate; }
-  .site-glow-border::before {
-    content: "";
-    position: absolute;
-    inset: -2px;
-    z-index: -1;
-    border-radius: inherit;
-    background: conic-gradient(from var(--site-angle), #0c356a, #e30613, #f2b705, #0c356a);
-    animation: site-border-spin 6s linear infinite;
-    opacity: 0;
-    transition: opacity 0.3s;
-  }
-  .site-glow-border:hover::before,
-  .site-glow-border[open]::before { opacity: 1; }
 }

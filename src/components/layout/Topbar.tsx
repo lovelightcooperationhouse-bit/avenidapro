@@ -78,7 +78,7 @@ export function Topbar() {
       </div>
 
       {/* Menu horizontal : modules */}
-      <nav aria-label="Modules" className="flex gap-1 overflow-x-auto px-3 sm:px-5 [&::-webkit-scrollbar]:hidden">
+      <nav aria-label="Modules" className="flex gap-x-1 overflow-x-auto px-3 [scrollbar-width:thin] sm:px-5 md:flex-wrap md:overflow-visible">
         {modules.map((m) => {
           const active = m.key === current?.key;
           const first = m.sections[0].items[0];
@@ -87,7 +87,7 @@ export function Topbar() {
               key={m.key}
               href={first.href}
               aria-current={active ? "true" : undefined}
-              className={cn("flex shrink-0 items-center gap-2 border-b-[3px] px-3 py-2.5 text-sm font-bold whitespace-nowrap transition-colors", active ? "text-[#06152E]" : "border-transparent text-slate-500 hover:text-[#0C356A]")}
+              className={cn("flex shrink-0 items-center gap-2 border-b-[3px] px-2.5 py-2.5 text-sm font-bold whitespace-nowrap transition-colors xl:px-3", active ? "text-[#06152E]" : "border-transparent text-slate-500 hover:text-[#E30613]")}
               style={active ? { borderColor: "#E30613" } : undefined}
             >
               <m.icon aria-hidden className={cn("size-4", active && "text-[#E30613]")} />

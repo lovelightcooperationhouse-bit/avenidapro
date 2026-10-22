@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Award, BedDouble, CalendarDays, ChevronLeft, ChevronRight, ClipboardList, Pause, Play } from "lucide-react";
+import { ArrowRight, BedDouble, CalendarDays, ChevronLeft, ChevronRight, ClipboardList, Pause, Play } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -110,11 +110,11 @@ export function HeroSlider({ custom }: { custom?: HeroSlideSetting[] }) {
       <div aria-hidden className="absolute inset-x-0 bottom-0 -z-10 h-2/5 bg-gradient-to-t from-nuit to-transparent" />
       <div aria-hidden className="bg-avenida-pattern absolute inset-y-0 left-0 -z-10 w-24 opacity-20 [mask-image:linear-gradient(90deg,black,transparent)] sm:w-40" />
 
-      <div className="mx-auto flex w-full max-w-7xl flex-1 items-center gap-10 px-4 pt-14 pb-36 sm:px-6 lg:px-8">
+      <div className="mx-auto flex w-full max-w-7xl flex-1 items-center gap-10 px-4 pt-14 pb-36 sm:px-6 lg:px-8 lg:pb-60 xl:pb-40">
         <div className="max-w-3xl flex-1" aria-live={autoplay ? "off" : "polite"}>
           <div key={index} aria-roledescription="diapositive" aria-label={`${index + 1} sur ${slides.length}`}>
             <p className="site-from-left mb-7 inline-flex items-center gap-2.5 rounded-full border border-white/20 bg-white/10 py-1.5 pr-4 pl-2 text-xs font-bold tracking-[0.18em] uppercase backdrop-blur-md sm:text-sm">
-              <span aria-hidden className="site-pulse-dot size-2.5 rounded-full bg-vif" />
+              <span aria-hidden className="size-2.5 rounded-full bg-vif" />
               {slide.eyebrow}
             </p>
 
@@ -155,8 +155,8 @@ export function HeroSlider({ custom }: { custom?: HeroSlideSetting[] }) {
 
           {/* Rentrée : bien visible sur téléphone et tablette */}
           {next && (
-            <Link href="/preinscription" className="site-pop site-glow-gold mt-6 inline-flex items-center gap-3 rounded-2xl bg-or px-4 py-3 text-avenida-blue-950 xl:hidden" style={{ animationDelay: "1300ms" }}>
-              <CalendarDays aria-hidden className="site-wiggle size-6" />
+            <Link href="/preinscription" className="site-pop mt-6 inline-flex items-center gap-3 rounded-2xl bg-or px-4 py-3 text-avenida-blue-950 shadow-lg xl:hidden" style={{ animationDelay: "1300ms" }}>
+              <CalendarDays aria-hidden className="size-6" />
               <span className="leading-tight">
                 <span className="block text-[11px] font-extrabold tracking-widest uppercase">Prochaine rentrée</span>
                 <span className="block font-display text-lg font-extrabold">
@@ -167,40 +167,11 @@ export function HeroSlider({ custom }: { custom?: HeroSlideSetting[] }) {
           )}
         </div>
 
-        {/* Cartes flottantes (grand écran) */}
-        <div className="hidden w-80 shrink-0 flex-col gap-4 xl:flex">
-          {next && (
-            <Link href="/preinscription" className="site-float site-glow-gold block rounded-3xl bg-or p-6 text-avenida-blue-950">
-              <p className="flex items-center gap-2 text-xs font-extrabold tracking-widest uppercase">
-                <CalendarDays aria-hidden className="site-wiggle size-5" />
-                Prochaine rentrée
-              </p>
-              <p className="mt-2 font-display text-6xl font-extrabold">J-{next.days}</p>
-              <p className="mt-1 font-bold">{next.date}</p>
-              {next.label !== next.date && <p className="text-sm font-semibold text-avenida-blue-950/70">{next.label}</p>}
-              <div className="mt-4 h-2 overflow-hidden rounded-full bg-avenida-blue-950/15">
-                <div className="h-full rounded-full bg-vif" style={{ width: `${Math.max(8, 100 - next.days)}%` }} />
-              </div>
-              <span className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-avenida-blue-950 px-4 py-2 text-sm font-bold text-white">
-                Je m&apos;inscris <ArrowRight aria-hidden className="size-4" />
-              </span>
-            </Link>
-          )}
-          <div className="site-float-delay flex items-center gap-4 rounded-3xl bg-white p-5 text-avenida-blue-950 shadow-2xl">
-            <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-vif text-white">
-              <Award aria-hidden className="size-7" />
-            </span>
-            <div>
-              <p className="font-display text-lg leading-tight font-extrabold">Diplômes d&apos;État</p>
-              <p className="text-sm font-semibold text-vif">CFA · CAP · BEP · BT · BTS</p>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Navigation : miniatures avec progression */}
       <div className="absolute inset-x-0 bottom-0 pb-6 sm:pb-8">
-        <div className="mx-auto flex max-w-7xl items-end justify-between gap-4 px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex max-w-7xl items-end justify-between gap-4 pr-20 pl-4 sm:pl-6 lg:pl-8 2xl:pr-8">
           <div className="flex flex-1 gap-2 sm:max-w-2xl sm:gap-3">
             {slides.map((s, i) => (
               <button
@@ -233,6 +204,20 @@ export function HeroSlider({ custom }: { custom?: HeroSlideSetting[] }) {
               </button>
             ))}
           </div>
+
+          {next && (
+            <Link
+              href="/preinscription"
+              className="hidden shrink-0 items-center gap-4 rounded-2xl bg-or px-5 py-3 text-avenida-blue-950 shadow-2xl ring-4 ring-or/30 transition-colors hover:bg-or-clair xl:flex"
+            >
+              <CalendarDays aria-hidden className="size-8" />
+              <span className="leading-tight">
+                <span className="block text-[11px] font-extrabold tracking-widest uppercase">Prochaine rentrée</span>
+                <span className="block font-display text-3xl font-extrabold">J-{next.days}</span>
+                <span className="block text-sm font-bold">{next.date}</span>
+              </span>
+            </Link>
+          )}
 
           <div className="flex items-center gap-2">
             {[

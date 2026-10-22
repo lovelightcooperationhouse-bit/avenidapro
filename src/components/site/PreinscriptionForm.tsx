@@ -564,7 +564,7 @@ export function PreinscriptionForm() {
           <button
             type="submit"
             disabled={sending}
-            className="site-shine relative inline-flex h-14 items-center gap-2 overflow-hidden rounded-full bg-vif px-8 font-bold text-white shadow-lg shadow-vif/30 transition-colors hover:bg-vif-fonce disabled:opacity-70"
+            className="relative inline-flex h-14 items-center gap-2 overflow-hidden rounded-full bg-vif px-8 font-bold text-white shadow-lg shadow-vif/30 transition-colors hover:bg-vif-fonce disabled:opacity-70"
           >
             {sending ? <Loader2 aria-hidden className="size-5 animate-spin" /> : null}
             {step < STEPS.length - 1 ? "Continuer" : sending ? "Envoi en cours…" : "Envoyer ma pré-inscription"}

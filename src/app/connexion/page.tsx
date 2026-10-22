@@ -243,7 +243,7 @@ function ConnexionForm() {
         <button
           type="submit"
           disabled={busy}
-          className="site-shine relative mt-1 flex h-14 items-center justify-center gap-2 overflow-hidden rounded-full bg-vif font-bold text-white shadow-lg shadow-vif/30 transition-colors hover:bg-vif-fonce disabled:opacity-70"
+          className="relative mt-1 flex h-14 items-center justify-center gap-2 overflow-hidden rounded-full bg-vif font-bold text-white shadow-lg shadow-vif/30 transition-colors hover:bg-vif-fonce disabled:opacity-70"
         >
           {busy ? <Loader2 aria-hidden className="size-5 animate-spin" /> : mode === "reset" ? <KeyRound aria-hidden className="size-5" /> : null}
           {mode === "login" ? "Se connecter" : mode === "register" ? "Créer mon compte" : "Recevoir le lien"}
@@ -296,7 +296,7 @@ export default function ConnexionPage() {
             {audiences.map((a, i) => (
               <li key={a.title} className="site-pop flex flex-col items-start gap-2 rounded-2xl p-4 text-white shadow-lg" style={{ background: a.color, animationDelay: `${200 + i * 150}ms` }}>
                 <span className="flex size-10 items-center justify-center rounded-xl bg-white/25">
-                  <a.icon aria-hidden className="site-bob size-6" style={{ animationDelay: `${i * 0.4}s` }} />
+                  <a.icon aria-hidden className="size-6" style={{ animationDelay: `${i * 0.4}s` }} />
                 </span>
                 <p className="font-bold leading-tight">{a.title}</p>
                 <p className="text-xs text-white/90">{a.text}</p>
@@ -320,7 +320,7 @@ export default function ConnexionPage() {
         <ul className="grid grid-cols-4 gap-2 px-5 pb-4 sm:px-8 lg:hidden">
           {audiences.map((a, i) => (
             <li key={a.title} className="site-pop flex flex-col items-center gap-1 rounded-2xl p-2.5 text-white shadow-md" style={{ background: a.color, animationDelay: `${i * 120}ms` }}>
-              <a.icon aria-hidden className="site-bob size-5" style={{ animationDelay: `${i * 0.4}s` }} />
+              <a.icon aria-hidden className="size-5" style={{ animationDelay: `${i * 0.4}s` }} />
               <span className="text-[11px] font-bold">{a.title}</span>
             </li>
           ))}

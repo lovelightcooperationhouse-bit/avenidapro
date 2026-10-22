@@ -27,11 +27,11 @@ export function Newsletter() {
 
   return (
     <section aria-labelledby="newsletter-title" className="relative isolate overflow-hidden bg-avenida-blue-950 text-white">
-      <div aria-hidden className="site-gradient-pan absolute inset-0 -z-10 bg-[linear-gradient(120deg,#06152E,#0C356A,#06152E,#3a0610)] opacity-90" />
+      <div aria-hidden className="absolute inset-0 -z-10 bg-[linear-gradient(120deg,#06152E,#0C356A,#06152E,#3a0610)] opacity-90" />
       <div aria-hidden className="bg-avenida-pattern absolute inset-0 -z-10 opacity-[0.06]" />
       <Container className="grid items-center gap-8 py-14 lg:grid-cols-[1fr_1.2fr] lg:py-16">
         <div className="flex flex-col gap-3">
-          <span className="site-bob flex size-14 items-center justify-center rounded-2xl bg-or text-avenida-blue-950 shadow-lg">
+          <span className="flex size-14 items-center justify-center rounded-2xl bg-or text-avenida-blue-950 shadow-lg">
             <BellRing aria-hidden className="size-7" />
           </span>
           <h2 id="newsletter-title" className="font-display text-3xl font-extrabold sm:text-4xl">
@@ -78,7 +78,7 @@ export function Newsletter() {
               ))}
             </fieldset>
             {state === "erreur" && <p className="text-sm font-semibold text-or-clair">Adresse e-mail invalide ou envoi impossible. Réessayez.</p>}
-            <button type="submit" disabled={state === "busy"} className="site-shine relative inline-flex h-12 items-center justify-center gap-2 overflow-hidden rounded-full bg-vif px-6 font-bold text-white hover:bg-vif-fonce disabled:opacity-70 sm:self-start">
+            <button type="submit" disabled={state === "busy"} className="relative inline-flex h-12 items-center justify-center gap-2 overflow-hidden rounded-full bg-vif px-6 font-bold text-white hover:bg-vif-fonce disabled:opacity-70 sm:self-start">
               {state === "busy" ? <Loader2 aria-hidden className="size-5 animate-spin" /> : <BellRing aria-hidden className="size-5" />}
               Je m&apos;abonne
             </button>

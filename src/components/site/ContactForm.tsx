@@ -141,7 +141,7 @@ export function ContactForm() {
       )}
 
       <div className="flex flex-wrap gap-3">
-        <button type="submit" disabled={sending} className="site-shine relative inline-flex h-12 items-center gap-2 overflow-hidden rounded-full bg-vif px-6 font-bold text-white shadow-lg shadow-vif/30 transition-colors hover:bg-vif-fonce disabled:opacity-70">
+        <button type="submit" disabled={sending} className="relative inline-flex h-12 items-center gap-2 overflow-hidden rounded-full bg-vif px-6 font-bold text-white shadow-lg shadow-vif/30 transition-colors hover:bg-vif-fonce disabled:opacity-70">
           {sending ? <Loader2 aria-hidden className="size-4 animate-spin" /> : <Send aria-hidden className="size-4" />}
           Envoyer
         </button>
