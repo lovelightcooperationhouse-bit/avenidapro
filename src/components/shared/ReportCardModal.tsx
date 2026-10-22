@@ -125,7 +125,7 @@ export function ReportCardModal({
                 <div className="flex items-center justify-center gap-2 mb-1">
                   <div className="w-12 h-12 relative rounded-lg overflow-hidden border border-slate-200 shadow-2xs">
                     <Image
-                      src="/logoavenida.jpg"
+                      src="/logo-avenida.png"
                       alt="Logo Avenida Lomé"
                       width={48}
                       height={48}

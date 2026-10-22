@@ -88,6 +88,9 @@ export const HOME_SECTIONS = [
 export type CardSettings = {
   motto?: string;
   signatureTitle?: string;
+  /** Nom du signataire et signature scannée (image), au verso. */
+  signatoryName?: string;
+  signatureImage?: string;
   phone?: string;
   email?: string;
   address?: string;

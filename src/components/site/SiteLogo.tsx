@@ -7,7 +7,7 @@ export function SiteLogo({ inverted = false, compact = false, className }: { inv
   return (
     <Link href="/" aria-label="Hôtel École Avenida, retour à l'accueil" className={cn("flex shrink-0 items-center gap-3", className)}>
       <span className="relative size-12 shrink-0 overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-slate-200 lg:size-14">
-        <Image src="/logoavenida.jpg" alt="" fill sizes="56px" className="object-contain" priority />
+        <Image src="/logo-avenida.png" alt="" fill sizes="56px" className="object-contain" priority />
       </span>
       <span className="flex flex-col leading-none">
         <span className={cn("font-serif text-[0.8rem] font-bold tracking-[0.12em] lg:text-sm", inverted ? "text-white" : "text-avenida-blue")}>HÔTEL ÉCOLE</span>

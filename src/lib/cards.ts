@@ -103,8 +103,8 @@ export const studentCardData = (s: StudentRow, c: CardRow): CardData => ({
   details: [
     { label: "Né(e) le", value: [day(s.birth_date), s.birth_place ? `à ${s.birth_place}` : ""].filter(Boolean).join(" ") },
     { label: "Sexe", value: sexe(s.gender) },
-    { label: "Adresse", value: [s.address, s.residence_neighborhood, s.city].filter(Boolean).join(", ") },
     { label: "Tuteur", value: [guardian(s).name, guardian(s).phone].filter(Boolean).join(" · ") },
+    { label: "Adresse", value: [s.address, s.residence_neighborhood, s.city].filter(Boolean).join(", ") },
   ],
   emergency: [guardian(s).name, guardian(s).phone].filter(Boolean).join(" · ") || null,
   cardNumber: c.card_number,

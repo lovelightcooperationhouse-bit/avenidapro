@@ -54,7 +54,7 @@ export default function ReceiptPage() {
       <header className="flex items-center justify-between border-b-4 border-[#E30613] pb-2">
         <div className="flex items-center gap-2">
           {/* eslint-disable-next-line @next/next/no-img-element -- rendu imprimable */}
-          <img src="/logoavenida.jpg" alt="" className="size-12 object-contain" />
+          <img src="/logo-avenida.png" alt="" className="size-12 object-contain" />
           <div>
             <p className="font-serif text-base font-extrabold text-[#0C356A]">HÔTEL ÉCOLE AVENIDA</p>
             <p className="text-[10px] text-slate-600">

@@ -37,7 +37,7 @@ export function AvenidaLogo({
         className={`${iconDimensions.className} relative shrink-0 rounded-lg overflow-hidden shadow-sm border border-slate-200`}
       >
         <Image
-          src="/logoavenida.jpg"
+          src="/logo-avenida.png"
           alt="Hôtel École Avenida - Logo Officiel"
           width={iconDimensions.width}
           height={iconDimensions.height}

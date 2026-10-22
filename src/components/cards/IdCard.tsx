@@ -11,7 +11,8 @@ export type CardVariant = "eleve" | "professeur" | "hotel" | "personnel" | "clie
 
 /** Modèles de cartes : une couleur et un intitulé par catégorie (élèves, professeurs, hôtel, école, clients). */
 export const CARD_THEMES: Record<CardVariant, { label: string; dark: string; accent: string; badgeText: string; stripe: [string, string, string]; holder: string }> = {
-  eleve: { label: "Carte scolaire", dark: "#0C356A", accent: "#E30613", badgeText: "#FFFFFF", stripe: ["#0C356A", "#FFFFFF", "#E30613"], holder: "de l'élève" },
+  // Couleurs du logo : bleu nuit et rouge Avenida
+  eleve: { label: "Carte scolaire", dark: "#1B1652", accent: "#E31B3A", badgeText: "#FFFFFF", stripe: ["#1B1652", "#FFFFFF", "#E31B3A"], holder: "de l'élève" },
   professeur: { label: "Carte professeur", dark: "#064E3B", accent: "#D4A017", badgeText: "#064E3B", stripe: ["#064E3B", "#FFFFFF", "#D4A017"], holder: "du professeur" },
   hotel: { label: "Personnel de l'hôtel", dark: "#5B1A2A", accent: "#D4A017", badgeText: "#5B1A2A", stripe: ["#5B1A2A", "#FFFFFF", "#D4A017"], holder: "du membre du personnel" },
   personnel: { label: "Carte de travail", dark: "#1E293B", accent: "#E30613", badgeText: "#FFFFFF", stripe: ["#1E293B", "#FFFFFF", "#E30613"], holder: "du membre du personnel" },
@@ -96,148 +97,178 @@ export function IdCard({ data, side = "both", className, settings }: { data: Car
   const accentText = theme.accent === "#D4A017" ? theme.dark : theme.accent;
   const validity = data.validUntil ? new Date(data.validUntil).toLocaleDateString("fr-FR") : "Durée du contrat";
 
-  const stripe = (cls: string) => (
-    <span aria-hidden className={cn("flex", cls)}>
-      {theme.stripe.map((c, i) => (
-        <span key={i} className="flex-1" style={{ background: c }} />
-      ))}
-    </span>
+  const isStudent = data.type === "eleve";
+  const lineLabel = isStudent ? "Filière & année" : isClient ? "Fidélité" : "Fonction";
+  const signTitle = cs.signatureTitle || (variant === "eleve" ? "Directeur pédagogique" : "La Direction");
+  const signName = cs.signatoryName ?? (variant === "eleve" ? "Kodjo Messan DOGLO" : "");
+  const brandAccent = theme.accent === "#D4A017" ? "#F2C94C" : "#FF4D5E";
+  const line2 = (data.line2 ?? "").replace(/^Année scolaire\s*/i, "").replace(/\s*-\s*/g, "-");
+  // Le cadre porte le conteneur : toutes les tailles sont en % de la largeur de la carte (cqw),
+  // lisibles à l'écran comme à l'impression (90 mm).
+  const frame = (content: React.ReactNode) => (
+    <div className="id-card w-full max-w-[30rem]" style={{ containerType: "inline-size" }}>
+      {content}
+    </div>
   );
+  const shell = "relative flex aspect-[90/55] w-full flex-col overflow-hidden rounded-[3.5cqw] shadow-xl print:shadow-none";
+  const label = "text-[2.2cqw] leading-none font-extrabold tracking-wide uppercase";
 
-  const front = (
-    <div className="id-card relative flex aspect-[90/55] w-full max-w-[26rem] flex-col overflow-hidden rounded-2xl bg-white text-[#06152E] shadow-xl ring-1 ring-slate-900/10 print:shadow-none">
-      {/* Bandeau */}
-      <div className="relative flex items-center gap-2 px-3 py-1.5 text-white" style={{ background: theme.dark }}>
-        <div aria-hidden className="bg-avenida-pattern absolute inset-0 opacity-15" />
+  const front = frame(
+    <div className={cn(shell, "bg-white text-slate-900")} style={{ border: `1cqw solid ${theme.dark}` }}>
+      <div aria-hidden className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,transparent_55%,rgba(12,22,80,0.05)_70%,transparent_85%)]" />
+      {/* En-tête : logo, établissement, catégorie, puce */}
+      <div className="relative flex shrink-0 items-center gap-[1.8cqw] px-[3.5cqw] pt-[2.2cqw]">
         {/* eslint-disable-next-line @next/next/no-img-element -- rendu imprimable, image locale */}
-        <img src="/logoavenida.jpg" alt="" className="relative size-7 rounded bg-white object-contain" />
-        <div className="relative leading-none">
-          <p className="font-serif text-[8px] font-bold tracking-wider">HÔTEL ÉCOLE</p>
-          <p className="font-serif text-[13px] font-extrabold tracking-wider text-[#FF5A63]">AVENIDA</p>
+        <img src="/logo-avenida.png" alt="" className="h-[8cqw] w-[8cqw] object-contain" />
+        <div className="leading-none">
+          <p className="font-serif text-[2.4cqw] font-bold tracking-[0.08em]" style={{ color: theme.dark }}>
+            HÔTEL ÉCOLE
+          </p>
+          <p className="font-serif text-[3.9cqw] font-extrabold tracking-[0.06em]" style={{ color: accentText }}>
+            AVENIDA
+          </p>
         </div>
-        <p className="relative ml-auto rounded-full px-2.5 py-0.5 text-[8px] font-extrabold tracking-widest uppercase" style={{ background: theme.accent, color: theme.badgeText }}>
+        <p className="ml-[1cqw] self-start rounded-full px-[1.8cqw] py-[0.5cqw] text-[1.9cqw] font-extrabold tracking-wider whitespace-nowrap text-white uppercase" style={{ background: theme.dark }}>
           {theme.label}
         </p>
+        <span aria-hidden className="ml-auto grid h-[7.5cqw] w-[10cqw] grid-cols-3 gap-[0.4cqw] rounded-[1.2cqw] bg-[linear-gradient(135deg,#F6E7A6,#D4AF37_45%,#B8912B)] p-[0.9cqw] shadow-inner">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <span key={i} className="rounded-[0.3cqw] border border-[#9C7A1E]/50" />
+          ))}
+        </span>
       </div>
-      {stripe("h-[3px]")}
 
-      <div className="flex min-h-0 flex-1 gap-2.5 px-2.5 pt-2 pb-1.5">
-        {/* Photo + situation */}
-        <div className="flex w-[24%] shrink-0 flex-col gap-1">
-          <div className="aspect-[3/4] overflow-hidden rounded-md bg-slate-100 ring-2" style={{ ["--tw-ring-color" as string]: `${theme.dark}55` }}>
+      <div className="relative flex min-h-0 flex-1 gap-[3cqw] px-[3.5cqw] pt-[1.8cqw] pb-[2cqw]">
+        {/* Photo d'identité */}
+        <div className="w-[24cqw] shrink-0">
+          <div className="aspect-[3/4] overflow-hidden rounded-[1cqw] bg-slate-100 p-[0.5cqw] shadow-md ring-[0.4cqw] ring-slate-300">
             {photoOk ? (
               // eslint-disable-next-line @next/next/no-img-element -- photo stockée en data URL
-              <img src={data.photo!} alt={`Photo de ${data.name}`} className="size-full object-cover" />
+              <img src={data.photo!} alt={`Photo de ${data.name}`} className="size-full rounded-[0.6cqw] object-cover" />
             ) : (
-              <span className="flex size-full items-center justify-center font-display text-xl font-extrabold text-slate-300">{initials(data.name)}</span>
+              <span className="flex size-full items-center justify-center font-display text-[7cqw] font-extrabold text-slate-300">{initials(data.name)}</span>
             )}
           </div>
         </div>
 
         {/* Identité */}
-        <div className="flex min-w-0 flex-1 flex-col">
-          <p className="truncate font-display text-[13px] leading-tight font-extrabold uppercase">{data.name}</p>
-          <p className="truncate text-[9px] font-bold" style={{ color: accentText }}>
-            {data.line1}
+        <div className="flex min-w-0 flex-1 flex-col [&>*]:shrink-0">
+          <p className={label} style={{ color: theme.dark }}>
+            Nom et prénoms
           </p>
-          <p className="truncate text-[8px] font-semibold text-slate-500">{data.line2}</p>
+          <p className="truncate font-display text-[4.3cqw] leading-[1.2] font-extrabold uppercase" style={{ color: theme.dark }}>
+            {data.name}
+          </p>
+          <p className={cn(label, "mt-[1cqw]")} style={{ color: theme.dark }}>
+            {lineLabel}
+          </p>
+          <p className="truncate text-[3cqw] leading-[1.25] font-extrabold" style={{ color: accentText }}>
+            {data.line1}
+            {line2 ? ` / ${line2}` : ""}
+          </p>
           {data.details && data.details.length > 0 && (
-            <dl className="mt-1 grid grid-cols-2 gap-x-2 gap-y-[2px]">
+            <dl className="mt-[1.2cqw] grid grid-cols-[1.5fr_1fr] gap-x-[2cqw] gap-y-[0.9cqw]">
               {data.details.slice(0, 4).map((d) => (
                 <div key={d.label} className="min-w-0">
-                  <dt className="text-[5.5px] font-bold tracking-wider text-slate-400 uppercase">{d.label}</dt>
-                  <dd className="truncate text-[7.5px] leading-tight font-bold text-slate-800">{d.value || "—"}</dd>
+                  <dt className={label} style={{ color: theme.dark }}>
+                    {d.label}
+                  </dt>
+                  <dd className="truncate text-[2.6cqw] leading-[1.3] font-bold text-slate-800">{d.value || "—"}</dd>
                 </div>
               ))}
             </dl>
           )}
-          <div className="mt-auto flex items-end justify-between gap-2">
-            <div className="min-w-0">
-              <p className="text-[6px] font-bold tracking-widest text-slate-400 uppercase">{isClient ? "N° de fidélité" : "Matricule"}</p>
-              <p className="font-mono text-[12px] leading-none font-extrabold tracking-wider" style={{ color: theme.dark }}>
-                {data.matricule}
-              </p>
-              <p className="mt-0.5 text-[6.5px] font-semibold text-slate-500">
-                {data.cardNumber && !isClient ? `Carte ${data.cardNumber} · ` : ""}valable jusqu&apos;au {validity}
-              </p>
-            </div>
-            <div className="aspect-square w-[27%] min-w-14 shrink-0 rounded-md bg-white p-0.5 ring-1 ring-slate-200">
+          <div className="mt-auto flex items-end gap-[2.5cqw]">
+            <div className="aspect-square w-[12cqw] shrink-0 bg-white">
               {/* eslint-disable-next-line @next/next/no-img-element -- QR code généré en data URL */}
               {qr ? <img src={qr} alt="QR code de vérification" className="size-full" /> : <span className="block size-full animate-pulse bg-slate-100" />}
             </div>
+            <div className="min-w-0">
+              <p className="text-[2.6cqw] leading-none font-extrabold uppercase" style={{ color: theme.dark }}>
+                {isClient ? "N° de fidélité" : "Matricule"}
+              </p>
+              <p className="font-display text-[5.4cqw] leading-[1.15] font-extrabold tracking-wide whitespace-nowrap" style={{ color: theme.dark }}>
+                {data.matricule}
+              </p>
+              <p className="text-[2.1cqw] leading-tight font-semibold whitespace-nowrap text-slate-600">
+                {data.cardNumber && !isClient ? `Carte ${data.cardNumber} · ` : ""}valable jusqu&apos;au {validity}
+              </p>
+            </div>
           </div>
         </div>
       </div>
-      {stripe("h-1")}
-    </div>
+    </div>,
   );
 
-  const back = (
-    <div className="id-card relative flex aspect-[90/55] w-full max-w-[26rem] flex-col overflow-hidden rounded-2xl text-white shadow-xl print:shadow-none" style={{ background: theme.dark }}>
-      <div aria-hidden className="bg-avenida-pattern absolute inset-0 opacity-10" />
-      {/* Filigrane du logo */}
-      {/* eslint-disable-next-line @next/next/no-img-element -- filigrane */}
-      <img src="/logoavenida.jpg" alt="" aria-hidden className="pointer-events-none absolute top-1/2 right-3 size-24 -translate-y-1/2 rounded-2xl opacity-[0.08] grayscale" />
+  const back = frame(
+    <div className={cn(shell, "p-[1.4cqw] text-white")} style={{ background: theme.dark }}>
+      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-[2.5cqw] border-[0.4cqw] border-white/70">
+        <div aria-hidden className="bg-avenida-pattern absolute inset-0 opacity-[0.07]" />
+        {/* eslint-disable-next-line @next/next/no-img-element -- filigrane */}
+        <img src="/logo-avenida.png" alt="" aria-hidden className="pointer-events-none absolute top-[24%] left-[38%] w-[22cqw] opacity-[0.06] grayscale" />
 
-      <div className="relative flex items-center gap-2 border-b border-white/15 px-3.5 py-2">
-        <p className="font-serif text-[11px] font-extrabold tracking-[0.15em]">
-          HÔTEL ÉCOLE <span className="text-[#FF5A63]">AVENIDA</span>
-        </p>
-        <p className="ml-auto text-[7px] font-bold tracking-widest text-white/75 uppercase">{cs.motto || siteConfig.motto}</p>
-      </div>
-
-      <div className="relative grid flex-1 grid-cols-2 gap-3 px-3.5 py-2 text-[8px] leading-snug">
-        <div className="flex flex-col gap-1.5">
-          {data.emergency && (
-            <div>
-              <p className="text-[6.5px] font-bold tracking-widest text-white/60 uppercase">En cas d&apos;urgence</p>
-              <p className="font-bold text-white">{data.emergency}</p>
-            </div>
-          )}
-          <div>
-            <p className="text-[6.5px] font-bold tracking-widest text-white/60 uppercase">Validité</p>
-            <p className="font-bold text-white">Jusqu&apos;au {validity}</p>
-          </div>
-          {data.cardNumber && (
-            <div>
-              <p className="text-[6.5px] font-bold tracking-widest text-white/60 uppercase">N° de carte</p>
-              <p className="font-mono font-bold text-white">{data.cardNumber}</p>
-            </div>
-          )}
+        <div className="relative flex shrink-0 items-center gap-[2cqw] border-b border-white/30 px-[3cqw] py-[1.6cqw]">
+          <p className="font-serif text-[3.6cqw] font-extrabold tracking-[0.05em] whitespace-nowrap">
+            HÔTEL ÉCOLE <span style={{ color: brandAccent }}>AVENIDA</span>
+          </p>
+          <p className="ml-auto text-[2.4cqw] font-extrabold tracking-wide whitespace-nowrap uppercase">{(cs.motto || siteConfig.motto).replace(/\s*[–-]\s*/g, " · ")}</p>
         </div>
-        <div className="flex flex-col gap-1.5">
-          <div>
-            <p className="text-[6.5px] font-bold tracking-widest text-white/60 uppercase">Établissement</p>
-            {cs.address ? (
-              <p className="whitespace-pre-line text-white">{cs.address}</p>
-            ) : (
-              <>
-                <p className="text-white">{siteConfig.address.street}</p>
-                <p className="text-white">
+
+        <div className="relative grid min-h-0 flex-1 grid-cols-2 gap-x-[3.5cqw] px-[3cqw] pt-[1.8cqw]">
+          <div className="flex min-w-0 flex-col gap-[2.2cqw]">
+            <div>
+              <p className="text-[3.1cqw] leading-tight font-extrabold uppercase">Établissement</p>
+              {cs.address ? (
+                <p className="text-[2.8cqw] leading-snug whitespace-pre-line text-white/90">{cs.address}</p>
+              ) : (
+                <p className="text-[2.8cqw] leading-snug text-white/90">
+                  {siteConfig.address.street}
+                  <br />
                   {siteConfig.address.district}, {siteConfig.address.city}
                 </p>
-              </>
-            )}
+              )}
+            </div>
+            <div>
+              <p className="text-[3.1cqw] leading-tight font-extrabold uppercase">Contact</p>
+              <p className="text-[2.8cqw] leading-snug text-white/90">
+                Tél : <strong className="text-white">{cs.phone || siteConfig.phones[0].display}</strong>
+              </p>
+              <p className="truncate text-[2.8cqw] leading-snug text-white/90">{cs.email || siteConfig.email}</p>
+            </div>
+            <p className="text-[2.9cqw] font-extrabold whitespace-nowrap">
+              <span style={{ color: brandAccent }}>VALIDITÉ :</span> jusqu&apos;au {validity}
+            </p>
           </div>
-          <div>
-            <p className="text-[6.5px] font-bold tracking-widest text-white/60 uppercase">Contact</p>
-            <p className="text-white">{cs.phone || siteConfig.phones[0].display}</p>
-            <p className="truncate text-white">{cs.email || siteConfig.email}</p>
+          <div className="flex min-w-0 flex-col gap-[1.4cqw]">
+            <div>
+              <p className="text-[3.1cqw] leading-tight font-extrabold uppercase">Administration</p>
+              <p className="text-[2.8cqw] leading-snug text-white/90">En cas de perte, contactez :</p>
+              {data.emergency && (
+                <p className="truncate text-[2.8cqw] leading-snug">
+                  <span className="text-white/75">{isStudent ? "Tuteur" : "Urgence"} :</span> <strong>{data.emergency}</strong>
+                </p>
+              )}
+              {data.cardNumber && (
+                <p className="text-[2.8cqw] leading-snug">
+                  <span className="text-white/75">N° de carte :</span> <strong>{data.cardNumber}</strong>
+                </p>
+              )}
+            </div>
+            <div className="rounded-[1.4cqw] bg-white px-[2cqw] py-[1cqw] text-center" style={{ color: theme.dark }}>
+              <p className="text-[2.5cqw] leading-tight font-extrabold uppercase">{signTitle}</p>
+              {signName && <p className="text-[2.8cqw] leading-tight font-bold">{signName}</p>}
+              {cs.signatureImage ? (
+                // eslint-disable-next-line @next/next/no-img-element -- signature scannée
+                <img src={cs.signatureImage} alt="Signature" className="mx-auto h-[7cqw] object-contain" />
+              ) : (
+                <div className="mx-auto mt-[5.5cqw] mb-[0.5cqw] w-3/4 border-b border-slate-400" />
+              )}
+            </div>
           </div>
         </div>
+        <p className="relative shrink-0 px-[3cqw] pt-[1cqw] pb-[1.4cqw] text-[2.2cqw] leading-snug text-white/85">{cs.rules?.[variant] || defaultCardRules(variant)}</p>
       </div>
-
-      <div className="relative flex items-end gap-3 px-3.5 pb-2.5">
-        <p className="flex-1 rounded-lg bg-white/12 p-1.5 text-[6.8px] leading-snug text-white/90" style={{ background: "rgb(255 255 255 / 0.1)" }}>
-          {cs.rules?.[variant] || defaultCardRules(variant)}
-        </p>
-        <div className="w-[26%] text-center">
-          <div className="h-5 border-b border-white/50" />
-          <p className="mt-0.5 text-[6.5px] font-bold text-white/80">{cs.signatureTitle || "La Direction"}</p>
-        </div>
-      </div>
-      {stripe("h-1")}
-    </div>
+    </div>,
   );
 
   return (

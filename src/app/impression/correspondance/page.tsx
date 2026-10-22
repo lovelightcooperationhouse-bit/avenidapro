@@ -69,7 +69,7 @@ function Sheet() {
             <section className="flex flex-col gap-2 rounded-lg border-2 border-[#0C356A] p-3">
               <div className="flex items-center gap-2 border-b-2 border-[#E30613] pb-2">
                 {/* eslint-disable-next-line @next/next/no-img-element -- rendu imprimable */}
-                <img src="/logoavenida.jpg" alt="" className="size-10 object-contain" />
+                <img src="/logo-avenida.png" alt="" className="size-10 object-contain" />
                 <div>
                   <p className="font-serif text-sm font-extrabold tracking-wider text-[#0C356A]">HÔTEL ÉCOLE AVENIDA</p>
                   <p className="text-[9px] font-bold tracking-widest text-[#E30613] uppercase">Carte de suivi de correspondance</p>

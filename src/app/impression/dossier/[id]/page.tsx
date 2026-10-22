@@ -46,7 +46,7 @@ export default function PrintDossierPage() {
         <header className="flex items-start justify-between gap-4 border-b-4 border-[#E30613] pb-3">
           <div className="flex items-center gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element -- rendu imprimable */}
-            <img src="/logoavenida.jpg" alt="" className="size-14 object-contain" />
+            <img src="/logo-avenida.png" alt="" className="size-14 object-contain" />
             <div>
               <p className="font-serif text-lg font-extrabold tracking-wider text-[#0C356A]">HÔTEL ÉCOLE AVENIDA</p>
               <p className="text-[10px] text-slate-600">

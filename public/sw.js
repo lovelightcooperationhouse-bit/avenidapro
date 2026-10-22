@@ -1,7 +1,7 @@
 /* Service worker Avenida : installation comme application, fonctionnement hors connexion de base. */
-const VERSION = "avenida-v2";
+const VERSION = "avenida-v3";
 const OFFLINE = "/hors-ligne.html";
-const PRECACHE = [OFFLINE, "/icons/icon-192.png", "/icons/icon-512.png", "/logoavenida.jpg"];
+const PRECACHE = [OFFLINE, "/icons/icon-192.png", "/icons/icon-512.png", "/logo-avenida.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(VERSION).then((c) => c.addAll(PRECACHE)).then(() => self.skipWaiting()));

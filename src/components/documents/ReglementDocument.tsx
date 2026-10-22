@@ -68,7 +68,7 @@ export function ReglementDocument({ identity, signatures = [], id = "avenida-reg
     <article id={id} style={{ fontFamily: "Georgia, 'Times New Roman', serif" }} className="mx-auto w-full max-w-[210mm] bg-white px-6 py-8 text-[13px] leading-relaxed text-slate-800 shadow-lg sm:px-12 print:max-w-none print:shadow-none">
       <header className="flex items-center gap-4 border-b-4 border-double border-[#0C356A] pb-4">
         {/* eslint-disable-next-line @next/next/no-img-element -- logo */}
-        <img src="/logoavenida.jpg" alt="" className="size-16 rounded-xl object-cover" />
+        <img src="/logo-avenida.png" alt="" className="size-16 object-contain" />
         <div className="flex-1">
           <p className="font-sans text-lg font-black tracking-wide text-[#0C356A]">
             HÔTEL ÉCOLE <span className="text-[#E30613]">AVENIDA</span>

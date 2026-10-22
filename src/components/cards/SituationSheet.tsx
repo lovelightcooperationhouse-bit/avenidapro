@@ -93,7 +93,7 @@ export function SituationSheet({ studentId }: { studentId: string }) {
           </div>
           <div className="flex flex-col items-center text-center">
             {/* eslint-disable-next-line @next/next/no-img-element -- document imprimable */}
-            <img src="/logoavenida.jpg" alt="" className="size-[16mm] object-contain" />
+            <img src="/logo-avenida.png" alt="" className="size-[16mm] object-contain" />
             <p className="mt-1 font-serif text-[15px] font-extrabold tracking-wider text-[#0C356A]">
               HÔTEL ÉCOLE <span className="text-[#E30613]">AVENIDA</span>
             </p>

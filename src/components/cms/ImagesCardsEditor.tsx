@@ -118,9 +118,17 @@ export function CardsEditor() {
             <input value={c.motto ?? ""} placeholder={siteConfig.motto} onChange={(e) => set({ motto: e.target.value })} className={input} />
           </label>
           <label className={label}>
-            Signature (verso)
-            <input value={c.signatureTitle ?? ""} placeholder="La Direction" onChange={(e) => set({ signatureTitle: e.target.value })} className={input} />
+            Titre du signataire (verso)
+            <input value={c.signatureTitle ?? ""} placeholder="Directeur pédagogique (élèves) · La Direction (autres)" onChange={(e) => set({ signatureTitle: e.target.value })} className={input} />
           </label>
+          <label className={label}>
+            Nom du signataire (vide = aucun nom)
+            <input value={c.signatoryName ?? ""} placeholder="Kodjo Messan DOGLO (cartes scolaires)" onChange={(e) => set({ signatoryName: e.target.value })} className={input} />
+          </label>
+          <div className={label}>
+            Signature scannée (image sur fond blanc ou transparent)
+            <MediaPicker value={c.signatureImage ? [{ url: c.signatureImage }] : []} onChange={(m) => set({ signatureImage: m[0]?.url ?? "" })} folder="cartes" />
+          </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className={label}>
               Téléphone affiché

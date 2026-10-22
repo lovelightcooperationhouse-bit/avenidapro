@@ -197,7 +197,7 @@ export function StudentRegistrationModal({
             <div className="flex items-center gap-3.5">
               <div className="w-16 h-16 relative rounded-xl overflow-hidden border border-slate-300 shadow-2xs shrink-0 bg-slate-50 flex items-center justify-center">
                 <Image
-                  src="/logoavenida.jpg"
+                  src="/logo-avenida.png"
                   alt="École Avenida Lomé"
                   width={64}
                   height={64}

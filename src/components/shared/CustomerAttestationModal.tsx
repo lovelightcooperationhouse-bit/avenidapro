@@ -74,7 +74,7 @@ export function CustomerAttestationModal({
             <div className="flex items-center gap-3">
               <div className="w-14 h-14 relative rounded-xl overflow-hidden border border-slate-200 shadow-2xs shrink-0">
                 <Image
-                  src="/logoavenida.jpg"
+                  src="/logo-avenida.png"
                   alt="Hôtel Avenida Lomé"
                   width={56}
                   height={56}
