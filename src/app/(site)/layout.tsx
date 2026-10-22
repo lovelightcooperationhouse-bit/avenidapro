@@ -3,7 +3,9 @@ import {
   AnnouncementBar,
   SiteContentProvider,
 } from "@/components/site/SiteContent";
+import { Newsletter } from "@/components/site/Newsletter";
 import { SiteFooter } from "@/components/site/SiteFooter";
+import { SupportDock } from "@/components/site/SupportDock";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { TopBar } from "@/components/site/TopBar";
 import { getMenu, getSettings } from "@/lib/cms";
@@ -40,7 +42,9 @@ export default async function SiteLayout({
         <main id="main" tabIndex={-1} className="flex-1 outline-none">
           {children}
         </main>
-        <SiteFooter />
+        <Newsletter />
+      <SiteFooter />
+      <SupportDock />
       </div>
     </SiteContentProvider>
   );

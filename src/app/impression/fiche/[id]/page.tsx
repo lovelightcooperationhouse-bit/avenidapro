@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, Download, Loader2, Mail, Printer, XCircle } from "lucide-react";
+import { CheckCircle2, Download, Eye, Loader2, Mail, Printer, XCircle } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { EnrollmentSheet } from "@/components/cards/EnrollmentSheet";
@@ -77,7 +77,22 @@ export default function PrintEnrollmentPage() {
           <button type="button" onClick={() => window.print()} className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-bold text-[#0C356A] ring-1 ring-slate-200">
             <Printer aria-hidden className="size-4" /> Imprimer
           </button>
-          <button type="button" onClick={download} disabled={!!busy} className="inline-flex items-center gap-2 rounded-full bg-[#0C356A] px-4 py-2 text-sm font-bold text-white disabled:opacity-60">
+          <button
+            type="button"
+            onClick={async () => {
+              setBusy("pdf");
+              try {
+                window.open(URL.createObjectURL((await makePdf()).output("blob")), "_blank");
+              } finally {
+                setBusy(null);
+              }
+            }}
+            disabled={!!busy}
+            className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-bold text-[#0C356A] ring-1 ring-slate-200"
+          >
+            <Eye aria-hidden className="size-4" /> Aperçu PDF
+          </button>
+                    <button type="button" onClick={download} disabled={!!busy} className="inline-flex items-center gap-2 rounded-full bg-[#0C356A] px-4 py-2 text-sm font-bold text-white disabled:opacity-60">
             {busy === "pdf" ? <Loader2 aria-hidden className="size-4 animate-spin" /> : <Download aria-hidden className="size-4" />} Télécharger le PDF
           </button>
         </div>

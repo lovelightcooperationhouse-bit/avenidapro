@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, ArrowLeft, ArrowRight, Briefcase, CheckCircle2, Eye, EyeOff, GraduationCap, KeyRound, Loader2, LogIn, UserPlus, Users } from "lucide-react";
+import { AlertCircle, ArrowLeft, ArrowRight, BookOpen, Briefcase, CheckCircle2, Eye, EyeOff, GraduationCap, KeyRound, Loader2, LogIn, UserPlus, Users } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -34,9 +34,10 @@ const field =
   "w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-avenida-blue focus:ring-2 focus:ring-avenida-blue/15";
 
 const audiences = [
-  { icon: GraduationCap, title: "Élèves", text: "Notes, absences, paiements" },
-  { icon: Users, title: "Parents", text: "Suivi de vos enfants" },
-  { icon: Briefcase, title: "Professeurs & personnel", text: "Classes et gestion" },
+  { icon: GraduationCap, title: "Élèves", text: "Cours, notes, écolage", color: "linear-gradient(135deg,#E30613,#FF5A63)" },
+  { icon: Users, title: "Parents", text: "Suivi de vos enfants", color: "linear-gradient(135deg,#0C356A,#2F6BD6)" },
+  { icon: BookOpen, title: "Professeurs", text: "Classes, appel, devoirs", color: "linear-gradient(135deg,#D99A00,#F2B705)" },
+  { icon: Briefcase, title: "Personnel", text: "Hôtel et gestion", color: "linear-gradient(135deg,#047857,#10B981)" },
 ];
 
 function ConnexionForm() {
@@ -281,21 +282,24 @@ function ConnexionForm() {
 export default function ConnexionPage() {
   return (
     <div className="grid min-h-dvh bg-white lg:grid-cols-[1.05fr_1fr]">
-      {/* Visuel */}
-      <aside className="relative isolate hidden overflow-hidden bg-nuit text-white lg:flex lg:flex-col lg:justify-between lg:p-12">
-        <Image src={images.waiter.src} alt="" fill priority sizes="50vw" className="site-zoom-pan -z-20 object-cover object-[72%_30%] opacity-60" />
-        <div aria-hidden className="absolute inset-0 -z-10 bg-[linear-gradient(160deg,rgb(6_21_46/0.2)_0%,rgb(6_21_46/0.75)_55%,#06152E_100%)]" />
-        <div aria-hidden className="bg-avenida-pattern absolute inset-y-0 left-0 -z-10 w-32 opacity-25 [mask-image:linear-gradient(90deg,black,transparent)]" />
-        <SiteLogo inverted />
-        <div className="flex flex-col gap-6">
-          <p className="font-elegant text-5xl leading-tight font-bold italic">{siteConfig.signature}</p>
-          <p className="max-w-md text-lg text-white/80">Un espace en ligne pour chacun : élèves, parents, professeurs et équipes de l&apos;Hôtel École Avenida.</p>
-          <ul className="grid gap-3 sm:grid-cols-3">
-            {audiences.map((a) => (
-              <li key={a.title} className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur-md">
-                <a.icon aria-hidden className="size-6 text-vif-clair" />
-                <p className="mt-2 font-bold">{a.title}</p>
-                <p className="text-xs text-white/70">{a.text}</p>
+      {/* Visuel : clair, photo nette, profils en couleurs vives */}
+      <aside className="relative isolate hidden overflow-hidden bg-[linear-gradient(160deg,#FFF8E1_0%,#FFFFFF_45%,#EEF4FF_100%)] lg:flex lg:flex-col lg:gap-8 lg:p-10 xl:p-12">
+        <div aria-hidden className="bg-avenida-pattern absolute -top-10 -right-10 -z-10 size-72 rounded-full opacity-[0.12]" />
+        <SiteLogo />
+        <div className="relative overflow-hidden rounded-[2rem] shadow-2xl ring-4 ring-white">
+          <Image src={images.waiter.src} alt={images.waiter.alt} width={900} height={560} priority className="site-zoom-pan h-[22rem] w-full object-cover object-[72%_28%] xl:h-[26rem]" />
+          <p className="absolute bottom-4 left-4 rounded-2xl bg-white/95 px-4 py-2 font-elegant text-2xl font-bold text-avenida-blue-950 italic shadow-lg">{siteConfig.signature}</p>
+        </div>
+        <div className="flex flex-col gap-4">
+          <p className="text-lg font-semibold text-avenida-blue-950">Un espace en ligne pour chacun : élèves, parents, professeurs et équipes de l&apos;Hôtel École Avenida.</p>
+          <ul className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+            {audiences.map((a, i) => (
+              <li key={a.title} className="site-pop flex flex-col items-start gap-2 rounded-2xl p-4 text-white shadow-lg" style={{ background: a.color, animationDelay: `${200 + i * 150}ms` }}>
+                <span className="flex size-10 items-center justify-center rounded-xl bg-white/25">
+                  <a.icon aria-hidden className="site-bob size-6" style={{ animationDelay: `${i * 0.4}s` }} />
+                </span>
+                <p className="font-bold leading-tight">{a.title}</p>
+                <p className="text-xs text-white/90">{a.text}</p>
               </li>
             ))}
           </ul>
@@ -313,6 +317,14 @@ export default function ConnexionPage() {
             Retour au site
           </Link>
         </div>
+        <ul className="grid grid-cols-4 gap-2 px-5 pb-4 sm:px-8 lg:hidden">
+          {audiences.map((a, i) => (
+            <li key={a.title} className="site-pop flex flex-col items-center gap-1 rounded-2xl p-2.5 text-white shadow-md" style={{ background: a.color, animationDelay: `${i * 120}ms` }}>
+              <a.icon aria-hidden className="site-bob size-5" style={{ animationDelay: `${i * 0.4}s` }} />
+              <span className="text-[11px] font-bold">{a.title}</span>
+            </li>
+          ))}
+        </ul>
         <div className="flex flex-1 items-center justify-center px-5 pb-12 sm:px-8">
           <Suspense fallback={<Loader2 aria-label="Chargement" className="size-8 animate-spin text-avenida-blue" />}>
             <ConnexionForm />

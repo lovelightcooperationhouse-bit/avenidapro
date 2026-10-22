@@ -32,8 +32,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr" className="h-full">
-      <body className="h-full font-sans antialiased bg-slate-50 text-slate-900 selection:bg-[#0C356A] selection:text-white">
+    <html lang="fr">
+      <body className="font-sans antialiased bg-slate-50 text-slate-900 selection:bg-[#0C356A] selection:text-white">
         <AuthProvider>
           {children}
           <IncomingCall />

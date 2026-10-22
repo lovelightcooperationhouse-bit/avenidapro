@@ -17,8 +17,7 @@ export function SiteHeader() {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    // Le gabarit racine (body en h-full) fait défiler <body> plutôt que la fenêtre : on écoute les deux.
-    const onScroll = () => setScrolled(Math.max(window.scrollY, document.body.scrollTop) > 8);
+    const onScroll = () => setScrolled(window.scrollY > 8);
     onScroll();
     document.addEventListener("scroll", onScroll, { passive: true, capture: true });
     return () => document.removeEventListener("scroll", onScroll, { capture: true });
@@ -37,11 +36,11 @@ export function SiteHeader() {
         <DesktopNav />
 
         <div className="flex shrink-0 items-center gap-2">
-          <ButtonLink href="/connexion" variant="outline" size="md" title="Mon espace (élèves, parents, professeurs, personnel)" className="hidden md:inline-flex lg:px-3 2xl:px-4">
+          <ButtonLink href="/connexion" variant="outline" size="md" title="Mon espace (élèves, parents, professeurs, personnel)" aria-label="Mon espace" className="hidden px-3 md:inline-flex">
             <UserRound aria-hidden />
-            <span className="lg:sr-only 2xl:not-sr-only">Mon espace</span>
+            <span className="xl:hidden 2xl:inline">Mon espace</span>
           </ButtonLink>
-          <ButtonLink href="/preinscription" size="md" className="hidden sm:inline-flex xl:h-11 xl:px-5">
+          <ButtonLink href="/preinscription" size="md" className="site-glow-gold h-10 px-3 text-xs sm:px-4 sm:text-sm xl:h-11 xl:px-5">
             <ClipboardList aria-hidden />
             Pré-inscription
           </ButtonLink>

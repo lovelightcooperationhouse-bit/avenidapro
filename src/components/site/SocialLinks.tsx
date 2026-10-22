@@ -32,8 +32,18 @@ const icons: Record<SocialNetwork, { label: string; path: string }> = {
   },
 };
 
+/** Couleurs officielles des réseaux (variante « brand »). */
+const brandColors: Record<SocialNetwork, string> = {
+  facebook: "bg-[#1877F2] text-white",
+  instagram: "bg-[linear-gradient(45deg,#F58529,#DD2A7B,#8134AF)] text-white",
+  tiktok: "bg-black text-white ring-1 ring-white/40",
+  youtube: "bg-[#FF0000] text-white",
+  linkedin: "bg-[#0A66C2] text-white",
+  whatsapp: "bg-[#25D366] text-white",
+};
+
 /** Icônes des réseaux sociaux renseignés dans siteConfig.socials (les autres sont masqués). */
-export function SocialLinks({ className, itemClassName, size = "md" }: { className?: string; itemClassName?: string; size?: "sm" | "md" }) {
+export function SocialLinks({ className, itemClassName, size = "md", brand = false }: { className?: string; itemClassName?: string; size?: "sm" | "md"; brand?: boolean }) {
   const socials = useSocials();
   const entries = (Object.keys(icons) as SocialNetwork[]).filter((k) => socials[k]);
   return (
@@ -48,6 +58,7 @@ export function SocialLinks({ className, itemClassName, size = "md" }: { classNa
             className={cn(
               "flex items-center justify-center rounded-full transition-all duration-300 hover:-translate-y-0.5",
               size === "sm" ? "size-8" : "size-11",
+              brand && cn(brandColors[k], "shadow-md hover:scale-110"),
               itemClassName
             )}
           >

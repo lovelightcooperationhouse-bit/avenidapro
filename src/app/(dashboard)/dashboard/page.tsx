@@ -82,9 +82,9 @@ export default function DashboardHome() {
     { show: has("/dashboard/ecolage"), label: "Écolage encaissé", value: s ? formatFCFA(s.paid) : undefined, sub: s ? `sur ${formatFCFA(s.expected)}` : "", href: "/dashboard/ecolage", tone: "#047857" },
     { show: has("/dashboard/ecolage"), label: "Reste à encaisser", value: s ? formatFCFA(Math.max(0, s.expected - s.paid)) : undefined, href: "/dashboard/ecolage", tone: "#B8000F" },
     { show: has("/dashboard/ecolage"), label: "Encaissé aujourd'hui", value: s ? formatFCFA(s.cashedToday) : undefined, href: "/dashboard/ecolage", tone: "#047857" },
-    { show: has("/dashboard/correspondance"), label: "Absences et retards du jour", value: s?.absentsToday, href: "/dashboard/correspondance", tone: "#B45309" },
-    { show: has("/dashboard/employees"), label: "Personnel", value: s?.employees, href: "/dashboard/employees", tone: "#6D28D9" },
-    { show: has("/dashboard/customers"), label: "Clients de l'hôtel", value: s?.customers, href: "/dashboard/customers", tone: "#B45309" },
+    { show: has("/dashboard/correspondance"), label: "Absences et retards du jour", value: s?.absentsToday, href: "/dashboard/correspondance", tone: "#0C356A" },
+    { show: has("/dashboard/employees"), label: "Personnel", value: s?.employees, href: "/dashboard/employees", tone: "#0C356A" },
+    { show: has("/dashboard/customers"), label: "Clients de l'hôtel", value: s?.customers, href: "/dashboard/customers", tone: "#0C356A" },
   ].filter((k) => k.show);
 
   const todo = [
@@ -151,7 +151,7 @@ export default function DashboardHome() {
             .filter((m) => m.key !== "accueil")
             .map((m) => (
               <article key={m.key} className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                <header className="flex items-center gap-3 px-5 py-4 text-white" style={{ background: `linear-gradient(135deg, ${m.accent}, #06152E)` }}>
+                <header className="flex items-center gap-3 border-b-2 border-[#E30613] bg-[#06152E] px-5 py-4 text-white">
                   <m.icon aria-hidden className="size-5" />
                   <h3 className="font-black">{m.label}</h3>
                 </header>
@@ -161,7 +161,7 @@ export default function DashboardHome() {
                     .map((i) => (
                       <li key={i.href + i.label}>
                         <Link href={i.href} className="flex items-center gap-3 px-5 py-3 hover:bg-slate-50">
-                          <i.icon aria-hidden className="size-4 shrink-0" style={{ color: m.accent }} />
+                          <i.icon aria-hidden className="size-4 shrink-0 text-[#0C356A]" />
                           <span className="min-w-0 flex-1">
                             <span className="block truncate text-sm font-bold text-slate-800">{i.label}</span>
                             {i.hint && <span className="block truncate text-xs text-slate-500">{i.hint}</span>}

@@ -1,6 +1,8 @@
-import { Clock, Mail, MapPin, Phone } from "lucide-react";
+import { Clock, Mail, MapPin, Phone, UserRound } from "lucide-react";
+import Link from "next/link";
 import { siteConfig } from "@/content/site";
 import { Container } from "./Section";
+import { LiveClock } from "./LiveClock";
 import { SocialLinks } from "./SocialLinks";
 
 /** Bandeau au-dessus du menu : téléphone, e-mail, adresse, horaires et réseaux sociaux. */
@@ -22,7 +24,7 @@ export function TopBar() {
               {phone.display}
             </a>
           </li>
-          <li className="hidden lg:block">
+          <li className="hidden xl:block">
             <a href={`tel:${phone2.e164}`} aria-label={`Appeler le ${phone2.display}`} className="whitespace-nowrap text-white/85 hover:text-vif-clair">
               {phone2.display}
             </a>
@@ -30,22 +32,26 @@ export function TopBar() {
           <li>
             <a href={`mailto:${siteConfig.email}`} aria-label={`Écrire à ${siteConfig.email}`} className="flex items-center gap-1.5 text-white/85 hover:text-vif-clair">
               <Mail aria-hidden className="size-3.5 shrink-0 text-vif-clair" />
-              <span className="hidden sm:inline">{siteConfig.email}</span>
+              <span className="hidden xl:inline">{siteConfig.email}</span>
             </a>
           </li>
-          <li className="hidden items-center gap-1.5 text-white/70 xl:flex">
+          <li className="hidden items-center gap-1.5 text-white/70 2xl:flex">
             <MapPin aria-hidden className="size-3.5 text-vif-clair" />
             {siteConfig.address.district}, {siteConfig.address.city}
           </li>
         </ul>
 
         <div className="flex shrink-0 items-center gap-3">
-          <span className="hidden items-center gap-1.5 text-white/70 md:flex">
-            <Clock aria-hidden className="size-3.5 text-vif-clair" />
-            Lun – Ven · 9 h – 14 h
+          <span className="hidden items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-white/85 xl:flex" title="Horaires du bureau">
+            <Clock aria-hidden className="size-3.5 text-or" />
+            Bureau : lun. – ven. · 9 h – 14 h
           </span>
-          <span aria-hidden className="hidden h-4 w-px bg-white/20 md:block" />
-          <SocialLinks size="sm" className="gap-0.5" itemClassName="text-white/85 hover:bg-vif hover:text-white" />
+          <LiveClock className="hidden items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-white/85 md:flex" />
+          <Link href="/connexion" className="hidden items-center gap-1.5 rounded-full bg-vif px-3 py-1 font-bold text-white hover:bg-vif-fonce sm:flex">
+            <UserRound aria-hidden className="size-3.5" />
+            Mon espace
+          </Link>
+          <SocialLinks size="sm" brand className="gap-1.5" />
         </div>
       </Container>
     </div>

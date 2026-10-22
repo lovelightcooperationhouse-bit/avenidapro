@@ -40,7 +40,7 @@ function PrintSheet() {
     <div className="min-h-dvh bg-white p-6 print:p-0">
       <div className="mb-6 flex items-center justify-between print:hidden">
         <p className="font-bold text-slate-700">
-          {cards.length} carte(s) · imprimez en couleur, recto-verso, à 100 % (format carte 85,6 × 54 mm)
+          {cards.length} carte(s) · imprimez en couleur, recto-verso, à 100 % (format carte 9 × 5,5 cm)
         </p>
         <button type="button" onClick={() => window.print()} className="inline-flex items-center gap-2 rounded-full bg-[#E30613] px-5 py-2.5 text-sm font-bold text-white">
           <Printer aria-hidden className="size-4" /> Imprimer
@@ -48,7 +48,7 @@ function PrintSheet() {
       </div>
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 print:grid-cols-2 print:gap-[4mm]">
         {cards.map((c) => (
-          <div key={c.token} className="break-inside-avoid print:[&_.id-card]:w-[85.6mm] print:[&_.id-card]:max-w-none">
+          <div key={c.token} className="break-inside-avoid print:[&_.id-card]:w-[90mm] print:[&_.id-card]:max-w-none">
             <IdCard data={c} className="sm:flex-col print:flex-row print:gap-[2mm]" />
           </div>
         ))}

@@ -36,7 +36,7 @@ const initials = (n: string) =>
 export const verifyUrl = (token: string) => `${typeof window !== "undefined" ? window.location.origin : ""}/verifier/${token}`;
 
 /**
- * Carte scolaire / carte de travail au format carte bancaire (85,6 × 54 mm) : recto avec photo, matricule et QR code,
+ * Carte scolaire / carte de travail au format 9 × 5,5 cm : recto avec photo, matricule et QR code,
  * verso avec coordonnées de l'école. Le QR renvoie vers la situation en temps réel de la personne.
  */
 export function IdCard({ data, side = "both", className }: { data: CardData; side?: "front" | "back" | "both"; className?: string }) {
@@ -51,7 +51,7 @@ export function IdCard({ data, side = "both", className }: { data: CardData; sid
   const photoOk = data.photo && !data.photo.includes("default.png");
 
   const front = (
-    <div className="id-card relative flex aspect-[85.6/54] w-full max-w-[26rem] flex-col overflow-hidden rounded-2xl bg-white text-[#06152E] shadow-xl ring-1 ring-slate-900/10 print:shadow-none">
+    <div className="id-card relative flex aspect-[90/55] w-full max-w-[26rem] flex-col overflow-hidden rounded-2xl bg-white text-[#06152E] shadow-xl ring-1 ring-slate-900/10 print:shadow-none">
       {/* Bandeau */}
       <div className="relative flex items-center gap-2 bg-[#06152E] px-3 py-2 text-white">
         <div aria-hidden className="bg-avenida-pattern absolute inset-0 opacity-15" />
@@ -110,7 +110,7 @@ export function IdCard({ data, side = "both", className }: { data: CardData; sid
   );
 
   const back = (
-    <div className="id-card relative flex aspect-[85.6/54] w-full max-w-[26rem] flex-col justify-between overflow-hidden rounded-2xl bg-[#06152E] p-4 text-white shadow-xl print:shadow-none">
+    <div className="id-card relative flex aspect-[90/55] w-full max-w-[26rem] flex-col justify-between overflow-hidden rounded-2xl bg-[#06152E] p-4 text-white shadow-xl print:shadow-none">
       <div aria-hidden className="bg-avenida-pattern absolute inset-0 opacity-10" />
       <div className="relative">
         <p className="font-serif text-xs font-bold tracking-widest">HÔTEL ÉCOLE AVENIDA</p>

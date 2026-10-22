@@ -41,7 +41,7 @@ export function DesktopNav() {
   };
 
   return (
-    <nav ref={navRef} aria-label="Menu principal" className="hidden lg:block">
+    <nav ref={navRef} aria-label="Menu principal" className="hidden xl:block">
       <ul className="flex items-center xl:gap-1">
         {mainNav.map((item, index) => {
           const active = isActivePath(pathname, item.href);
@@ -67,7 +67,7 @@ export function DesktopNav() {
                   aria-current={pathname === item.href ? "page" : undefined}
                   className={cn(
                     "py-2 text-[0.85rem] font-bold whitespace-nowrap transition-colors xl:text-[0.95rem]",
-                    item.children ? "pr-0.5 pl-3 xl:pl-4" : "px-3 xl:px-4",
+                    item.children ? "pr-0.5 pl-2.5 2xl:pl-4" : "px-2.5 2xl:px-4",
                     active || isOpen ? "text-vif" : "text-avenida-blue hover:text-vif"
                   )}
                 >

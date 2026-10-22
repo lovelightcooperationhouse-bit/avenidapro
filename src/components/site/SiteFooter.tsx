@@ -42,7 +42,7 @@ export function SiteFooter() {
               Lomé. Diplômes d&apos;État du CFA au BTS, cours du jour et du soir, internat.
             </p>
             <blockquote className="border-l-2 border-vif pl-4 font-elegant text-lg text-white italic">« {siteConfig.tagline} »</blockquote>
-            <SocialLinks itemClassName="bg-white/10 text-white hover:bg-vif" />
+            <SocialLinks brand />
           </div>
 
           <div className="lg:col-span-2">
@@ -107,7 +107,12 @@ export function SiteFooter() {
 
       <div className="border-t border-white/10">
         <Container className="flex flex-col items-center justify-between gap-4 py-6 text-xs sm:flex-row">
-          <p>© {year} Hôtel École Avenida · Lomé, Togo · {siteConfig.motto}</p>
+          <div className="flex flex-col items-center gap-1 sm:items-start">
+            <p>© {year} Hôtel École Avenida · Lomé, Togo · {siteConfig.motto}</p>
+            <p className="text-white/60">
+              Site conçu et réalisé par <strong className="font-elegant text-sm font-bold text-or italic">Lovelight Coopération House</strong>
+            </p>
+          </div>
           <div className="flex flex-wrap items-center justify-center gap-3">
             <Link href="/confidentialite" className="hover:text-white hover:underline">
               Politique de confidentialité

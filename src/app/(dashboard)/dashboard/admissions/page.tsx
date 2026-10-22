@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { formations, fees } from "@/content/site";
 import { pingNotifications } from "@/lib/notify";
+import { toPassportDataUrl } from "@/lib/pdf";
 import Link from "next/link";
 import { APPLICATION_STATUS, DOC_LABELS, fmtDateTime, type Application, type ApplicationDocument, type ApplicationStatus } from "@/lib/admissions";
 import { createClient } from "@/lib/supabase/client";
@@ -87,6 +88,12 @@ export default function AdmissionsDashboardPage() {
     if (error) return setFeedback("Inscription impossible : " + error.message);
     const r = data as { student_id: string; matricule?: string; total?: number; student_account?: boolean; guardian_account?: boolean };
     setEnrolled(r.student_id);
+    // Photo d'identité déposée avec la pré-inscription → fiche d'inscription et carte scolaire
+    const photoDoc = docs.find((d) => d.application_id === selected.id && d.doc_type === "photo" && !/\.pdf$/i.test(d.file_name ?? ""));
+    if (photoDoc) {
+      const { data: file } = await createClient().storage.from("dossiers").download(photoDoc.file_path);
+      if (file) await createClient().from("students").update({ photo_url: await toPassportDataUrl(file) }).eq("id", r.student_id);
+    }
     pingNotifications();
     setFeedback(
       `Inscription définitive : matricule ${r.matricule}, écolage ${formatFCFA(r.total ?? 0)}, carte scolaire émise.` +

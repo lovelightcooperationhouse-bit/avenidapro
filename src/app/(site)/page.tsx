@@ -1,4 +1,5 @@
-import { ArrowRight, BedDouble, Check, ClipboardList, MessageCircle, Phone, Quote, Utensils } from "lucide-react";
+import { ArrowRight, BedDouble, Check, ChefHat, ClipboardList, GraduationCap, Mail, MessageCircle, Phone, Quote, Utensils } from "lucide-react";
+import { AnimatedHeadline } from "@/components/site/AnimatedHeadline";
 import Image from "next/image";
 import Link from "next/link";
 import { ButtonLink } from "@/components/site/ButtonLink";
@@ -278,39 +279,58 @@ export default async function HomePage() {
               }
               description="Les réponses aux questions les plus posées par les familles. Une autre question ? Écrivez-nous."
             />
-            <div className="flex flex-col gap-3 rounded-3xl bg-nuit p-6 text-white">
+            <div className="site-glow-border flex flex-col gap-4 rounded-3xl bg-nuit p-6 text-white">
               <p className="font-display text-lg font-bold">Parlons de votre projet</p>
-              <a
-                href={whatsappUrl(siteConfig.whatsapp, "Bonjour, j'ai une question sur l'Hôtel École Avenida.")}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex h-12 items-center justify-center gap-2 rounded-full bg-[#25D366] font-bold text-white transition-colors hover:bg-[#1da851]"
-              >
-                <MessageCircle aria-hidden className="size-5" />
-                WhatsApp
-                <span className="sr-only">(nouvel onglet)</span>
-              </a>
-              <a href={`tel:${siteConfig.phones[0].e164}`} className="flex h-12 items-center justify-center gap-2 rounded-full bg-white font-bold text-avenida-blue-950 hover:bg-avenida-blue-50">
-                <Phone aria-hidden className="size-5 text-vif" />
-                {siteConfig.phones[0].display}
-              </a>
-              <Link href="/contact" className="text-center text-sm font-bold text-white/80 underline-offset-4 hover:underline">
-                Formulaire de contact
-              </Link>
+              <p className="text-sm text-white/70">Choisissez votre moyen de contact :</p>
+              <ul className="flex gap-3">
+                {[
+                  { href: whatsappUrl(siteConfig.whatsapp, "Bonjour, j'ai une question sur l'Hôtel École Avenida."), label: "WhatsApp", icon: MessageCircle, tone: "bg-[#25D366]", ext: true },
+                  { href: `tel:${siteConfig.phones[0].e164}`, label: "Appeler", icon: Phone, tone: "bg-vif" },
+                  { href: `mailto:${siteConfig.email}`, label: "E-mail", icon: Mail, tone: "bg-avenida-blue" },
+                  { href: "/contact", label: "Formulaire", icon: ClipboardList, tone: "bg-or text-avenida-blue-950" },
+                ].map((c) => (
+                  <li key={c.label}>
+                    <a
+                      href={c.href}
+                      target={c.ext ? "_blank" : undefined}
+                      rel={c.ext ? "noopener noreferrer" : undefined}
+                      title={c.label}
+                      className="group flex flex-col items-center gap-1.5 text-[11px] font-bold text-white/80"
+                    >
+                      <span className={`flex size-12 items-center justify-center rounded-2xl text-white shadow-lg transition-transform group-hover:-translate-y-1 ${c.tone}`}>
+                        <c.icon aria-hidden className="size-5" />
+                      </span>
+                      {c.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-sm font-semibold text-white">{siteConfig.phones[0].display}</p>
             </div>
           </div>
-          <Faq items={faq} />
+          <Reveal>
+            <Faq items={faq} />
+          </Reveal>
         </div>
       </Section>
 
       {/* Appel final */}
-      <Section tone="flag" aria-labelledby="cta-title" className="relative overflow-hidden">
+      <Section tone="flag" aria-labelledby="cta-title" className="site-gradient-pan relative overflow-hidden">
         <div aria-hidden className="bg-avenida-pattern absolute inset-0 opacity-10" />
+        {/* Icônes flottantes des métiers */}
+        {[
+          { Icon: ChefHat, cls: "top-10 left-[6%] size-14", d: "0s" },
+          { Icon: Utensils, cls: "bottom-12 left-[14%] size-10", d: "0.8s" },
+          { Icon: BedDouble, cls: "top-14 right-[8%] size-12", d: "0.4s" },
+          { Icon: GraduationCap, cls: "bottom-10 right-[15%] size-14", d: "1.2s" },
+        ].map(({ Icon, cls, d }) => (
+          <Icon key={cls} aria-hidden className={`site-bob absolute hidden text-white/25 md:block ${cls}`} style={{ animationDelay: d }} />
+        ))}
         <div className="relative mx-auto flex max-w-3xl flex-col items-center gap-6 text-center">
-          <Utensils aria-hidden className="size-12 text-white" />
-          <h2 id="cta-title" className="font-display text-4xl font-extrabold text-balance sm:text-6xl">
-            {siteConfig.tagline}
-          </h2>
+          <span className="site-bob flex size-16 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/30">
+            <Utensils aria-hidden className="size-8 text-white" />
+          </span>
+          <AnimatedHeadline id="cta-title" text={siteConfig.tagline} className="font-display text-4xl font-extrabold text-balance sm:text-6xl" />
           <p className="text-lg text-white/90">Inscriptions ouvertes pour la rentrée du 26 octobre 2026. Le bureau vous reçoit {siteConfig.officeHours.toLowerCase()}.</p>
           <div className="flex flex-wrap justify-center gap-3">
             <ButtonLink href="/preinscription" variant="white" size="xl">

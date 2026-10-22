@@ -95,7 +95,7 @@ export const MODULES: NavModule[] = [
     key: "finances",
     label: "Écolage & finances",
     icon: Wallet,
-    accent: "#047857",
+    accent: "#0C356A",
     sections: [
       {
         title: "Trésorerie de l'école",
@@ -118,7 +118,7 @@ export const MODULES: NavModule[] = [
     key: "hotel",
     label: "Hôtel",
     icon: BedDouble,
-    accent: "#B45309",
+    accent: "#0C356A",
     sections: [
       {
         title: "Exploitation",
@@ -143,7 +143,7 @@ export const MODULES: NavModule[] = [
     key: "personnel",
     label: "Personnel",
     icon: Briefcase,
-    accent: "#6D28D9",
+    accent: "#0C356A",
     sections: [
       {
         items: [
@@ -158,7 +158,7 @@ export const MODULES: NavModule[] = [
     key: "communication",
     label: "Communication",
     icon: MessageSquare,
-    accent: "#0369A1",
+    accent: "#0C356A",
     sections: [
       {
         items: [
@@ -174,7 +174,7 @@ export const MODULES: NavModule[] = [
     key: "administration",
     label: "Administration",
     icon: ShieldCheck,
-    accent: "#B8000F",
+    accent: "#0C356A",
     sections: [
       {
         items: [

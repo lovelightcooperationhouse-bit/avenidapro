@@ -35,7 +35,7 @@ function ModuleLinks({ module, pathname, search, onNavigate }: { module: NavModu
                   active ? "bg-white text-[#06152E] shadow-lg" : "text-white/80 hover:bg-white/10 hover:text-white"
                 )}
               >
-                <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", active ? "text-white" : "bg-white/10")} style={active ? { backgroundColor: module.accent } : undefined}>
+                <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", active ? "text-white" : "bg-white/10")} style={active ? { backgroundColor: "#E30613" } : undefined}>
                   <item.icon aria-hidden className="size-[18px]" />
                 </span>
                 <span className="min-w-0">
@@ -102,7 +102,7 @@ export function Sidebar() {
       {/* Grand écran : pages du module actif */}
       <aside className="sticky top-0 hidden h-dvh w-72 shrink-0 flex-col bg-[#06152E] lg:flex">
         {brand}
-        <div className="mx-4 mb-4 flex items-center gap-3 rounded-2xl p-3 text-white" style={{ background: `linear-gradient(135deg, ${current.accent}, #06152E)` }}>
+        <div className="mx-4 mb-4 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 p-3 text-white">
           <current.icon aria-hidden className="size-5" />
           <span className="text-sm font-black tracking-wide uppercase">{current.label}</span>
         </div>
@@ -137,7 +137,7 @@ export function Sidebar() {
                     aria-expanded={expanded === m.key}
                     className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-white hover:bg-white/5"
                   >
-                    <span className="flex size-8 items-center justify-center rounded-lg" style={{ backgroundColor: m.accent }}>
+                    <span className="flex size-8 items-center justify-center rounded-lg bg-white/10">
                       <m.icon aria-hidden className="size-4" />
                     </span>
                     <span className="flex-1 text-sm font-black">{m.label}</span>

@@ -2,6 +2,7 @@
 
 import { ArrowRight, Award, BedDouble, CalendarDays, ChevronLeft, ChevronRight, ClipboardList, Pause, Play } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { heroSlides, intakeDates, intakes, type HeroSlide } from "@/content/site";
 import type { HeroSlideSetting } from "@/lib/cms-types";
@@ -12,11 +13,16 @@ const DURATION = 7000;
 
 /** Jours restants avant la prochaine rentrée (calculé côté navigateur). */
 function useNextIntake() {
-  const [next, setNext] = useState<{ label: string; days: number } | null>(null);
+  const [next, setNext] = useState<{ label: string; days: number; date: string } | null>(null);
   useEffect(() => {
     const now = Date.now();
     const i = intakeDates.findIndex((d) => new Date(`${d}T08:00:00`).getTime() > now);
-    if (i >= 0) setNext({ label: intakes[i], days: Math.ceil((new Date(`${intakeDates[i]}T08:00:00`).getTime() - now) / 86_400_000) });
+    if (i >= 0)
+      setNext({
+        label: intakes[i],
+        days: Math.ceil((new Date(`${intakeDates[i]}T08:00:00`).getTime() - now) / 86_400_000),
+        date: new Date(`${intakeDates[i]}T08:00:00`).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }),
+      });
   }, []);
   return next;
 }
@@ -107,7 +113,7 @@ export function HeroSlider({ custom }: { custom?: HeroSlideSetting[] }) {
       <div className="mx-auto flex w-full max-w-7xl flex-1 items-center gap-10 px-4 pt-14 pb-36 sm:px-6 lg:px-8">
         <div className="max-w-3xl flex-1" aria-live={autoplay ? "off" : "polite"}>
           <div key={index} aria-roledescription="diapositive" aria-label={`${index + 1} sur ${slides.length}`}>
-            <p className="site-rise mb-7 inline-flex items-center gap-2.5 rounded-full border border-white/20 bg-white/10 py-1.5 pr-4 pl-2 text-xs font-bold tracking-[0.18em] uppercase backdrop-blur-md sm:text-sm">
+            <p className="site-from-left mb-7 inline-flex items-center gap-2.5 rounded-full border border-white/20 bg-white/10 py-1.5 pr-4 pl-2 text-xs font-bold tracking-[0.18em] uppercase backdrop-blur-md sm:text-sm">
               <span aria-hidden className="site-pulse-dot size-2.5 rounded-full bg-vif" />
               {slide.eyebrow}
             </p>
@@ -127,41 +133,58 @@ export function HeroSlider({ custom }: { custom?: HeroSlideSetting[] }) {
               ))}
             </h1>
 
-            <p className="site-rise mt-7 max-w-2xl text-lg leading-relaxed text-white/85 sm:text-xl" style={{ animationDelay: "380ms" }}>
+            <p className="site-from-left mt-7 max-w-2xl text-lg leading-relaxed text-white/90 sm:text-xl" style={{ animationDelay: "650ms" }}>
               {slide.subtitle}
             </p>
           </div>
 
-          <div className="mt-10 flex flex-wrap items-center gap-3">
-            <ButtonLink href="/preinscription" size="xl">
+          <div key={`cta-${index}`} className="mt-10 flex flex-wrap items-center gap-3">
+            <ButtonLink href="/preinscription" size="xl" className="site-pop" style={{ animationDelay: "900ms" }}>
               <ClipboardList aria-hidden />
               Pré-inscription en ligne
             </ButtonLink>
-            <ButtonLink href="/hotel#reserver" variant="glass" size="xl">
+            <ButtonLink href="/hotel#reserver" variant="glass" size="xl" className="site-pop" style={{ animationDelay: "1050ms" }}>
               <BedDouble aria-hidden />
               Réserver une chambre
             </ButtonLink>
-            <ButtonLink href="/ecole" variant="ghost" className="px-2">
+            <ButtonLink href="/ecole" variant="ghost" className="site-pop px-2" style={{ animationDelay: "1200ms" }}>
               Nos formations
               <ArrowRight aria-hidden />
             </ButtonLink>
           </div>
+
+          {/* Rentrée : bien visible sur téléphone et tablette */}
+          {next && (
+            <Link href="/preinscription" className="site-pop site-glow-gold mt-6 inline-flex items-center gap-3 rounded-2xl bg-or px-4 py-3 text-avenida-blue-950 xl:hidden" style={{ animationDelay: "1300ms" }}>
+              <CalendarDays aria-hidden className="site-wiggle size-6" />
+              <span className="leading-tight">
+                <span className="block text-[11px] font-extrabold tracking-widest uppercase">Prochaine rentrée</span>
+                <span className="block font-display text-lg font-extrabold">
+                  J-{next.days} · {next.date}
+                </span>
+              </span>
+            </Link>
+          )}
         </div>
 
         {/* Cartes flottantes (grand écran) */}
         <div className="hidden w-80 shrink-0 flex-col gap-4 xl:flex">
           {next && (
-            <div className="site-float rounded-3xl border border-white/20 bg-white/10 p-6 shadow-2xl backdrop-blur-xl">
-              <p className="flex items-center gap-2 text-xs font-bold tracking-widest text-white/70 uppercase">
-                <CalendarDays aria-hidden className="size-4 text-vif-clair" />
+            <Link href="/preinscription" className="site-float site-glow-gold block rounded-3xl bg-or p-6 text-avenida-blue-950">
+              <p className="flex items-center gap-2 text-xs font-extrabold tracking-widest uppercase">
+                <CalendarDays aria-hidden className="site-wiggle size-5" />
                 Prochaine rentrée
               </p>
-              <p className="mt-2 font-display text-5xl font-extrabold">J-{next.days}</p>
-              <p className="mt-1 text-white/80">{next.label}</p>
-              <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/15">
+              <p className="mt-2 font-display text-6xl font-extrabold">J-{next.days}</p>
+              <p className="mt-1 font-bold">{next.date}</p>
+              {next.label !== next.date && <p className="text-sm font-semibold text-avenida-blue-950/70">{next.label}</p>}
+              <div className="mt-4 h-2 overflow-hidden rounded-full bg-avenida-blue-950/15">
                 <div className="h-full rounded-full bg-vif" style={{ width: `${Math.max(8, 100 - next.days)}%` }} />
               </div>
-            </div>
+              <span className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-avenida-blue-950 px-4 py-2 text-sm font-bold text-white">
+                Je m&apos;inscris <ArrowRight aria-hidden className="size-4" />
+              </span>
+            </Link>
           )}
           <div className="site-float-delay flex items-center gap-4 rounded-3xl bg-white p-5 text-avenida-blue-950 shadow-2xl">
             <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-vif text-white">
@@ -190,7 +213,7 @@ export function HeroSlider({ custom }: { custom?: HeroSlideSetting[] }) {
               >
                 <span
                   className={cn(
-                    "relative hidden h-16 overflow-hidden rounded-xl ring-2 transition-all duration-300 md:block",
+                    "relative hidden h-20 overflow-hidden rounded-xl ring-2 transition-all duration-300 md:block lg:h-24",
                     i === index ? "ring-vif" : "opacity-60 ring-transparent group-hover:opacity-100"
                   )}
                 >
