@@ -1,5 +1,6 @@
 import { createClient as createAdmin } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
+import { pushReady, sendPush } from "@/lib/push-server";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -38,7 +39,17 @@ async function dispatch() {
 
   const admin = createAdmin(url, serviceKey, { auth: { persistSession: false } });
   const site = process.env.NEXT_PUBLIC_APP_URL || "https://www.hotelecoleavenida.net";
-  const result = { emails: 0, sms: 0, emailProvider: !!resendKey, smsProvider: sendSms?.provider ?? false };
+  const result = { emails: 0, sms: 0, push: 0, emailProvider: !!resendKey, smsProvider: sendSms?.provider ?? false, pushProvider: pushReady() };
+
+  // Notifications push (téléphone, ordinateur), même site fermé
+  if (pushReady()) {
+    const { data } = await admin.from("notifications").select("id, profile_id, title, body, link").eq("push_status", "pending").order("created_at").limit(100);
+    for (const n of data ?? []) {
+      const sent = await sendPush(admin, [n.profile_id], { title: n.title, body: n.body ?? undefined, url: n.link ?? "/espace/notifications", tag: n.id });
+      await admin.from("notifications").update({ push_status: sent ? "sent" : "skipped" }).eq("id", n.id);
+      result.push += sent;
+    }
+  }
 
   if (resendKey) {
     const { data } = await admin.from("notifications").select("id, title, body, link, profiles(email, first_name)").eq("email_status", "pending").order("created_at").limit(50);

@@ -1,5 +1,5 @@
 /* Service worker Avenida : installation comme application, fonctionnement hors connexion de base. */
-const VERSION = "avenida-v1";
+const VERSION = "avenida-v2";
 const OFFLINE = "/hors-ligne.html";
 const PRECACHE = [OFFLINE, "/icons/icon-192.png", "/icons/icon-512.png", "/logoavenida.jpg"];
 
@@ -44,4 +44,44 @@ self.addEventListener("fetch", (event) => {
       )
     );
   }
+});
+
+/* Notifications push : affichage (même site fermé) et ouverture de la bonne page au clic */
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { title: "Avenida", body: event.data ? event.data.text() : "" };
+  }
+  const title = data.title || "Hôtel École Avenida";
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body: data.body || "",
+      icon: "/icons/icon-192.png",
+      badge: "/icons/icon-192.png",
+      tag: data.tag,
+      renotify: !!data.call,
+      requireInteraction: !!data.call,
+      vibrate: data.call ? [400, 200, 400, 200, 400, 200, 400] : [200],
+      data: { url: data.url || "/espace/notifications" },
+      actions: data.call ? [{ action: "repondre", title: "Répondre" }] : [],
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = new URL(event.notification.data?.url || "/espace", self.location.origin).href;
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+      for (const c of list) {
+        if (c.url.startsWith(self.location.origin) && "focus" in c) {
+          c.navigate(url);
+          return c.focus();
+        }
+      }
+      return self.clients.openWindow(url);
+    })
+  );
 });

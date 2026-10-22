@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { conversationName, dayLabel, uploadChatFile, type ChatMessage, type Conversation, type Person } from "@/lib/chat";
 import { ROLE_CONFIG, type RoleType } from "@/lib/roles";
 import { formatSize, signedUrl } from "@/lib/spaces";
+import { pushConversation } from "@/lib/push-client";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { Avatar } from "./Avatar";
@@ -157,7 +158,11 @@ export function ChatThread({
       .insert({ conversation_id: conv.id, sender_id: me.id, reply_to: reply?.id ?? null, ...row })
       .select()
       .single();
-    if (!error && data) setMessages((l) => (l && !l.some((x) => x.id === data.id) ? [...l, data as ChatMessage] : l));
+    if (!error && data) {
+      setMessages((l) => (l && !l.some((x) => x.id === data.id) ? [...l, data as ChatMessage] : l));
+      const m = data as ChatMessage;
+      pushConversation({ conversationId: conv.id, kind: "message", preview: m.kind === "text" ? (m.body ?? "") : m.kind === "image" ? "📷 Photo" : m.kind === "audio" ? "🎤 Message vocal" : m.kind === "video" ? "🎬 Vidéo" : "📎 Fichier" });
+    }
     setReply(null);
     onChanged();
     return data as ChatMessage | null;

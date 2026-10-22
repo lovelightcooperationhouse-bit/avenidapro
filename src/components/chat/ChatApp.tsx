@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { conversationName, newRoom, timeLabel, type Conversation } from "@/lib/chat";
 import { ROLE_CONFIG, type RoleType } from "@/lib/roles";
+import { pushConversation } from "@/lib/push-client";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { Avatar } from "./Avatar";
@@ -96,10 +97,13 @@ export function ChatApp() {
     if (active.kind === "groupe") {
       const room = newRoom("groupe");
       await supabase.from("conversation_messages").insert({ conversation_id: active.id, sender_id: user.id, kind: "call", attachment: { video, call_id: callId, room } });
+      pushConversation({ conversationId: active.id, kind: "call", video, callId, room });
       setCall({ kind: "salle", room, video, title: conversationName(active) });
       return;
     }
     const { data } = await supabase.from("conversation_messages").insert({ conversation_id: active.id, sender_id: user.id, kind: "call", attachment: { video, call_id: callId } }).select("id").single();
+    // Sonnerie sur le téléphone du correspondant, même application fermée
+    pushConversation({ conversationId: active.id, kind: "call", video, callId });
     setCall({ kind: "p2p", callId, messageId: data?.id, video, mode: "sortant", conv: active });
   };
 

@@ -4,6 +4,7 @@ import { Bell, BellRing, CalendarCheck, CheckCheck, CreditCard, FileCheck2, IdCa
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { PushToggle } from "@/components/pwa/PushToggle";
 import { createClient } from "@/lib/supabase/client";
 import { timeAgo } from "@/lib/spaces";
 import { cn } from "@/lib/utils";
@@ -43,6 +44,7 @@ export default function NotificationsPage() {
         <div>
           <h1 className="font-display text-3xl font-extrabold text-avenida-blue-950">Notifications</h1>
           <p className="mt-1 text-slate-600">Annonces de l&apos;administration, présences, retards, permissions, paiements et cartes : tout ce qui concerne votre dossier.</p>
+          <PushToggle className="mt-3" />
         </div>
         <button type="button" onClick={markAll} className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-bold text-avenida-blue ring-1 ring-slate-200 hover:ring-vif">
           <CheckCheck aria-hidden className="size-4" /> Tout marquer comme lu

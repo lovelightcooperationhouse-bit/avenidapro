@@ -3,6 +3,7 @@ import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { IncomingCall } from "@/components/chat/IncomingCall";
 import { PwaSupport } from "@/components/pwa/PwaSupport";
+import { PushPrompt } from "@/components/pwa/PushToggle";
 
 export const metadata: Metadata = {
   title: "Avenida Management — Plateforme Intégrée Hôtel École Avenida",
@@ -38,6 +39,7 @@ export default function RootLayout({
           {children}
           <IncomingCall />
           <PwaSupport />
+          <PushPrompt />
         </AuthProvider>
       </body>
     </html>
