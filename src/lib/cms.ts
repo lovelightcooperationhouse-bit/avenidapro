@@ -48,3 +48,8 @@ export async function getPage(slug: string): Promise<CmsPage | null> {
   const { data } = await db().from("site_pages").select("*").eq("slug", slug).eq("published", true).maybeSingle();
   return data as CmsPage | null;
 }
+
+export async function getPages(): Promise<CmsPage[]> {
+  const { data } = await db().from("site_pages").select("*").eq("published", true);
+  return (data ?? []) as CmsPage[];
+}
