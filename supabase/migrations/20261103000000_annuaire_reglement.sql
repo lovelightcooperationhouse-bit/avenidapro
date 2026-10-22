@@ -131,7 +131,7 @@ select * from (values
   ('Koffi D''ALMEIDA', 'Administrateur', null, '+228 90 11 06 99', 2, 'directeur_general', 'Administrateur : contrôle total de la gestion.'),
   ('Marc GLE', 'Directeur d''exploitation', null, '+228 93 84 62 66 / +228 90 12 38 38', 3, 'responsable_hotel', 'Exploitation : hôtel, réservations, clients, économat.'),
   ('Noël AKLIKPO', 'Directeur commercial', null, '+228 90 19 66 99', 4, 'responsable_hotel', 'Commercial : clients, réservations. Possible aussi : gestionnaire du site (communication).'),
-  ('Kodjo Messan DOGLO', 'Directeur pédagogique', 'Hygiène alimentaire', '+228 92 88 17 48', 5, 'directeur_pedagogique', 'Pédagogie : inscriptions, notes, bulletins, correspondance. Le règlement est signé « DOGLO Kodjo Gérard » : prénom à confirmer.'),
+  ('Kodjo Messan DOGLO', 'Directeur pédagogique', 'Hygiène alimentaire', '+228 92 88 17 48', 5, 'directeur_pedagogique', 'Pédagogie : inscriptions, notes, bulletins, correspondance.'),
   ('Koffi Vianney D''ALMEIDA', 'Surveillant général', 'Technologie restaurant / bar', '+228 97 53 88 43 / +228 93 21 65 30', 6, 'directeur_pedagogique', 'Vie scolaire : correspondance, absences, retards, permissions (accès pédagogique).'),
   ('Koffi B. Sylva MAWUENA', 'Économe', 'Pratique restaurant / bar', '+228 91 20 91 20 / +228 99 55 00 55', 7, 'comptable', 'Économat : écolages, encaissements, stocks.'),
   ('Prisca ANIPAH', 'Secrétaire', 'Français', '+228 79 73 21 01', 8, 'personnel', 'Secrétariat : accueil, demandes, messages.'),

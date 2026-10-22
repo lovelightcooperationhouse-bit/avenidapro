@@ -552,4 +552,4 @@ export const reglementChapitres: ReglementChapter[] = [
   },
 ];
 
-export const reglementSignataire = { title: "Directeur pédagogique", name: "DOGLO Kodjo Gérard" };
+export const reglementSignataire = { title: "Directeur pédagogique", name: "DOGLO Kodjo Messan" };
