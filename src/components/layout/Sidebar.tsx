@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   BarChart3,
+  LifeBuoy,
+  CalendarClock,
   BellRing,
   ClipboardSignature,
   Globe,
@@ -230,9 +232,28 @@ export function Sidebar() {
           allowedRoles: ["directeur_general", "directeur_pedagogique", "responsable_hotel", "personnel"],
         },
         {
-          label: "Messagerie",
-          href: "/dashboard/messages",
+          label: "Guide d'utilisation",
+          href: "/dashboard/guide",
+          icon: LifeBuoy,
+          allowedRoles: ["directeur_general", "directeur_pedagogique", "comptable", "ressources_humaines", "responsable_hotel", "personnel"],
+        },
+        {
+          label: "Discussions & appels",
+          href: "/discussions",
           icon: MessageSquare,
+          allowedRoles: [
+            "directeur_general",
+            "directeur_pedagogique",
+            "comptable",
+            "ressources_humaines",
+            "responsable_hotel",
+            "personnel",
+          ],
+        },
+        {
+          label: "Réunions (visio)",
+          href: "/reunions",
+          icon: CalendarClock,
           allowedRoles: [
             "directeur_general",
             "directeur_pedagogique",

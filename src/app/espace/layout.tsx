@@ -1,6 +1,6 @@
 "use client";
 
-import { BedDouble, Bell, ClipboardCheck, FileText, FolderOpen, Megaphone, GraduationCap, Home, IdCard, KeyRound, LayoutDashboard, LogOut, MessageSquare, UserRound } from "lucide-react";
+import { BedDouble, Bell, CalendarClock, LifeBuoy, ClipboardCheck, FileText, FolderOpen, Megaphone, GraduationCap, Home, IdCard, KeyRound, LayoutDashboard, LogOut, MessageSquare, UserRound } from "lucide-react";
 import { NotificationBell } from "@/components/espace/NotificationBell";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -10,7 +10,7 @@ import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 
 /** Pages accessibles avant la validation du dossier. */
-const OPEN_TO_NEW = ["/espace/profil", "/espace/mot-de-passe", "/espace/notifications", "/espace/messages", "/espace/documents"];
+const OPEN_TO_NEW = ["/espace/guide", "/espace/profil", "/espace/mot-de-passe", "/espace/notifications", "/espace/messages", "/espace/documents"];
 
 /** Gabarit de l'espace personnel (élève, parent, professeur, candidat). */
 export default function EspaceLayout({ children }: { children: React.ReactNode }) {
@@ -44,9 +44,11 @@ export default function EspaceLayout({ children }: { children: React.ReactNode }
     { href: "/espace/documents", label: "Mes documents", icon: FolderOpen, show: true },
     { href: "/espace/annonces", label: "Annonces", icon: Megaphone, show: role !== "candidat" },
     { href: "/espace/notifications", label: "Notifications", icon: Bell, show: true },
-    { href: "/espace/messages", label: "Messages", icon: MessageSquare, show: true },
+    { href: "/discussions", label: "Discussions", icon: MessageSquare, show: true },
+    { href: "/reunions", label: "Réunions", icon: CalendarClock, show: role !== "candidat" },
     { href: "/espace/profil", label: role === "candidat" ? "Compléter mon profil" : "Mon profil", icon: UserRound, show: true },
     { href: "/espace/mot-de-passe", label: "Mot de passe", icon: KeyRound, show: true },
+    { href: "/espace/guide", label: "Guide", icon: LifeBuoy, show: true },
   ].filter((n) => n.show);
 
   return (

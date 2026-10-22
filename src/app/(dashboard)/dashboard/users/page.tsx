@@ -4,7 +4,7 @@ import { CheckCircle2, Copy, KeyRound, Loader2, PlusCircle, Search, ShieldCheck,
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import type { Position } from "@/lib/onboarding";
-import { ROLE_CONFIG, STAFF_ROLES, type RoleType } from "@/lib/roles";
+import { ROLE_CONFIG, ROLE_SCOPE, STAFF_ROLES, type RoleType } from "@/lib/roles";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -25,20 +25,6 @@ type Profile = {
 const ROLES = Object.keys(ROLE_CONFIG) as RoleType[];
 const input = "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm";
 
-/** Ce que chaque rôle gère et qui instruit ses dossiers : affiché au DG pour attribuer les bons rôles. */
-const ROLE_SCOPE: Record<RoleType, string> = {
-  directeur_general: "Tout le système : attribue les rôles, valide les dossiers, contenu du site, pilotage et rapports, alertes à tout l'établissement.",
-  directeur_pedagogique: "École : admissions, élèves, classes, notes, correspondance et permissions, cartes scolaires, Espace École ; avis sur les dossiers élèves, parents, professeurs.",
-  comptable: "Finances : paiements, caisse, dépenses, salaires, économat, rapports financiers ; consulte les dossiers élèves et clients.",
-  ressources_humaines: "Personnel : dossiers RH, contrats, salaires, cartes de travail ; avis sur les dossiers du personnel, des professeurs et de la direction.",
-  responsable_hotel: "Hôtel : réservations, chambres, clients, économat, Espace Hôtel ; avis sur le personnel de l'hôtel et les clients.",
-  personnel: "Opérations de son service (réception, restaurant, cuisine, étages…) et Espace Hôtel ; pas d'accès aux décisions.",
-  professeur: "Ses classes : Espace École (cours, devoirs, direct), appel et correspondance, notes de ses élèves.",
-  eleve: "Son dossier : cours de sa filière, devoirs, notes, paiements, correspondance, carte scolaire, documents.",
-  parent: "Ses enfants : suivi scolaire, paiements, présences, demandes de permission, cartes, documents.",
-  client: "Ses séjours et demandes de réservation, ses documents.",
-  candidat: "Nouveau membre : complète son profil ; aucun accès tant que le DG n'a pas attribué de rôle.",
-};
 
 export default function UsersPage() {
   const { user } = useAuth();

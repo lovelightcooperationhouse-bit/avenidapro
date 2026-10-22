@@ -55,7 +55,7 @@ export const ROLE_CONFIG: Record<RoleType, RoleConfig> = {
     department: "Direction des Études",
     avatarColor: "from-[#0C356A] to-[#1E4D82]",
     home: "/dashboard",
-    allowedPaths: ["/dashboard", "/dashboard/admissions", "/dashboard/students", "/dashboard/programs", "/dashboard/attendance", "/dashboard/grades", "/dashboard/payments", "/dashboard/demandes", "/dashboard/messages", "/dashboard/alertes", "/dashboard/adhesions", "/dashboard/correspondance", "/dashboard/cartes", "/dashboard/recherche", "/dashboard/economat"],
+    allowedPaths: ["/dashboard", "/dashboard/guide", "/dashboard/admissions", "/dashboard/students", "/dashboard/programs", "/dashboard/attendance", "/dashboard/grades", "/dashboard/payments", "/dashboard/demandes", "/dashboard/messages", "/dashboard/alertes", "/dashboard/adhesions", "/dashboard/correspondance", "/dashboard/cartes", "/dashboard/recherche", "/dashboard/economat"],
   },
   comptable: {
     label: "Comptabilité",
@@ -63,7 +63,7 @@ export const ROLE_CONFIG: Record<RoleType, RoleConfig> = {
     department: "Service Financier",
     avatarColor: "from-emerald-600 to-teal-800",
     home: "/dashboard",
-    allowedPaths: ["/dashboard", "/dashboard/payments", "/dashboard/finances", "/dashboard/salaries", "/dashboard/reports", "/dashboard/inventory", "/dashboard/messages", "/dashboard/alertes", "/dashboard/adhesions", "/dashboard/economat", "/dashboard/recherche"],
+    allowedPaths: ["/dashboard", "/dashboard/guide", "/dashboard/payments", "/dashboard/finances", "/dashboard/salaries", "/dashboard/reports", "/dashboard/inventory", "/dashboard/messages", "/dashboard/alertes", "/dashboard/adhesions", "/dashboard/economat", "/dashboard/recherche"],
   },
   ressources_humaines: {
     label: "Ressources Humaines",
@@ -71,7 +71,7 @@ export const ROLE_CONFIG: Record<RoleType, RoleConfig> = {
     department: "Ressources Humaines",
     avatarColor: "from-amber-600 to-orange-700",
     home: "/dashboard",
-    allowedPaths: ["/dashboard", "/dashboard/employees", "/dashboard/salaries", "/dashboard/messages", "/dashboard/alertes", "/dashboard/adhesions", "/dashboard/cartes", "/dashboard/recherche"],
+    allowedPaths: ["/dashboard", "/dashboard/guide", "/dashboard/employees", "/dashboard/salaries", "/dashboard/messages", "/dashboard/alertes", "/dashboard/adhesions", "/dashboard/cartes", "/dashboard/recherche"],
   },
   responsable_hotel: {
     label: "Responsable Hôtel",
@@ -79,7 +79,7 @@ export const ROLE_CONFIG: Record<RoleType, RoleConfig> = {
     department: "Hébergement & Réception",
     avatarColor: "from-rose-600 to-red-800",
     home: "/dashboard",
-    allowedPaths: ["/dashboard", "/dashboard/hotel", "/dashboard/reservations", "/dashboard/customers", "/dashboard/demandes", "/dashboard/messages", "/dashboard/alertes", "/dashboard/adhesions", "/dashboard/economat", "/dashboard/recherche"],
+    allowedPaths: ["/dashboard", "/dashboard/guide", "/dashboard/hotel", "/dashboard/reservations", "/dashboard/customers", "/dashboard/demandes", "/dashboard/messages", "/dashboard/alertes", "/dashboard/adhesions", "/dashboard/economat", "/dashboard/recherche"],
   },
   personnel: {
     label: "Personnel",
@@ -87,7 +87,7 @@ export const ROLE_CONFIG: Record<RoleType, RoleConfig> = {
     department: "Personnel Avenida",
     avatarColor: "from-slate-600 to-slate-800",
     home: "/dashboard",
-    allowedPaths: ["/dashboard", "/dashboard/hotel", "/dashboard/reservations", "/dashboard/inventory", "/dashboard/demandes", "/dashboard/messages"],
+    allowedPaths: ["/dashboard", "/dashboard/guide", "/dashboard/hotel", "/dashboard/reservations", "/dashboard/inventory", "/dashboard/demandes", "/dashboard/messages"],
   },
   professeur: {
     label: "Professeur",
@@ -133,3 +133,18 @@ export const ROLE_CONFIG: Record<RoleType, RoleConfig> = {
 
 export const roleConfig = (role: string | null | undefined): RoleConfig =>
   ROLE_CONFIG[role && role in ROLE_CONFIG ? (role as RoleType) : "candidat"];
+
+/** Ce que chaque rôle gère et qui instruit ses dossiers : affiché au DG pour attribuer les bons rôles. */
+export const ROLE_SCOPE: Record<RoleType, string> = {
+  directeur_general: "Tout le système : attribue les rôles, valide les dossiers, contenu du site, pilotage et rapports, alertes à tout l'établissement.",
+  directeur_pedagogique: "École : admissions, élèves, classes, notes, correspondance et permissions, cartes scolaires, Espace École ; avis sur les dossiers élèves, parents, professeurs.",
+  comptable: "Finances : paiements, caisse, dépenses, salaires, économat, rapports financiers ; consulte les dossiers élèves et clients.",
+  ressources_humaines: "Personnel : dossiers RH, contrats, salaires, cartes de travail ; avis sur les dossiers du personnel, des professeurs et de la direction.",
+  responsable_hotel: "Hôtel : réservations, chambres, clients, économat, Espace Hôtel ; avis sur le personnel de l'hôtel et les clients.",
+  personnel: "Opérations de son service (réception, restaurant, cuisine, étages…) et Espace Hôtel ; pas d'accès aux décisions.",
+  professeur: "Ses classes : Espace École (cours, devoirs, direct), appel et correspondance, notes de ses élèves.",
+  eleve: "Son dossier : cours de sa filière, devoirs, notes, paiements, correspondance, carte scolaire, documents.",
+  parent: "Ses enfants : suivi scolaire, paiements, présences, demandes de permission, cartes, documents.",
+  client: "Ses séjours et demandes de réservation, ses documents.",
+  candidat: "Nouveau membre : complète son profil ; aucun accès tant que le DG n'a pas attribué de rôle.",
+};
