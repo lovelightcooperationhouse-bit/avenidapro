@@ -47,18 +47,21 @@ export function StatCounter({ value, label, suffix = "", duration = 1800, classN
 
   return (
     <div ref={ref} className={cn("flex flex-col items-center gap-2 text-center", className)}>
-      <p className="font-display text-5xl font-extrabold tabular-nums text-white sm:text-6xl">
+      <p className="font-display text-6xl font-extrabold tabular-nums text-white sm:text-7xl">
         <span aria-hidden>
           {display}
-          {suffix}
+          <span className="text-vif-clair">{suffix}</span>
         </span>
         <span className="sr-only">
           {value}
           {suffix}
         </span>
       </p>
-      <span aria-hidden className="h-1 w-10 rounded-full bg-avenida-red" />
-      <p className="max-w-[12rem] text-sm font-medium text-white/80">{label}</p>
+      <span aria-hidden className="flex h-1 w-12 overflow-hidden rounded-full">
+        <span className="flex-1 bg-white" />
+        <span className="flex-1 bg-vif" />
+      </span>
+      <p className="max-w-[13rem] text-sm font-semibold text-white/80">{label}</p>
     </div>
   );
 }

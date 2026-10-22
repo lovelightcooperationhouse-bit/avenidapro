@@ -48,14 +48,14 @@ export default function EspaceLayout({ children }: { children: React.ReactNode }
               )}
               <div className="hidden text-right sm:block">
                 <p className="text-sm font-bold text-avenida-blue">{user.fullName}</p>
-                <p className="text-xs font-semibold text-avenida-red">{user.roleLabel}</p>
+                <p className="text-xs font-semibold text-vif">{user.roleLabel}</p>
               </div>
               <span className={cn("flex size-11 items-center justify-center rounded-full bg-gradient-to-br font-bold text-white", user.avatarColor)}>{user.initials}</span>
               <button
                 type="button"
                 onClick={() => logout()}
                 aria-label="Se déconnecter"
-                className="flex size-10 items-center justify-center rounded-full text-slate-500 hover:bg-red-50 hover:text-avenida-red"
+                className="flex size-10 items-center justify-center rounded-full text-slate-500 hover:bg-red-50 hover:text-vif"
               >
                 <LogOut aria-hidden className="size-5" />
               </button>
@@ -73,7 +73,7 @@ export default function EspaceLayout({ children }: { children: React.ReactNode }
                   aria-current={active ? "page" : undefined}
                   className={cn(
                     "flex shrink-0 items-center gap-2 border-b-[3px] px-3 py-3 text-sm font-bold transition-colors",
-                    active ? "border-avenida-red text-avenida-red" : "border-transparent text-slate-600 hover:text-avenida-blue"
+                    active ? "border-vif text-vif" : "border-transparent text-slate-600 hover:text-avenida-blue"
                   )}
                 >
                   <n.icon aria-hidden className="size-4" />

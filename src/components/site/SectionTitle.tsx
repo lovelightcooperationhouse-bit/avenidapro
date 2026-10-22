@@ -16,23 +16,26 @@ type SectionTitleProps = {
   className?: string;
 };
 
-/** Titre de section : sur-titre souligné d'un trait rouge, titre et introduction. */
+/** Titre de section : sur-titre avec liseré tricolore, grand titre et introduction. */
 export function SectionTitle({ eyebrow, title, description, align = "left", as: Heading = "h2", id, inverted = false, className }: SectionTitleProps) {
   const centered = align === "center";
 
   return (
     <div className={cn("flex max-w-3xl flex-col gap-4", centered && "mx-auto items-center text-center", className)}>
       {eyebrow && (
-        <p className={cn("flex items-center gap-3 text-sm font-bold tracking-widest uppercase", inverted ? "text-red-300" : "text-avenida-red")}>
-          <span aria-hidden className="h-0.5 w-8 rounded-full bg-current" />
+        <p className={cn("flex items-center gap-3 text-[0.8rem] font-extrabold tracking-[0.22em] uppercase", inverted ? "text-white" : "text-vif")}>
+          <span aria-hidden className="flex h-1 w-10 overflow-hidden rounded-full">
+            <span className={cn("flex-1", inverted ? "bg-white" : "bg-avenida-blue")} />
+            <span className="flex-1 bg-vif" />
+          </span>
           {eyebrow}
         </p>
       )}
       <Heading
         id={id}
         className={cn(
-          "font-display text-3xl font-extrabold tracking-tight text-balance sm:text-4xl lg:text-5xl",
-          inverted ? "text-white" : "text-avenida-blue"
+          "font-display text-[2rem] leading-[1.08] font-extrabold tracking-tight text-balance sm:text-5xl lg:text-[3.4rem]",
+          inverted ? "text-white" : "text-avenida-blue-950"
         )}
       >
         {title}
@@ -42,7 +45,7 @@ export function SectionTitle({ eyebrow, title, description, align = "left", as: 
   );
 }
 
-/** Mot mis en valeur dans un titre (capitales à empattements du logo, en rouge). */
+/** Mot mis en valeur dans un titre : italique élégant, en rouge vif. */
 export function Accent({ children, inverted = false }: { children: ReactNode; inverted?: boolean }) {
-  return <span className={cn("font-serif font-bold", inverted ? "text-red-300" : "text-avenida-red")}>{children}</span>;
+  return <span className={cn("font-elegant font-bold italic", inverted ? "text-vif-clair" : "text-vif")}>{children}</span>;
 }

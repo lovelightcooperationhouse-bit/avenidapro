@@ -5,8 +5,10 @@ const tones = {
   default: "bg-white text-slate-900",
   muted: "bg-slate-50 text-slate-900",
   blue: "bg-avenida-blue-950 text-white",
+  // Bleu nuit avec le motif losange du tissu Avenida
+  night: "relative isolate bg-nuit text-white before:absolute before:inset-0 before:-z-10 before:bg-avenida-pattern before:opacity-[0.06] before:content-['']",
   // Dégradé tricolore bleu → rouge (bandeau d'appel final)
-  flag: "bg-[image:linear-gradient(120deg,#072042_0%,#0C356A_45%,#B91C1C_100%)] text-white",
+  flag: "bg-[image:linear-gradient(120deg,#06152E_0%,#0C356A_45%,#E30613_100%)] text-white",
 } as const;
 
 const widths = {

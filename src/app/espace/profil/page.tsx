@@ -37,10 +37,10 @@ export default function ProfilePage() {
 
   return (
     <form onSubmit={submit} className="mx-auto flex max-w-xl flex-col gap-4 rounded-3xl bg-white p-8 shadow-sm ring-1 ring-slate-900/5">
-      <UserRound aria-hidden className="size-10 text-avenida-red" />
+      <UserRound aria-hidden className="size-10 text-vif" />
       <h1 className="font-display text-2xl font-extrabold text-avenida-blue">Mon profil</h1>
       <p className="text-sm text-slate-600">
-        Compte : <strong>{user.email}</strong> · Rôle : <strong className="text-avenida-red">{user.roleLabel}</strong>
+        Compte : <strong>{user.email}</strong> · Rôle : <strong className="text-vif">{user.roleLabel}</strong>
       </p>
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1.5 text-sm font-bold text-avenida-blue">
@@ -62,7 +62,7 @@ export default function ProfilePage() {
           {saved}
         </p>
       )}
-      <button type="submit" className="h-12 rounded-full bg-avenida-red font-bold text-white hover:bg-avenida-red-700">
+      <button type="submit" className="h-12 rounded-full bg-vif font-bold text-white hover:bg-vif-fonce">
         Enregistrer
       </button>
     </form>

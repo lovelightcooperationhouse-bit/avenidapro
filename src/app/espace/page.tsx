@@ -1,8 +1,9 @@
 "use client";
 
-import { ArrowRight, ClipboardList, GraduationCap, LayoutDashboard, Users } from "lucide-react";
+import { ArrowRight, GraduationCap, LayoutDashboard, Users } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { CandidateApplications } from "@/components/espace/CandidateApplications";
 import { StudentFile } from "@/components/espace/StudentFile";
 import { useAuth } from "@/context/AuthContext";
 import { createClient } from "@/lib/supabase/client";
@@ -16,7 +17,7 @@ export default function EspacePage() {
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <p className="text-sm font-bold tracking-widest text-avenida-red uppercase">{user.roleLabel}</p>
+        <p className="text-sm font-bold tracking-widest text-vif uppercase">{user.roleLabel}</p>
         <h1 className="mt-1 font-display text-3xl font-extrabold text-avenida-blue sm:text-4xl">Bonjour {user.fullName.split(" ")[0]} 👋</h1>
         <p className="mt-2 text-slate-600">{user.roleDescription}</p>
       </div>
@@ -36,7 +37,7 @@ export default function EspacePage() {
 
       {user.role === "parent" && <ParentView />}
       {user.role === "professeur" && <TeacherView />}
-      {user.role === "candidat" && <CandidateView />}
+      {user.role === "candidat" && <CandidateApplications />}
     </div>
   );
 }
@@ -79,7 +80,7 @@ function ParentView() {
               role="tab"
               aria-selected={active === c.id}
               onClick={() => setActive(c.id)}
-              className={active === c.id ? "rounded-full bg-avenida-red px-4 py-2 text-sm font-bold text-white" : "rounded-full bg-white px-4 py-2 text-sm font-bold text-avenida-blue ring-1 ring-slate-200"}
+              className={active === c.id ? "rounded-full bg-vif px-4 py-2 text-sm font-bold text-white" : "rounded-full bg-white px-4 py-2 text-sm font-bold text-avenida-blue ring-1 ring-slate-200"}
             >
               {c.first_name} {c.last_name}
             </button>
@@ -117,7 +118,7 @@ function TeacherView() {
   if (selected) {
     return (
       <div className="flex flex-col gap-4">
-        <button type="button" onClick={() => setSelected(null)} className="w-fit text-sm font-bold text-avenida-red hover:underline">
+        <button type="button" onClick={() => setSelected(null)} className="w-fit text-sm font-bold text-vif hover:underline">
           ← Retour à mes classes
         </button>
         <StudentFile studentId={selected} />
@@ -130,7 +131,7 @@ function TeacherView() {
       {classes.map((c) => (
         <section key={`${c.class_name}-${c.subject}`} className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-900/5">
           <h2 className="flex items-center gap-2 font-display text-lg font-bold text-avenida-blue">
-            <GraduationCap aria-hidden className="size-5 text-avenida-red" />
+            <GraduationCap aria-hidden className="size-5 text-vif" />
             {c.class_name}
           </h2>
           {c.subject && <p className="text-sm text-slate-500">{c.subject}</p>}
@@ -139,7 +140,7 @@ function TeacherView() {
               .filter((s) => s.class_name === c.class_name)
               .map((s) => (
                 <li key={s.id}>
-                  <button type="button" onClick={() => setSelected(s.id)} className="flex w-full items-center justify-between py-3 text-left hover:text-avenida-red">
+                  <button type="button" onClick={() => setSelected(s.id)} className="flex w-full items-center justify-between py-3 text-left hover:text-vif">
                     <span className="font-semibold">
                       {s.last_name} {s.first_name}
                     </span>
@@ -158,23 +159,3 @@ function TeacherView() {
   );
 }
 
-/** Candidat : accès à la pré-inscription et au suivi du dossier. */
-function CandidateView() {
-  return (
-    <Link
-      href="/preinscription"
-      className="group flex flex-col gap-4 rounded-3xl bg-[image:linear-gradient(120deg,#072042,#0C356A_60%,#B91C1C)] p-8 text-white shadow-lg sm:flex-row sm:items-center sm:justify-between"
-    >
-      <span className="flex items-center gap-4">
-        <span className="flex size-14 items-center justify-center rounded-2xl bg-white/15">
-          <ClipboardList aria-hidden className="size-7" />
-        </span>
-        <span>
-          <span className="block font-display text-xl font-extrabold">Ma pré-inscription</span>
-          <span className="text-white/80">Remplissez votre dossier, déposez vos pièces et suivez la réponse de l&apos;école.</span>
-        </span>
-      </span>
-      <ArrowRight aria-hidden className="size-6 transition-transform group-hover:translate-x-1" />
-    </Link>
-  );
-}

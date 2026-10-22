@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  ClipboardList,
+  Inbox,
   MessageSquare,
   LayoutDashboard,
   GraduationCap,
@@ -187,6 +189,12 @@ export function Sidebar() {
           ],
         },
         {
+          label: "Demandes du site",
+          href: "/dashboard/demandes",
+          icon: Inbox,
+          allowedRoles: ["directeur_general", "directeur_pedagogique", "responsable_hotel", "personnel"],
+        },
+        {
           label: "Messagerie",
           href: "/dashboard/messages",
           icon: MessageSquare,
@@ -207,6 +215,14 @@ export function Sidebar() {
       icon: GraduationCap,
       allowedRoles: ["directeur_general", "directeur_pedagogique"],
       items: [
+        {
+          label: "Pré-inscriptions en ligne",
+          href: "/dashboard/admissions",
+          icon: ClipboardList,
+          badge: "Site",
+          badgeColor: "bg-red-100 text-red-800 border-red-200",
+          allowedRoles: ["directeur_general", "directeur_pedagogique"],
+        },
         {
           label: "Dossiers des Élèves",
           href: "/dashboard/students",

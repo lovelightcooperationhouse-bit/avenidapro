@@ -19,7 +19,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
       {/* Lien d'évitement : premier élément focusable */}
       <a
         href="#main"
-        className="sr-only z-50 rounded-xl bg-avenida-red px-4 py-3 font-bold text-white focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
+        className="sr-only z-50 rounded-xl bg-vif px-4 py-3 font-bold text-white focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
       >
         Aller au contenu
       </a>

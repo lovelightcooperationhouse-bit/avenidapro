@@ -82,7 +82,7 @@ export function StudentFile({ studentId }: { studentId: string }) {
     <div className="flex flex-col gap-6">
       <section className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-900/5">
         <div className="bg-[image:linear-gradient(120deg,#072042,#0C356A_60%,#B91C1C)] p-6 text-white sm:p-8">
-          <p className="text-xs font-bold tracking-widest text-red-200 uppercase">{student.academic_year ?? "Année en cours"}</p>
+          <p className="text-xs font-bold tracking-widest text-vif-clair uppercase">{student.academic_year ?? "Année en cours"}</p>
           <h2 className="mt-1 font-display text-2xl font-extrabold sm:text-3xl">
             {student.first_name} {student.last_name}
           </h2>
@@ -99,7 +99,7 @@ export function StudentFile({ studentId }: { studentId: string }) {
           ].map((k) => (
             <div key={k.label} className="flex flex-col gap-1 bg-white p-5">
               <dt className="flex items-center gap-1.5 text-xs font-semibold text-slate-500">
-                <k.icon aria-hidden className="size-4 text-avenida-red" />
+                <k.icon aria-hidden className="size-4 text-vif" />
                 {k.label}
               </dt>
               <dd className="font-display text-xl font-extrabold text-avenida-blue">{k.value}</dd>
@@ -156,7 +156,7 @@ export function StudentFile({ studentId }: { studentId: string }) {
                 <p className="font-semibold text-slate-800">{fmtDate(a.start_date)}</p>
                 <p className="text-xs text-slate-500">{a.reason ?? "Motif non précisé"}</p>
               </div>
-              <span className={a.is_justified ? "rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700" : "rounded-full bg-red-50 px-2.5 py-1 text-xs font-bold text-avenida-red"}>
+              <span className={a.is_justified ? "rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700" : "rounded-full bg-red-50 px-2.5 py-1 text-xs font-bold text-vif"}>
                 {a.is_justified ? "Justifiée" : "Non justifiée"}
               </span>
             </li>
@@ -180,7 +180,7 @@ function Card({ title, icon: Icon, empty, children }: { title: string; icon: typ
   return (
     <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-900/5">
       <h3 className="flex items-center gap-2 font-display text-lg font-bold text-avenida-blue">
-        <Icon aria-hidden className="size-5 text-avenida-red" />
+        <Icon aria-hidden className="size-5 text-vif" />
         {title}
       </h3>
       {children.length ? <ul className="mt-2 divide-y divide-slate-100">{children}</ul> : <p className="mt-4 text-sm text-slate-500">{empty}</p>}

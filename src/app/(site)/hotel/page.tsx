@@ -1,85 +1,95 @@
-import { BedDouble, ConciergeBell, Crown, Mail, MessageCircle, Phone, Sparkles, Star, Utensils, Wine } from "lucide-react";
+import { ArrowRight, BedDouble, ConciergeBell, Mail, Phone, Utensils, Wine } from "lucide-react";
 import type { Metadata } from "next";
 import Image from "next/image";
+import { BookingForm } from "@/components/site/BookingForm";
+import { ButtonLink } from "@/components/site/ButtonLink";
 import { PageHeader } from "@/components/site/PageHeader";
 import { Reveal } from "@/components/site/Reveal";
 import { Section } from "@/components/site/Section";
 import { Accent, SectionTitle } from "@/components/site/SectionTitle";
-import { images, siteConfig, whatsappUrl } from "@/content/site";
+import { images, rooms, siteConfig } from "@/content/site";
 
 export const metadata: Metadata = {
   title: "L'Hôtel — chambres et restaurant à Lomé",
-  description: "Séjournez à l'Hôtel École Avenida, à la Cocoteraie (Lomé) : chambres, restaurant et bar tenus par nos équipes et nos élèves.",
+  description: "Séjournez à l'Hôtel École Avenida, à la Cocoteraie (Lomé) : chambres, restaurant et bar tenus par nos équipes et nos élèves. Demande de réservation en ligne.",
 };
 
-/** Catégories de chambres (docs/ARCHITECTURE.md). ⚠️ Descriptions et tarifs à confirmer par la direction. */
-const rooms = [
-  { name: "Chambre Standard", text: "Confortable et fonctionnelle, idéale pour un court séjour à Lomé.", icon: BedDouble },
-  { name: "Chambre Confort", text: "Plus d'espace et d'équipements pour un séjour en toute sérénité.", icon: Star },
-  { name: "Suite Junior", text: "Un espace salon pour se détendre ou travailler.", icon: Sparkles },
-  { name: "Suite Présidentielle", text: "Notre meilleure prestation, pour les séjours d'exception.", icon: Crown },
-];
-
 const services = [
-  { title: "Accueil & réception", text: "Une réception attentive, assurée par nos équipes et nos élèves de la filière hébergement.", icon: ConciergeBell },
-  { title: "Restaurant", text: "Une cuisine préparée par notre brigade, avec nos élèves cuisiniers et pâtissiers.", icon: Utensils },
-  { title: "Bar", text: "Boissons et cocktails servis par nos élèves de la filière restaurant / bar.", icon: Wine },
+  { title: "Accueil & réception", text: "Une réception attentive, assurée par nos équipes et nos élèves de la filière hébergement.", icon: ConciergeBell, image: images.reception },
+  { title: "Restaurant", text: "Une cuisine préparée par notre brigade, avec nos élèves cuisiniers et pâtissiers.", icon: Utensils, image: images.plating },
+  { title: "Bar", text: "Boissons et cocktails servis par nos élèves de la filière restaurant / bar.", icon: Wine, image: images.diningRoom },
 ];
 
 export default function HotelPage() {
-  const bookingText = "Bonjour, je souhaite réserver une chambre à l'Hôtel École Avenida.";
-
   return (
     <>
       <PageHeader
         eyebrow="L'Hôtel"
         title={
           <>
-            Séjourner à l&apos;Hôtel <Accent inverted>Avenida</Accent>
+            L&apos;hospitalité <Accent inverted>Avenida</Accent>
           </>
         }
         description="Un hôtel d'application à la Cocoteraie, à Lomé, où l'exigence de l'école se met au service de chaque client."
-        image={images.building}
+        image={images.waiter}
+        focus="72% 30%"
         breadcrumbs={[{ label: "L'Hôtel" }]}
-      />
+      >
+        <div className="flex flex-wrap gap-3 pt-2">
+          <ButtonLink href="#reserver" size="lg">
+            <BedDouble aria-hidden />
+            Demande de réservation
+          </ButtonLink>
+          <ButtonLink href="#restaurant" variant="glass">
+            Le restaurant
+          </ButtonLink>
+        </div>
+      </PageHeader>
 
       {/* Chambres */}
       <Section id="chambres" aria-labelledby="rooms-title" className="scroll-mt-28">
-        <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
-          <Reveal className="relative">
-            <div className="relative aspect-[4/3] overflow-hidden rounded-3xl shadow-xl">
-              <Image src={images.housekeeping.src} alt={images.housekeeping.alt} fill sizes="(min-width: 1024px) 50vw, 100vw" className="object-cover" />
-            </div>
-            <div className="absolute -right-2 -bottom-6 max-w-[15rem] rounded-2xl bg-white p-5 shadow-xl ring-1 ring-slate-900/5 sm:-right-6">
-              <p className="font-display text-lg font-extrabold text-avenida-red">Tarifs sur demande</p>
-              <p className="text-sm text-slate-600">Contactez la réception pour connaître les disponibilités.</p>
-            </div>
-          </Reveal>
-          <div className="flex flex-col gap-6">
-            <SectionTitle
-              id="rooms-title"
-              eyebrow="Nos chambres"
-              title="Quatre catégories de chambres"
-              description="De la chambre standard à la suite présidentielle, chaque chambre est préparée avec le soin enseigné à nos élèves."
-            />
-            <ul className="grid gap-4 sm:grid-cols-2">
-              {rooms.map((r, i) => (
-                <li key={r.name}>
-                  <Reveal delay={i * 80} className="flex h-full flex-col gap-2 rounded-2xl bg-slate-50 p-5 ring-1 ring-slate-900/5">
-                    <r.icon aria-hidden className="size-6 text-avenida-red" />
-                    <p className="font-display font-bold text-avenida-blue">{r.name}</p>
-                    <p className="text-sm text-slate-600">{r.text}</p>
-                  </Reveal>
-                </li>
-              ))}
-            </ul>
-          </div>
+        <div className="mb-12 flex flex-col items-start justify-between gap-6 md:flex-row md:items-end">
+          <SectionTitle
+            id="rooms-title"
+            eyebrow="Nos chambres"
+            title={
+              <>
+                Quatre catégories de <Accent>chambres</Accent>
+              </>
+            }
+            description="De la chambre standard à la suite présidentielle, chaque chambre est préparée avec le soin enseigné à nos élèves. Tarifs sur demande."
+          />
+          <ButtonLink href="#reserver" className="shrink-0">
+            Vérifier la disponibilité
+            <ArrowRight aria-hidden />
+          </ButtonLink>
         </div>
+        <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {rooms.map((r, i) => (
+            <li key={r.name}>
+              <Reveal delay={i * 90} className="group flex h-full flex-col overflow-hidden rounded-3xl bg-white shadow-lg ring-1 ring-slate-900/5 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl">
+                <div className="relative aspect-[4/3] overflow-hidden">
+                  <Image src={r.image.src} alt={r.image.alt} fill sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw" className="object-cover transition-transform duration-700 group-hover:scale-110" />
+                  <span className="absolute top-4 left-4 rounded-full bg-vif px-3 py-1 text-xs font-bold text-white">0{i + 1}</span>
+                </div>
+                <div className="flex flex-1 flex-col gap-2 p-6">
+                  <h3 className="font-display text-xl font-bold text-avenida-blue-950">{r.name}</h3>
+                  <p className="text-sm leading-relaxed text-slate-600">{r.text}</p>
+                  <a href="#reserver" className="mt-auto inline-flex items-center gap-1 pt-3 text-sm font-bold text-vif">
+                    Demander un tarif
+                    <ArrowRight aria-hidden className="size-4 transition-transform group-hover:translate-x-1" />
+                  </a>
+                </div>
+              </Reveal>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-3 text-right text-xs text-slate-400">Photos d&apos;ambiance · visuels non contractuels</p>
       </Section>
 
       {/* Restaurant & services */}
-      <Section id="restaurant" tone="blue" aria-labelledby="services-title" className="relative scroll-mt-28 overflow-hidden">
-        <div aria-hidden className="pointer-events-none absolute -bottom-32 -left-32 size-96 rounded-full bg-avenida-red/20 blur-3xl" />
+      <Section id="restaurant" tone="night" aria-labelledby="services-title" className="scroll-mt-28 overflow-hidden">
+        <div aria-hidden className="pointer-events-none absolute -bottom-40 -left-40 -z-10 size-[28rem] rounded-full bg-vif/25 blur-3xl" />
         <SectionTitle
           id="services-title"
           eyebrow="Restaurant & services"
@@ -91,65 +101,57 @@ export default function HotelPage() {
           align="center"
           inverted
         />
-        <ul className="relative mt-14 grid gap-6 md:grid-cols-3">
+        <ul className="mt-14 grid gap-6 md:grid-cols-3">
           {services.map((s, i) => (
             <li key={s.title}>
-              <Reveal delay={i * 100} className="flex h-full flex-col gap-4 rounded-3xl border border-white/10 bg-white/5 p-7 backdrop-blur-sm">
-                <span className="flex size-14 items-center justify-center rounded-2xl bg-avenida-red text-white">
-                  <s.icon aria-hidden className="size-7" />
-                </span>
-                <h3 className="font-display text-xl font-bold">{s.title}</h3>
-                <p className="leading-relaxed text-white/80">{s.text}</p>
+              <Reveal delay={i * 100} className="group flex h-full flex-col overflow-hidden rounded-3xl border border-white/10 bg-white/5 backdrop-blur-sm">
+                <div className="relative aspect-[16/10] overflow-hidden">
+                  <Image src={s.image.src} alt={s.image.alt} fill sizes="(min-width: 768px) 33vw, 100vw" className="object-cover transition-transform duration-700 group-hover:scale-110" />
+                </div>
+                <div className="flex flex-col gap-3 p-7">
+                  <span className="-mt-14 flex size-14 items-center justify-center rounded-2xl bg-vif text-white shadow-lg ring-4 ring-nuit">
+                    <s.icon aria-hidden className="size-7" />
+                  </span>
+                  <h3 className="font-display text-xl font-bold">{s.title}</h3>
+                  <p className="leading-relaxed text-white/75">{s.text}</p>
+                </div>
               </Reveal>
             </li>
           ))}
         </ul>
-        <div className="relative mt-12 overflow-hidden rounded-3xl">
-          <div className="relative aspect-[21/9]">
-            <Image src={images.kitchen.src} alt={images.kitchen.alt} fill sizes="100vw" className="object-cover" />
-            <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-avenida-blue-950/80 to-transparent" />
-          </div>
-        </div>
       </Section>
 
       {/* Réserver */}
       <Section id="reserver" aria-labelledby="booking-title" className="scroll-mt-28">
-        <div className="relative overflow-hidden rounded-3xl bg-[image:linear-gradient(130deg,#072042_0%,#0C356A_50%,#B91C1C_100%)] p-8 text-white shadow-xl sm:p-14">
-          <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
-            <div className="flex flex-col gap-4">
-              <p className="text-sm font-bold tracking-widest text-red-200 uppercase">Réservation</p>
-              <h2 id="booking-title" className="font-display text-3xl font-extrabold sm:text-4xl">
-                Réservez directement auprès de la réception
+        <div className="relative overflow-hidden rounded-[2rem] bg-[image:linear-gradient(130deg,#06152E_0%,#0C356A_50%,#E30613_100%)] p-7 text-white shadow-2xl sm:p-12">
+          <div aria-hidden className="bg-avenida-pattern absolute inset-0 opacity-10" />
+          <div className="relative grid gap-10 lg:grid-cols-[1fr_1.3fr] lg:items-start">
+            <div className="flex flex-col gap-5">
+              <p className="text-sm font-extrabold tracking-[0.2em] text-white uppercase">Réservation</p>
+              <h2 id="booking-title" className="font-display text-4xl font-extrabold sm:text-5xl">
+                Votre séjour, <span className="font-elegant italic">à notre façon</span>
               </h2>
               <p className="text-white/85">
-                Indiquez vos dates d&apos;arrivée et de départ, le nombre de personnes et la catégorie de chambre souhaitée : nous vous répondons rapidement.
+                Indiquez vos dates, le nombre de personnes et la chambre souhaitée : la réception vous rappelle pour confirmer la disponibilité et le tarif.
               </p>
+              <ul className="flex flex-col gap-2 text-sm">
+                {siteConfig.phones.map((p) => (
+                  <li key={p.e164}>
+                    <a href={`tel:${p.e164}`} className="inline-flex items-center gap-2 font-bold hover:underline">
+                      <Phone aria-hidden className="size-4" />
+                      {p.display}
+                    </a>
+                  </li>
+                ))}
+                <li>
+                  <a href={`mailto:${siteConfig.email}?subject=${encodeURIComponent("Réservation de chambre")}`} className="inline-flex items-center gap-2 font-bold break-all hover:underline">
+                    <Mail aria-hidden className="size-4 shrink-0" />
+                    {siteConfig.email}
+                  </a>
+                </li>
+              </ul>
             </div>
-            <div className="flex flex-col gap-3">
-              <a
-                href={whatsappUrl(siteConfig.whatsapp, bookingText)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex h-14 items-center justify-center gap-2 rounded-full bg-[#25D366] font-bold text-white transition-colors hover:bg-[#1da851]"
-              >
-                <MessageCircle aria-hidden className="size-5" />
-                Réserver par WhatsApp
-                <span className="sr-only">(nouvel onglet)</span>
-              </a>
-              {siteConfig.phones.map((p) => (
-                <a key={p.e164} href={`tel:${p.e164}`} className="flex h-14 items-center justify-center gap-2 rounded-full bg-white font-bold text-avenida-blue transition-colors hover:bg-avenida-blue-50">
-                  <Phone aria-hidden className="size-5" />
-                  {p.display}
-                </a>
-              ))}
-              <a
-                href={`mailto:${siteConfig.email}?subject=${encodeURIComponent("Réservation de chambre")}`}
-                className="flex h-14 items-center justify-center gap-2 rounded-full bg-white/10 font-bold ring-1 ring-white/25 transition-colors hover:bg-white hover:text-avenida-blue"
-              >
-                <Mail aria-hidden className="size-5" />
-                Réserver par e-mail
-              </a>
-            </div>
+            <BookingForm />
           </div>
         </div>
       </Section>

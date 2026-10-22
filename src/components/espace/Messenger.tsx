@@ -125,7 +125,7 @@ export function Messenger() {
               setComposing(true);
               setActive(null);
             }}
-            className="flex items-center gap-1.5 rounded-full bg-avenida-red px-3 py-1.5 text-xs font-bold text-white hover:bg-avenida-red-700"
+            className="flex items-center gap-1.5 rounded-full bg-vif px-3 py-1.5 text-xs font-bold text-white hover:bg-vif-fonce"
           >
             <MessageSquarePlus aria-hidden className="size-4" />
             Nouveau
@@ -145,9 +145,9 @@ export function Messenger() {
               >
                 <span className="flex items-center justify-between gap-2">
                   <span className="truncate font-bold text-slate-800">{peerName(peer)}</span>
-                  {t.unread > 0 && <span className="rounded-full bg-avenida-red px-2 py-0.5 text-[10px] font-bold text-white">{t.unread}</span>}
+                  {t.unread > 0 && <span className="rounded-full bg-vif px-2 py-0.5 text-[10px] font-bold text-white">{t.unread}</span>}
                 </span>
-                <span className="text-[11px] font-semibold text-avenida-red">{peerRole(peer)}</span>
+                <span className="text-[11px] font-semibold text-vif">{peerRole(peer)}</span>
                 <span className="truncate text-xs text-slate-500">{t.last.body}</span>
               </button>
             </li>
@@ -158,7 +158,7 @@ export function Messenger() {
       {/* Nouveau message : choix du destinataire */}
       {composing && !active && (
         <section className="flex flex-col p-5">
-          <button type="button" onClick={() => setComposing(false)} className="mb-4 flex w-fit items-center gap-1 text-sm font-bold text-avenida-red md:hidden">
+          <button type="button" onClick={() => setComposing(false)} className="mb-4 flex w-fit items-center gap-1 text-sm font-bold text-vif md:hidden">
             <ArrowLeft aria-hidden className="size-4" /> Retour
           </button>
           <h2 className="font-display text-lg font-bold text-avenida-blue">À qui voulez-vous écrire ?</h2>
@@ -174,10 +174,10 @@ export function Messenger() {
                       setActive(c.id);
                       setComposing(false);
                     }}
-                    className="flex w-full flex-col rounded-2xl border border-slate-200 p-4 text-left transition-colors hover:border-avenida-red hover:bg-red-50/40"
+                    className="flex w-full flex-col rounded-2xl border border-slate-200 p-4 text-left transition-colors hover:border-vif hover:bg-red-50/40"
                   >
                     <span className="font-bold text-slate-800">{c.full_name}</span>
-                    <span className="text-xs font-semibold text-avenida-red">{roleConfig(c.role).label}</span>
+                    <span className="text-xs font-semibold text-vif">{roleConfig(c.role).label}</span>
                     <span className="text-xs text-slate-500">{c.context}</span>
                   </button>
                 </li>
@@ -192,11 +192,11 @@ export function Messenger() {
         <section className="flex flex-col">
           <header className="flex items-center gap-3 border-b border-slate-100 p-4">
             <button type="button" onClick={() => setActive(null)} aria-label="Retour aux conversations" className="md:hidden">
-              <ArrowLeft aria-hidden className="size-5 text-avenida-red" />
+              <ArrowLeft aria-hidden className="size-5 text-vif" />
             </button>
             <div>
               <p className="font-bold text-avenida-blue">{peerName(active)}</p>
-              <p className="text-xs font-semibold text-avenida-red">{peerRole(active)}</p>
+              <p className="text-xs font-semibold text-vif">{peerRole(active)}</p>
             </div>
           </header>
           <div className="flex max-h-[28rem] flex-1 flex-col gap-3 overflow-y-auto bg-slate-50 p-4">
@@ -234,11 +234,11 @@ export function Messenger() {
               placeholder="Écrire un message…"
               className="flex-1 resize-none rounded-2xl border border-slate-200 px-4 py-2.5 text-sm outline-none focus:border-avenida-blue focus:ring-2 focus:ring-avenida-blue/15"
             />
-            <button type="submit" aria-label="Envoyer" disabled={!draft.trim()} className="flex size-11 items-center justify-center rounded-full bg-avenida-red text-white hover:bg-avenida-red-700 disabled:opacity-40">
+            <button type="submit" aria-label="Envoyer" disabled={!draft.trim()} className="flex size-11 items-center justify-center rounded-full bg-vif text-white hover:bg-vif-fonce disabled:opacity-40">
               <Send aria-hidden className="size-4" />
             </button>
           </form>
-          {error && <p role="alert" className="px-4 pb-3 text-xs font-semibold text-avenida-red">{error}</p>}
+          {error && <p role="alert" className="px-4 pb-3 text-xs font-semibold text-vif">{error}</p>}
         </section>
       )}
 

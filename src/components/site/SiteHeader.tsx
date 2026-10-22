@@ -1,6 +1,6 @@
 "use client";
 
-import { GraduationCap, LayoutDashboard } from "lucide-react";
+import { ClipboardList, UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { ButtonLink } from "./ButtonLink";
@@ -28,7 +28,7 @@ export function SiteHeader() {
     <header
       className={cn(
         "sticky top-0 z-40 border-b transition-[background-color,box-shadow,border-color] duration-300",
-        scrolled ? "border-slate-200 bg-white shadow-[0_8px_24px_-12px_rgb(12_53_106/0.25)]" : "border-transparent bg-white/85 backdrop-blur-md"
+        scrolled ? "border-slate-200 bg-white shadow-[0_10px_30px_-15px_rgb(6_21_46/0.35)]" : "border-transparent bg-white/90 backdrop-blur-md"
       )}
     >
       <Container className="flex h-[4.5rem] items-center justify-between gap-3 lg:h-20 xl:h-[5.5rem]">
@@ -37,19 +37,13 @@ export function SiteHeader() {
         <DesktopNav />
 
         <div className="flex shrink-0 items-center gap-2">
-          <ButtonLink
-            href="/connexion"
-            variant="outline"
-            size="md"
-            title="Espace de gestion (personnel)"
-            className="hidden md:inline-flex lg:px-3 2xl:px-4"
-          >
-            <LayoutDashboard aria-hidden />
-            <span className="lg:sr-only 2xl:not-sr-only">Espace de gestion</span>
+          <ButtonLink href="/connexion" variant="outline" size="md" title="Mon espace (élèves, parents, professeurs, personnel)" className="hidden md:inline-flex lg:px-3 2xl:px-4">
+            <UserRound aria-hidden />
+            <span className="lg:sr-only 2xl:not-sr-only">Mon espace</span>
           </ButtonLink>
-          <ButtonLink href="/admissions" size="md" className="hidden sm:inline-flex xl:h-11 xl:px-5">
-            <GraduationCap aria-hidden />
-            S&apos;inscrire
+          <ButtonLink href="/preinscription" size="md" className="hidden sm:inline-flex xl:h-11 xl:px-5">
+            <ClipboardList aria-hidden />
+            Pré-inscription
           </ButtonLink>
           <MobileNav />
         </div>

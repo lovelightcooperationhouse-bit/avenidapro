@@ -51,7 +51,7 @@ export function MobileNav() {
             className="site-slide-in absolute inset-y-0 right-0 flex w-[min(22rem,90vw)] flex-col overflow-y-auto bg-white shadow-2xl"
           >
             <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-              <span className="font-serif text-lg font-extrabold tracking-wider text-avenida-red">AVENIDA</span>
+              <span className="font-serif text-lg font-extrabold tracking-wider text-vif">AVENIDA</span>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
@@ -74,7 +74,7 @@ export function MobileNav() {
                           href={item.href}
                           className={cn(
                             "flex-1 rounded-xl px-3 py-3 font-display text-base font-bold",
-                            active ? "bg-avenida-blue-50 text-avenida-red" : "text-avenida-blue hover:bg-slate-50"
+                            active ? "bg-avenida-blue-50 text-vif" : "text-avenida-blue hover:bg-slate-50"
                           )}
                         >
                           {item.label}
@@ -92,11 +92,11 @@ export function MobileNav() {
                         )}
                       </div>
                       {item.children && isExpanded && (
-                        <ul className="mt-1 mb-2 ml-3 flex flex-col gap-0.5 border-l-2 border-avenida-red/30 pl-3">
+                        <ul className="mt-1 mb-2 ml-3 flex flex-col gap-0.5 border-l-2 border-vif/30 pl-3">
                           {item.children.map((child) => (
                             <li key={child.href}>
-                              <Link href={child.href} onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-lg px-2 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-avenida-red">
-                                <child.icon aria-hidden className="size-4 text-avenida-red" />
+                              <Link href={child.href} onClick={() => setOpen(false)} className="flex items-center gap-3 rounded-lg px-2 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:text-vif">
+                                <child.icon aria-hidden className="size-4 text-vif" />
                                 {child.label}
                               </Link>
                             </li>
@@ -110,19 +110,19 @@ export function MobileNav() {
             </nav>
 
             <div className="flex flex-col gap-3 border-t border-slate-100 p-5">
-              <Link href="/admissions" className="flex h-12 items-center justify-center rounded-full bg-avenida-red font-bold text-white">
-                S&apos;inscrire
+              <Link href="/preinscription" className="flex h-12 items-center justify-center rounded-full bg-vif font-bold text-white">
+                Pré-inscription en ligne
               </Link>
               <Link href="/connexion" className="flex h-12 items-center justify-center gap-2 rounded-full border-2 border-avenida-blue/15 font-bold text-avenida-blue">
                 <LayoutDashboard aria-hidden className="size-4" />
-                Espace de gestion
+                Mon espace
               </Link>
               <a href={`tel:${siteConfig.phones[0].e164}`} className="flex items-center gap-2 text-sm text-slate-600">
-                <Phone aria-hidden className="size-4 text-avenida-red" />
+                <Phone aria-hidden className="size-4 text-vif" />
                 {siteConfig.phones[0].display}
               </a>
               <a href={`mailto:${siteConfig.email}`} className="flex items-center gap-2 text-sm break-all text-slate-600">
-                <Mail aria-hidden className="size-4 shrink-0 text-avenida-red" />
+                <Mail aria-hidden className="size-4 shrink-0 text-vif" />
                 {siteConfig.email}
               </a>
             </div>

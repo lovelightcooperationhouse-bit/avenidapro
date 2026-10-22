@@ -47,6 +47,17 @@ const config: Config = {
           },
           white: "#FFFFFF",
         },
+        // Site public : rouge vif franc (texte et accents) et or des étoles de remise des diplômes
+        vif: {
+          DEFAULT: "#E30613",
+          fonce: "#B8000F",
+          clair: "#FF3B47",
+        },
+        or: {
+          DEFAULT: "#F2B705",
+          clair: "#FFD54A",
+        },
+        nuit: "#06152E",
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -72,6 +83,7 @@ const config: Config = {
           "Georgia",
           "serif",
         ],
+        elegant: ["'Playfair Display'", "Georgia", "serif"],
         display: [
           "var(--font-display)",
           "'Outfit'",

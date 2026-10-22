@@ -1,52 +1,55 @@
 import { Clock, Mail, MapPin, Navigation, Phone } from "lucide-react";
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { ContactForm } from "@/components/site/ContactForm";
 import { PageHeader } from "@/components/site/PageHeader";
 import { Reveal } from "@/components/site/Reveal";
 import { Section } from "@/components/site/Section";
+import { Accent } from "@/components/site/SectionTitle";
+import { SocialLinks } from "@/components/site/SocialLinks";
 import { images, siteConfig } from "@/content/site";
 
 export const metadata: Metadata = {
   title: "Contact",
-  description: "Contactez l'Hôtel École Avenida : 30, rue d'Almeida Léopold, Cocoteraie, Lomé. Téléphone, e-mail, WhatsApp et plan d'accès.",
+  description: "Contactez l'Hôtel École Avenida : 30, rue d'Almeida Léopold, Cocoteraie, Lomé. Téléphone, e-mail, WhatsApp, formulaire et plan d'accès.",
 };
 
 export default function ContactPage() {
   const { address } = siteConfig;
   const cards = [
-    {
-      icon: MapPin,
-      title: "Adresse",
-      lines: [address.street, address.district, `${address.postal} ${address.city} – ${address.country}`],
-    },
+    { icon: MapPin, title: "Adresse", lines: [address.street, address.district, `${address.postal} ${address.city} – ${address.country}`] },
     { icon: Phone, title: "Téléphone", lines: siteConfig.phones.map((p) => p.display), links: siteConfig.phones.map((p) => `tel:${p.e164}`) },
     { icon: Mail, title: "E-mail", lines: [siteConfig.email], links: [`mailto:${siteConfig.email}`] },
-    { icon: Clock, title: "Horaires du bureau", lines: ["Du lundi au vendredi", "de 9 h à 14 h"] },
+    { icon: Clock, title: "Bureau", lines: ["Du lundi au vendredi", "de 9 h à 14 h"] },
   ];
 
   return (
     <>
       <PageHeader
         eyebrow="Contact"
-        title="Parlons de votre projet"
-        description="Inscription, réservation ou simple question : notre équipe vous répond."
-        image={images.building}
+        title={
+          <>
+            Parlons de votre <Accent inverted>projet</Accent>
+          </>
+        }
+        description="Inscription, réservation, restaurant, partenariat ou simple question : notre équipe vous répond."
+        image={images.service}
         breadcrumbs={[{ label: "Contact" }]}
       />
 
-      <Section aria-label="Nos coordonnées">
-        <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      <Section tone="muted" aria-label="Nos coordonnées">
+        <ul className="-mt-28 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {cards.map((c, i) => (
             <li key={c.title}>
-              <Reveal delay={i * 80} className="flex h-full flex-col gap-3 rounded-2xl bg-white p-6 shadow-lg ring-1 ring-slate-900/5">
-                <span className="flex size-12 items-center justify-center rounded-xl bg-avenida-red text-white">
+              <Reveal delay={i * 80} className="flex h-full flex-col gap-3 rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-900/5">
+                <span className="flex size-12 items-center justify-center rounded-2xl bg-vif text-white shadow-lg shadow-vif/30">
                   <c.icon aria-hidden className="size-6" />
                 </span>
-                <h2 className="font-display text-lg font-bold text-avenida-blue">{c.title}</h2>
+                <h2 className="font-display text-lg font-bold text-avenida-blue-950">{c.title}</h2>
                 <p className="flex flex-col text-sm text-slate-600">
                   {c.lines.map((l, j) =>
                     c.links?.[j] ? (
-                      <a key={l} href={c.links[j]} className="break-all hover:text-avenida-red">
+                      <a key={l} href={c.links[j]} className="break-all hover:text-vif">
                         {l}
                       </a>
                     ) : (
@@ -60,21 +63,17 @@ export default function ContactPage() {
         </ul>
 
         <div className="mt-14 grid gap-8 lg:grid-cols-5">
-          <Reveal className="rounded-3xl bg-white p-6 shadow-lg ring-1 ring-slate-900/5 sm:p-10 lg:col-span-3">
-            <h2 className="font-display text-2xl font-extrabold text-avenida-blue sm:text-3xl">Écrivez-nous</h2>
-            <p className="mt-2 mb-8 text-slate-600">Votre message s&apos;ouvre dans WhatsApp ou dans votre messagerie, prêt à être envoyé.</p>
-            <ContactForm />
+          <Reveal className="rounded-[2rem] bg-white p-6 shadow-xl ring-1 ring-slate-900/5 sm:p-10 lg:col-span-3">
+            <h2 className="font-display text-3xl font-extrabold text-avenida-blue-950">Écrivez-nous</h2>
+            <p className="mt-2 mb-8 text-slate-600">Choisissez le sujet : nous vous indiquons les informations utiles pour traiter votre demande rapidement.</p>
+            <Suspense fallback={<div className="h-80 animate-pulse rounded-2xl bg-slate-50" />}>
+              <ContactForm />
+            </Suspense>
           </Reveal>
 
           <Reveal delay={120} className="flex flex-col gap-4 lg:col-span-2">
-            <div className="min-h-80 flex-1 overflow-hidden rounded-3xl shadow-lg ring-1 ring-slate-900/5">
-              <iframe
-                title="Plan d'accès à l'Hôtel École Avenida"
-                src={siteConfig.mapsEmbedUrl}
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                className="size-full min-h-80"
-              />
+            <div className="min-h-80 flex-1 overflow-hidden rounded-[2rem] shadow-xl ring-1 ring-slate-900/5">
+              <iframe title="Plan d'accès à l'Hôtel École Avenida" src={siteConfig.mapsEmbedUrl} loading="lazy" referrerPolicy="no-referrer-when-downgrade" className="size-full min-h-80" />
             </div>
             <a
               href={siteConfig.mapsUrl}
@@ -86,17 +85,19 @@ export default function ContactPage() {
               Ouvrir l&apos;itinéraire
               <span className="sr-only">(nouvel onglet)</span>
             </a>
-            <div className="rounded-3xl bg-avenida-blue-950 p-6 text-white">
-              <p className="font-display font-bold">Inscriptions</p>
+            <div className="rounded-[2rem] bg-nuit p-6 text-white">
+              <p className="font-display font-bold">Service des inscriptions</p>
               <ul className="mt-3 grid grid-cols-2 gap-2 text-sm">
                 {siteConfig.admissionsPhones.map((p) => (
                   <li key={p.e164}>
-                    <a href={`tel:${p.e164}`} className="text-white/80 hover:text-red-300">
+                    <a href={`tel:${p.e164}`} className="text-white/80 hover:text-white">
                       {p.display}
                     </a>
                   </li>
                 ))}
               </ul>
+              <p className="mt-5 font-display font-bold">Suivez-nous</p>
+              <SocialLinks className="mt-3" itemClassName="bg-white/10 text-white hover:bg-vif" />
             </div>
           </Reveal>
         </div>

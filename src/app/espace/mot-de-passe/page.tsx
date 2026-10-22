@@ -33,7 +33,7 @@ export default function PasswordPage() {
 
   return (
     <form onSubmit={submit} className="mx-auto flex max-w-md flex-col gap-4 rounded-3xl bg-white p-8 shadow-sm ring-1 ring-slate-900/5">
-      <KeyRound aria-hidden className="size-10 text-avenida-red" />
+      <KeyRound aria-hidden className="size-10 text-vif" />
       <h1 className="font-display text-2xl font-extrabold text-avenida-blue">Choisir un nouveau mot de passe</h1>
       <label className="flex flex-col gap-1.5 text-sm font-bold text-avenida-blue">
         Nouveau mot de passe
@@ -44,12 +44,12 @@ export default function PasswordPage() {
         <input type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} className={field} />
       </label>
       {message && (
-        <p role="status" className={message.ok ? "flex items-center gap-2 rounded-xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-800" : "rounded-xl bg-red-50 p-3 text-sm font-semibold text-avenida-red"}>
+        <p role="status" className={message.ok ? "flex items-center gap-2 rounded-xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-800" : "rounded-xl bg-red-50 p-3 text-sm font-semibold text-vif"}>
           {message.ok && <CheckCircle2 aria-hidden className="size-4" />}
           {message.text}
         </p>
       )}
-      <button type="submit" disabled={busy} className="h-12 rounded-full bg-avenida-red font-bold text-white hover:bg-avenida-red-700 disabled:opacity-60">
+      <button type="submit" disabled={busy} className="h-12 rounded-full bg-vif font-bold text-white hover:bg-vif-fonce disabled:opacity-60">
         {busy ? "Enregistrement…" : "Enregistrer"}
       </button>
     </form>

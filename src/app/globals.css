@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800;900&family=Outfit:wght@500;600;700;800;900&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600;1,700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800;900&family=Outfit:wght@500;600;700;800;900&family=Playfair+Display:ital,wght@1,600;1,700;1,800&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600;1,700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -349,3 +349,51 @@ textarea.form-input-avenida {
   .site-reveal { transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1); }
   .site-reveal[data-reveal="hidden"] { opacity: 0; transform: translateY(24px); }
 }
+
+/* ─────────────────────────────────────────────────────────────
+   Site public — charte « Avenida vif »
+   ───────────────────────────────────────────────────────────── */
+
+/* Motif losange du tissu Avenida (uniformes, toques, toges) : à poser sur fond bleu nuit */
+@layer utilities {
+  .bg-avenida-pattern {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72'%3E%3Cg fill='none'%3E%3Cpath d='M36 2 70 36 36 70 2 36Z' stroke='%23E30613' stroke-width='3'/%3E%3Cpath d='M36 9 63 36 36 63 9 36Z' stroke='%23ffffff' stroke-opacity='.55' stroke-width='1.2'/%3E%3Cpath d='M36 26l3 7 7 3-7 3-3 7-3-7-7-3 7-3z' fill='%23ffffff' fill-opacity='.7'/%3E%3C/g%3E%3C/svg%3E");
+    background-size: 72px 72px;
+  }
+}
+
+@keyframes site-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+@keyframes site-zoom-pan {
+  0% { transform: scale(1.18) translate3d(-2%, 1%, 0); }
+  100% { transform: scale(1.02) translate3d(1%, -1%, 0); }
+}
+@keyframes site-shine {
+  from { transform: translateX(-120%) skewX(-20deg); }
+  to { transform: translateX(220%) skewX(-20deg); }
+}
+@keyframes site-pulse-dot {
+  0% { box-shadow: 0 0 0 0 rgb(227 6 19 / 0.6); }
+  100% { box-shadow: 0 0 0 12px rgb(227 6 19 / 0); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .site-float { animation: site-float 6s ease-in-out infinite; }
+  .site-float-delay { animation: site-float 7s ease-in-out 1.2s infinite; }
+  .site-zoom-pan { animation: site-zoom-pan 8s ease-out both; }
+  .site-pulse-dot { animation: site-pulse-dot 1.8s ease-out infinite; }
+  .site-shine::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    width: 40%;
+    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.35), transparent);
+    animation: site-shine 3.5s ease-in-out 1s infinite;
+  }
+}
+
+/* Accordéon FAQ (<details>) */
+.site-faq summary::-webkit-details-marker { display: none; }
+.site-faq[open] .site-faq-icon { transform: rotate(45deg); }

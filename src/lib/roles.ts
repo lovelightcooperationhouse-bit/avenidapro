@@ -54,7 +54,7 @@ export const ROLE_CONFIG: Record<RoleType, RoleConfig> = {
     department: "Direction des Études",
     avatarColor: "from-[#0C356A] to-[#1E4D82]",
     home: "/dashboard",
-    allowedPaths: ["/dashboard", "/dashboard/admissions", "/dashboard/students", "/dashboard/programs", "/dashboard/attendance", "/dashboard/grades", "/dashboard/payments", "/dashboard/messages"],
+    allowedPaths: ["/dashboard", "/dashboard/admissions", "/dashboard/students", "/dashboard/programs", "/dashboard/attendance", "/dashboard/grades", "/dashboard/payments", "/dashboard/demandes", "/dashboard/messages"],
   },
   comptable: {
     label: "Comptabilité",
@@ -78,7 +78,7 @@ export const ROLE_CONFIG: Record<RoleType, RoleConfig> = {
     department: "Hébergement & Réception",
     avatarColor: "from-rose-600 to-red-800",
     home: "/dashboard",
-    allowedPaths: ["/dashboard", "/dashboard/hotel", "/dashboard/reservations", "/dashboard/customers", "/dashboard/messages"],
+    allowedPaths: ["/dashboard", "/dashboard/hotel", "/dashboard/reservations", "/dashboard/customers", "/dashboard/demandes", "/dashboard/messages"],
   },
   personnel: {
     label: "Personnel",
@@ -86,7 +86,7 @@ export const ROLE_CONFIG: Record<RoleType, RoleConfig> = {
     department: "Personnel Avenida",
     avatarColor: "from-slate-600 to-slate-800",
     home: "/dashboard",
-    allowedPaths: ["/dashboard", "/dashboard/hotel", "/dashboard/reservations", "/dashboard/inventory", "/dashboard/messages"],
+    allowedPaths: ["/dashboard", "/dashboard/hotel", "/dashboard/reservations", "/dashboard/inventory", "/dashboard/demandes", "/dashboard/messages"],
   },
   professeur: {
     label: "Professeur",
