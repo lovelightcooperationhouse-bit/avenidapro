@@ -1,6 +1,6 @@
 "use client";
 
-import { BedDouble, Bell, ClipboardCheck, FileText, GraduationCap, Home, IdCard, KeyRound, LayoutDashboard, LogOut, MessageSquare, UserRound } from "lucide-react";
+import { BedDouble, Bell, ClipboardCheck, FileText, FolderOpen, Megaphone, GraduationCap, Home, IdCard, KeyRound, LayoutDashboard, LogOut, MessageSquare, UserRound } from "lucide-react";
 import { NotificationBell } from "@/components/espace/NotificationBell";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -8,6 +8,9 @@ import { useEffect } from "react";
 import { SiteLogo } from "@/components/site/SiteLogo";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
+
+/** Pages accessibles avant la validation du dossier. */
+const OPEN_TO_NEW = ["/espace/profil", "/espace/mot-de-passe", "/espace/notifications", "/espace/messages", "/espace/documents"];
 
 /** Gabarit de l'espace personnel (élève, parent, professeur, candidat). */
 export default function EspaceLayout({ children }: { children: React.ReactNode }) {
@@ -17,6 +20,8 @@ export default function EspaceLayout({ children }: { children: React.ReactNode }
 
   useEffect(() => {
     if (!isLoading && !user && pathname !== "/espace/mot-de-passe") router.replace("/connexion");
+    // Nouveau membre : il complète d'abord son profil (statut, photo, informations, pièces)
+    if (!isLoading && user?.role === "candidat" && !OPEN_TO_NEW.some((p) => pathname.startsWith(p))) router.replace("/espace/profil");
   }, [isLoading, user, pathname, router]);
 
   if (isLoading || (!user && pathname !== "/espace/mot-de-passe")) {
@@ -30,15 +35,17 @@ export default function EspaceLayout({ children }: { children: React.ReactNode }
   // Rubriques selon le rôle : École pour élèves et enseignants, Hôtel pour le personnel, correspondance et carte pour les familles
   const role = user?.role;
   const nav = [
-    { href: "/espace", label: "Mon espace", icon: Home, show: true },
+    { href: "/espace", label: "Mon espace", icon: Home, show: role !== "candidat" },
     { href: "/espace/ecole", label: "Espace École", icon: GraduationCap, show: ["eleve", "professeur", "directeur_pedagogique", "directeur_general"].includes(role ?? "") },
     { href: "/espace/hotel", label: "Espace Hôtel", icon: BedDouble, show: ["personnel", "responsable_hotel", "directeur_general"].includes(role ?? "") },
     { href: "/espace/correspondance", label: "Correspondance", icon: ClipboardCheck, show: ["eleve", "parent", "professeur"].includes(role ?? "") },
     { href: "/espace/fiche", label: "Fiche d'inscription", icon: FileText, show: ["eleve", "parent"].includes(role ?? "") },
-    { href: "/espace/carte", label: role === "eleve" || role === "parent" ? "Carte scolaire" : "Carte de travail", icon: IdCard, show: role !== "candidat" },
+    { href: "/espace/carte", label: role === "eleve" || role === "parent" ? "Carte scolaire" : "Carte de travail", icon: IdCard, show: role !== "candidat" && role !== "client" },
+    { href: "/espace/documents", label: "Mes documents", icon: FolderOpen, show: true },
+    { href: "/espace/annonces", label: "Annonces", icon: Megaphone, show: role !== "candidat" },
     { href: "/espace/notifications", label: "Notifications", icon: Bell, show: true },
     { href: "/espace/messages", label: "Messages", icon: MessageSquare, show: true },
-    { href: "/espace/profil", label: "Mon profil", icon: UserRound, show: true },
+    { href: "/espace/profil", label: role === "candidat" ? "Compléter mon profil" : "Mon profil", icon: UserRound, show: true },
     { href: "/espace/mot-de-passe", label: "Mot de passe", icon: KeyRound, show: true },
   ].filter((n) => n.show);
 

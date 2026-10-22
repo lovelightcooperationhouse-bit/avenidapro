@@ -1,5 +1,8 @@
-import { siteConfig, type SocialNetwork } from "@/content/site";
+"use client";
+
+import type { SocialNetwork } from "@/content/site";
 import { cn } from "@/lib/utils";
+import { useSocials } from "./SiteContent";
 
 /** Logos des réseaux (lucide-react ne fournit pas les logos de marques). */
 const icons: Record<SocialNetwork, { label: string; path: string }> = {
@@ -31,13 +34,14 @@ const icons: Record<SocialNetwork, { label: string; path: string }> = {
 
 /** Icônes des réseaux sociaux renseignés dans siteConfig.socials (les autres sont masqués). */
 export function SocialLinks({ className, itemClassName, size = "md" }: { className?: string; itemClassName?: string; size?: "sm" | "md" }) {
-  const entries = (Object.keys(icons) as SocialNetwork[]).filter((k) => siteConfig.socials[k]);
+  const socials = useSocials();
+  const entries = (Object.keys(icons) as SocialNetwork[]).filter((k) => socials[k]);
   return (
     <ul className={cn("flex flex-wrap items-center gap-2", className)}>
       {entries.map((k) => (
         <li key={k}>
           <a
-            href={siteConfig.socials[k]}
+            href={socials[k]}
             target="_blank"
             rel="noopener noreferrer"
             aria-label={`${icons[k].label} de l'Hôtel École Avenida (nouvel onglet)`}

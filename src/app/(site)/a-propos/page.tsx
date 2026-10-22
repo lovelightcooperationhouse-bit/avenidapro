@@ -8,13 +8,16 @@ import { Reveal } from "@/components/site/Reveal";
 import { Section } from "@/components/site/Section";
 import { Accent, SectionTitle } from "@/components/site/SectionTitle";
 import { aboutValues, images, marqueeWords, siteConfig, studyOptions } from "@/content/site";
+import { CmsSections } from "@/components/site/CmsBlocks";
 
 export const metadata: Metadata = {
   title: "À propos",
   description: "L'Hôtel École Avenida, centre de formation aux métiers de l'hôtellerie, de la restauration et du tourisme à Lomé. Travail – Discipline – Excellence.",
 };
 
-export default function AboutPage() {
+export const revalidate = 60;
+
+export default async function AboutPage() {
   return (
     <>
       <PageHeader
@@ -132,6 +135,7 @@ export default function AboutPage() {
           </div>
         </div>
       </Section>
+      <CmsSections page="a-propos" />
     </>
   );
 }

@@ -9,13 +9,16 @@ import { Reveal } from "@/components/site/Reveal";
 import { Section } from "@/components/site/Section";
 import { Accent, SectionTitle } from "@/components/site/SectionTitle";
 import { careers, formatCFA, formations, images, pillars, schedules, specialties, studyOptions } from "@/content/site";
+import { CmsSections } from "@/components/site/CmsBlocks";
 
 export const metadata: Metadata = {
   title: "L'École — formations CFA, CAP, BEP, BT, BTS",
   description: "Formations aux métiers de l'hôtellerie, de la restauration et du tourisme à Lomé : CFA, CAP, BEP, BT et BTS. Cours du jour et du soir, internat.",
 };
 
-export default function SchoolPage() {
+export const revalidate = 60;
+
+export default async function SchoolPage() {
   return (
     <>
       <PageHeader
@@ -222,6 +225,7 @@ export default function SchoolPage() {
           </div>
         </div>
       </Section>
+      <CmsSections page="ecole" />
     </>
   );
 }

@@ -1,440 +1,398 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import {
-  ShieldCheck,
-  UserCheck,
-  Key,
-  Lock,
-  PlusCircle,
-  Search,
-  Filter,
-  CheckCircle2,
-  X,
-  Mail,
-  User,
-  Building,
-} from "lucide-react";
-import { UserRole } from "@/types";
+import { CheckCircle2, Copy, KeyRound, Loader2, PlusCircle, Search, ShieldCheck, UserCog, Users, XCircle } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useAuth } from "@/context/AuthContext";
+import type { Position } from "@/lib/onboarding";
+import { ROLE_CONFIG, STAFF_ROLES, type RoleType } from "@/lib/roles";
 import { createClient } from "@/lib/supabase/client";
+import { cn } from "@/lib/utils";
 
-interface SystemUser {
+type Profile = {
   id: string;
-  name: string;
-  email: string;
-  username: string;
-  role: UserRole;
-  role_label: string;
-  scope: "Global" | "École" | "Hôtel" | "Finance";
+  email: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+  role: RoleType;
+  is_active: boolean | null;
+  student_id: string | null;
+  employee_id: string | null;
+  avatar_url: string | null;
   created_at: string;
-  last_login: string;
-  status: "actif" | "suspendu";
-}
+};
 
-const INITIAL_USERS: SystemUser[] = [
-  {
-    id: "usr-01",
-    name: "M. Hope d'Almeida",
-    email: "direction@ecole-avenida.tg",
-    username: "directeur",
-    role: "super_admin",
-    role_label: "Super Administrateur",
-    scope: "Global",
-    created_at: "2024-01-01",
-    last_login: "Aujourd'hui à 09:42",
-    status: "actif",
-  },
-  {
-    id: "usr-02",
-    name: "Directeur des Études & Pédagogie",
-    email: "pedagogie@avenida-lome.tg",
-    username: "dir_etudes",
-    role: "responsable_pedagogique",
-    role_label: "Responsable Pédagogique",
-    scope: "École",
-    created_at: "2024-02-15",
-    last_login: "Aujourd'hui à 08:15",
-    status: "actif",
-  },
-  {
-    id: "usr-03",
-    name: "Comptable & Responsable Caisse Lomé",
-    email: "caisse@avenida-lome.tg",
-    username: "comptable_caisse",
-    role: "comptable",
-    role_label: "Comptable Caisse",
-    scope: "Finance",
-    created_at: "2024-03-01",
-    last_login: "Hier à 17:30",
-    status: "actif",
-  },
-  {
-    id: "usr-04",
-    name: "Responsable Front Office & Hôtel",
-    email: "hotel@avenida-lome.tg",
-    username: "manager_hotel",
-    role: "responsable_hotel",
-    role_label: "Responsable Hôtel",
-    scope: "Hôtel",
-    created_at: "2024-04-10",
-    last_login: "Hier à 14:20",
-    status: "actif",
-  },
-];
+const ROLES = Object.keys(ROLE_CONFIG) as RoleType[];
+const input = "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm";
+
+/** Ce que chaque rôle gère et qui instruit ses dossiers : affiché au DG pour attribuer les bons rôles. */
+const ROLE_SCOPE: Record<RoleType, string> = {
+  directeur_general: "Tout le système : attribue les rôles, valide les dossiers, contenu du site, pilotage et rapports, alertes à tout l'établissement.",
+  directeur_pedagogique: "École : admissions, élèves, classes, notes, correspondance et permissions, cartes scolaires, Espace École ; avis sur les dossiers élèves, parents, professeurs.",
+  comptable: "Finances : paiements, caisse, dépenses, salaires, économat, rapports financiers ; consulte les dossiers élèves et clients.",
+  ressources_humaines: "Personnel : dossiers RH, contrats, salaires, cartes de travail ; avis sur les dossiers du personnel, des professeurs et de la direction.",
+  responsable_hotel: "Hôtel : réservations, chambres, clients, économat, Espace Hôtel ; avis sur le personnel de l'hôtel et les clients.",
+  personnel: "Opérations de son service (réception, restaurant, cuisine, étages…) et Espace Hôtel ; pas d'accès aux décisions.",
+  professeur: "Ses classes : Espace École (cours, devoirs, direct), appel et correspondance, notes de ses élèves.",
+  eleve: "Son dossier : cours de sa filière, devoirs, notes, paiements, correspondance, carte scolaire, documents.",
+  parent: "Ses enfants : suivi scolaire, paiements, présences, demandes de permission, cartes, documents.",
+  client: "Ses séjours et demandes de réservation, ses documents.",
+  candidat: "Nouveau membre : complète son profil ; aucun accès tant que le DG n'a pas attribué de rôle.",
+};
 
 export default function UsersPage() {
-  const [users, setUsers] = useState<SystemUser[]>(INITIAL_USERS);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const { user } = useAuth();
+  const [tab, setTab] = useState<"comptes" | "creer" | "roles" | "postes">("comptes");
+  const [profiles, setProfiles] = useState<Profile[] | null>(null);
+  const [positions, setPositions] = useState<Position[]>([]);
+  const [q, setQ] = useState("");
+  const [roleFilter, setRoleFilter] = useState("");
+  const [edits, setEdits] = useState<Record<string, { role: RoleType; active: boolean }>>({});
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
-  const [newUser, setNewUser] = useState({
-    name: "",
-    email: "",
-    username: "",
-    role: "administration" as UserRole,
-    role_label: "Gestionnaire Scolarité",
-    scope: "École" as "Global" | "École" | "Hôtel" | "Finance",
-  });
-
-  useEffect(() => {
-    async function loadInvitations() {
-      try {
-        const supabase = createClient();
-        const { data, error } = await supabase.from("user_invitations").select("*");
-        if (data && data.length > 0) {
-          const mapped: SystemUser[] = data.map((inv: any) => ({
-            id: inv.id,
-            name: `${inv.first_name || ''} ${inv.last_name || ''}`.trim() || inv.email,
-            email: inv.email,
-            username: inv.email.split("@")[0],
-            role: (inv.role_code as UserRole) || "professeur",
-            role_label: inv.role_code === "professeur" ? "Professeur" : inv.role_code === "eleve" ? "Élève" : "Opérateur",
-            scope: inv.role_code === "professeur" || inv.role_code === "eleve" ? "École" : inv.role_code === "responsable_hotel" ? "Hôtel" : "Global",
-            created_at: inv.created_at ? inv.created_at.split("T")[0] : "2024-01-01",
-            last_login: inv.status === "accepted" ? "Compte actif" : "En attente d'activation par l'utilisateur",
-            status: "actif",
-          }));
-          setUsers((prev) => {
-            const existingEmails = new Set(prev.map((u) => u.email));
-            const newOnes = mapped.filter((m) => !existingEmails.has(m.email));
-            return [...newOnes, ...prev];
-          });
-        }
-      } catch (e) {
-        console.error("Erreur de chargement des invitations:", e);
-      }
-    }
-    loadInvitations();
+  const load = useCallback(async () => {
+    const supabase = createClient();
+    const [{ data }, { data: p }] = await Promise.all([
+      supabase.from("profiles").select("id, email, first_name, last_name, phone, role, is_active, student_id, employee_id, avatar_url, created_at").order("created_at", { ascending: false }),
+      supabase.from("positions").select("*").order("sort"),
+    ]);
+    setProfiles((data ?? []) as Profile[]);
+    setPositions((p ?? []) as Position[]);
+    setEdits({});
   }, []);
 
-  const filteredUsers = users.filter(
-    (u) =>
-      u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.role_label.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  useEffect(() => {
+    load();
+  }, [load]);
 
-  const handleAddUser = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newUser.name) return;
+  const list = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    return (profiles ?? []).filter((p) => (!roleFilter || p.role === roleFilter) && (!s || `${p.first_name} ${p.last_name} ${p.email} ${p.phone}`.toLowerCase().includes(s)));
+  }, [profiles, q, roleFilter]);
+  const counts = useMemo(() => Object.fromEntries(ROLES.map((r) => [r, (profiles ?? []).filter((p) => p.role === r).length])), [profiles]);
 
-    const email = newUser.email || `${newUser.username}@ecole-avenida.tg`;
-    const names = newUser.name.trim().split(" ");
-    const firstName = names[0] || newUser.name;
-    const lastName = names.slice(1).join(" ") || "Personnel";
+  if (user?.role !== "directeur_general") {
+    return <p className="rounded-2xl bg-red-50 p-6 font-semibold text-[#DC2626]">Seul le Directeur général attribue les rôles.</p>;
+  }
 
-    try {
-      const supabase = createClient();
-      await supabase.from("user_invitations").insert({
-        email: email.toLowerCase().trim(),
-        first_name: firstName,
-        last_name: lastName,
-        role_code: newUser.role,
-        status: "pending",
-      });
-    } catch (err) {
-      console.error("Erreur sauvegarde invitation Supabase:", err);
-    }
-
-    const added: SystemUser = {
-      id: `usr-${Date.now()}`,
-      name: newUser.name,
-      email: email,
-      username: newUser.username || email.split("@")[0],
-      role: newUser.role,
-      role_label: newUser.role_label,
-      scope: newUser.scope,
-      created_at: new Date().toISOString().split("T")[0],
-      last_login: "En attente d'activation par l'utilisateur",
-      status: "actif",
-    };
-
-    setUsers([added, ...users]);
-    setIsModalOpen(false);
+  const saveRow = async (p: Profile) => {
+    const e = edits[p.id];
+    if (!e) return;
+    if (p.id === user.id && e.role !== "directeur_general") return setMsg({ ok: false, text: "Vous ne pouvez pas retirer votre propre rôle de Directeur général." });
+    const { error } = await createClient().rpc("set_user_role", { target: p.id, new_role: e.role, new_student: p.student_id, new_employee: p.employee_id, active: e.active });
+    if (error) return setMsg({ ok: false, text: error.message });
+    setMsg({ ok: true, text: `${p.first_name ?? p.email} : ${ROLE_CONFIG[e.role].label}${e.active ? "" : " (suspendu)"}.` });
+    load();
   };
 
   return (
-    <div className="space-y-6">
-      {/* En-tête */}
-      <div className="bg-white p-6 rounded-3xl border-2 border-indigo-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-indigo-900 text-white flex items-center justify-center shadow-md">
-            <ShieldCheck className="w-7 h-7 text-indigo-200" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black uppercase tracking-wider bg-indigo-100 text-indigo-900 px-2 py-0.5 rounded-full">
-                ADMINISTRATION SYSTÈME
-              </span>
-              <span className="text-xs text-slate-400">&bull; Contrôle d&apos;Accès</span>
-            </div>
-            <h1 className="text-2xl font-black text-slate-900 font-serif">
-              Comptes Utilisateurs & Niveaux d&apos;Accès
-            </h1>
-            <p className="text-xs text-slate-500">
-              Gestion des profils opérateurs : Direction, Pédagogie, Comptabilité Caisse Lomé et Réception Hôtel
-            </p>
-          </div>
-        </div>
-
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="px-4 py-2.5 bg-indigo-900 hover:bg-indigo-800 text-white text-xs font-bold rounded-xl shadow-md transition-all flex items-center gap-2"
-        >
-          <PlusCircle className="w-4 h-4 text-amber-300" />
-          <span>Créer un Compte Utilisateur</span>
-        </button>
+    <div className="flex flex-col gap-6">
+      <div>
+        <h1 className="flex items-center gap-2 text-2xl font-black text-[#0C356A]">
+          <ShieldCheck aria-hidden className="size-6 text-[#E30613]" /> Comptes, rôles et permissions
+        </h1>
+        <p className="mt-1 text-sm text-slate-600">
+          Vous seul attribuez les rôles. Chaque membre ne voit ensuite que les pages de son département. Les nouveaux membres complètent leur profil et
+          arrivent dans « Dossiers des membres ».
+        </p>
       </div>
 
-      {/* Statistiques Utilisateurs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-bold">
-            <span>Comptes Actifs</span>
-            <UserCheck className="w-4 h-4 text-indigo-600" />
-          </div>
-          <div className="text-2xl font-black text-slate-900 mt-2">{users.length} comptes</div>
-          <div className="text-[10px] text-slate-500 mt-1">100% avec authentification sécurisée</div>
-        </div>
-
-        <div className="bg-indigo-50/70 p-4 rounded-2xl border border-indigo-200 shadow-2xs">
-          <div className="flex items-center justify-between text-indigo-800 text-xs font-black">
-            <span>Administrateurs</span>
-            <Lock className="w-4 h-4 text-indigo-600" />
-          </div>
-          <div className="text-2xl font-black text-indigo-950 mt-2">
-            {users.filter((u) => u.scope === "Global").length}
-          </div>
-          <div className="text-[10px] text-indigo-700 font-semibold mt-1">Accès total Direction Générale</div>
-        </div>
-
-        <div className="bg-blue-50/70 p-4 rounded-2xl border border-blue-200 shadow-2xs">
-          <div className="flex items-center justify-between text-blue-800 text-xs font-black">
-            <span>Opérateurs École</span>
-            <CheckCircle2 className="w-4 h-4 text-blue-600" />
-          </div>
-          <div className="text-2xl font-black text-blue-950 mt-2">
-            {users.filter((u) => u.scope === "École").length}
-          </div>
-          <div className="text-[10px] text-blue-700 font-semibold mt-1">Gestion élèves, cours et notes</div>
-        </div>
-
-        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-600 text-xs font-bold">
-            <span>Opérateurs Hôtel / Caisse</span>
-            <Key className="w-4 h-4 text-amber-500" />
-          </div>
-          <div className="text-2xl font-black text-slate-800 mt-2">
-            {users.filter((u) => u.scope === "Hôtel" || u.scope === "Finance").length}
-          </div>
-          <div className="text-[10px] text-slate-500 mt-1">Chambres et encaissements Lomé</div>
-        </div>
+      <div className="flex flex-wrap gap-2" role="tablist">
+        {(
+          [
+            ["comptes", "Comptes", Users],
+            ["creer", "Créer un compte", PlusCircle],
+            ["roles", "Rôles et permissions", KeyRound],
+            ["postes", "Postes", UserCog],
+          ] as const
+        ).map(([k, label, Icon]) => (
+          <button
+            key={k}
+            type="button"
+            role="tab"
+            aria-selected={tab === k}
+            onClick={() => setTab(k)}
+            className={cn("inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold ring-1", tab === k ? "bg-[#0C356A] text-white ring-[#0C356A]" : "bg-white text-slate-600 ring-slate-200")}
+          >
+            <Icon aria-hidden className="size-4" /> {label}
+          </button>
+        ))}
       </div>
 
-      {/* Barre de Recherche */}
-      <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
-        <div className="relative w-full max-w-md">
-          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Nom, identifiant, email, fonction..."
-            className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none"
-          />
-        </div>
-        <div className="text-xs text-slate-500 font-bold">{filteredUsers.length} utilisateur(s)</div>
-      </div>
+      {msg && (
+        <p role={msg.ok ? "status" : "alert"} className={cn("flex items-center gap-2 rounded-xl p-3 text-sm font-semibold", msg.ok ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-[#DC2626]")}>
+          {msg.ok ? <CheckCircle2 aria-hidden className="size-4" /> : <XCircle aria-hidden className="size-4" />} {msg.text}
+        </p>
+      )}
 
-      {/* Tableau des Utilisateurs */}
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-extrabold uppercase tracking-wider text-[10px]">
-                <th className="py-3.5 px-4">Utilisateur & Identifiant</th>
-                <th className="py-3.5 px-4">Email</th>
-                <th className="py-3.5 px-4">Rôle Attribué</th>
-                <th className="py-3.5 px-4">Périmètre / Espace</th>
-                <th className="py-3.5 px-4">Dernière Connexion</th>
-                <th className="py-3.5 px-4">Statut</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {filteredUsers.map((usr) => (
-                <tr key={usr.id} className="hover:bg-indigo-50/20">
-                  <td className="py-3 px-4">
-                    <div className="font-extrabold text-slate-900">{usr.name}</div>
-                    <div className="text-[10px] text-slate-500 font-mono">@{usr.username}</div>
-                  </td>
-                  <td className="py-3 px-4 text-slate-700">{usr.email}</td>
-                  <td className="py-3 px-4">
-                    <span className="font-bold text-slate-900 bg-slate-100 px-2.5 py-1 rounded-md text-[10px] border border-slate-200">
-                      {usr.role_label}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4">
-                    <span
-                      className={`px-2 py-0.5 rounded text-[10px] font-black ${
-                        usr.scope === "Global"
-                          ? "bg-purple-100 text-purple-900"
-                          : usr.scope === "École"
-                          ? "bg-blue-100 text-blue-900"
-                          : usr.scope === "Hôtel"
-                          ? "bg-red-100 text-red-900"
-                          : "bg-emerald-100 text-emerald-900"
-                      }`}
-                    >
-                      {usr.scope.toUpperCase()}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-slate-600">{usr.last_login}</td>
-                  <td className="py-3 px-4">
-                    <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-full text-[10px] font-bold">
-                      Actif
-                    </span>
-                  </td>
-                </tr>
+      {tab === "comptes" && (
+        <section className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-6">
+          <div className="flex flex-wrap gap-2">
+            <span className="relative min-w-[14rem] flex-1">
+              <Search aria-hidden className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-slate-400" />
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Nom, e-mail, téléphone" aria-label="Rechercher" className={cn(input, "pl-9")} />
+            </span>
+            <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} aria-label="Filtrer par rôle" className="rounded-xl border border-slate-200 bg-white px-3 text-sm">
+              <option value="">Tous les rôles ({profiles?.length ?? 0})</option>
+              {ROLES.map((r) => (
+                <option key={r} value={r}>
+                  {ROLE_CONFIG[r].label} ({counts[r] ?? 0})
+                </option>
               ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Modal Création Utilisateur */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200">
-            <div className="flex items-center justify-between border-b pb-3 mb-4">
-              <h2 className="text-lg font-black text-indigo-950">Créer un Compte Utilisateur</h2>
-              <button onClick={() => setIsModalOpen(false)}>
-                <X className="w-5 h-5 text-slate-400" />
-              </button>
-            </div>
-
-            <form onSubmit={handleAddUser} className="space-y-4 text-xs">
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Nom & Titre de l&apos;Opérateur *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="ex: Chef Réceptionniste Avenida"
-                  value={newUser.name}
-                  onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
-                  className="form-input-avenida"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">Nom d&apos;utilisateur (login)</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="ex: reception_lome"
-                    value={newUser.username}
-                    onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
-                    className="form-input-avenida"
-                  />
-                </div>
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">Email</label>
-                  <input
-                    type="email"
-                    value={newUser.email}
-                    onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                    className="form-input-avenida"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">Rôle Système</label>
-                  <select
-                    value={newUser.role}
-                    onChange={(e) => {
-                      const r = e.target.value as UserRole;
-                      const labels: Record<string, string> = {
-                        super_admin: "Super Administrateur",
-                        direction: "Direction Générale",
-                        administration: "Administration Scolaire",
-                        responsable_pedagogique: "Responsable Pédagogique",
-                        comptable: "Comptable Caisse",
-                        responsable_hotel: "Responsable Hôtel",
-                      };
-                      setNewUser({
-                        ...newUser,
-                        role: r,
-                        role_label: labels[r] || "Opérateur",
-                      });
-                    }}
-                    className="form-input-avenida"
-                  >
-                    <option value="administration">Administration Scolaire</option>
-                    <option value="responsable_pedagogique">Responsable Pédagogique</option>
-                    <option value="comptable">Comptable Caisse</option>
-                    <option value="responsable_hotel">Responsable Hôtel</option>
-                    <option value="direction">Direction Générale</option>
-                    <option value="super_admin">Super Admin</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">Périmètre Autorisé</label>
-                  <select
-                    value={newUser.scope}
-                    onChange={(e) => setNewUser({ ...newUser, scope: e.target.value as any })}
-                    className="form-input-avenida"
-                  >
-                    <option value="École">Espace École Uniquement</option>
-                    <option value="Hôtel">Espace Hôtel Uniquement</option>
-                    <option value="Finance">Finances & Caisse Uniquement</option>
-                    <option value="Global">Accès Global (Tout)</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2 pt-3 border-t">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-slate-600 font-bold hover:bg-slate-100"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-indigo-900 text-white font-bold rounded-xl shadow-md"
-                >
-                  Créer le Compte
-                </button>
-              </div>
-            </form>
+            </select>
           </div>
+          {profiles === null ? (
+            <Loader2 aria-label="Chargement" className="size-6 animate-spin text-[#0C356A]" />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[46rem] text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 text-left text-xs text-slate-500 uppercase">
+                    <th className="py-2">Membre</th>
+                    <th className="py-2">Rôle</th>
+                    <th className="py-2">Accès</th>
+                    <th className="py-2" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {list.map((p) => {
+                    const e = edits[p.id] ?? { role: p.role, active: p.is_active !== false };
+                    const dirty = edits[p.id] && (e.role !== p.role || e.active !== (p.is_active !== false));
+                    return (
+                      <tr key={p.id} className="border-b border-slate-100">
+                        <td className="py-2">
+                          <span className="flex items-center gap-3">
+                            {p.avatar_url?.startsWith("data:") ? (
+                              // eslint-disable-next-line @next/next/no-img-element -- photo en data URL
+                              <img src={p.avatar_url} alt="" className="h-10 w-8 rounded object-cover" />
+                            ) : (
+                              <span className="h-10 w-8 rounded bg-slate-100" />
+                            )}
+                            <span>
+                              <span className="block font-bold text-slate-800">
+                                {p.first_name} {p.last_name}
+                              </span>
+                              <span className="text-xs text-slate-500">{p.email}</span>
+                            </span>
+                          </span>
+                        </td>
+                        <td className="py-2">
+                          <select value={e.role} onChange={(ev) => setEdits({ ...edits, [p.id]: { ...e, role: ev.target.value as RoleType } })} aria-label={`Rôle de ${p.email}`} className={cn(input, "max-w-[14rem]")}>
+                            {ROLES.map((r) => (
+                              <option key={r} value={r}>
+                                {ROLE_CONFIG[r].label}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="py-2">
+                          <label className="inline-flex items-center gap-2 text-xs font-bold">
+                            <input type="checkbox" checked={e.active} onChange={(ev) => setEdits({ ...edits, [p.id]: { ...e, active: ev.target.checked } })} className="size-4 accent-[#0C356A]" />
+                            {e.active ? "Actif" : "Suspendu"}
+                          </label>
+                        </td>
+                        <td className="py-2 text-right">
+                          <button type="button" disabled={!dirty} onClick={() => saveRow(p)} className="rounded-full bg-[#E30613] px-4 py-1.5 text-xs font-bold text-white disabled:opacity-30">
+                            Enregistrer
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
+
+      {tab === "creer" && <CreateAccount positions={positions} onCreated={load} />}
+
+      {tab === "roles" && (
+        <section className="grid gap-3 md:grid-cols-2">
+          {ROLES.map((r) => {
+            const c = ROLE_CONFIG[r];
+            return (
+              <article key={r} className="flex flex-col gap-2 rounded-3xl border border-slate-200 bg-white p-5">
+                <p className="flex items-center justify-between gap-2">
+                  <span className="text-lg font-black text-[#0C356A]">{c.label}</span>
+                  <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-bold", STAFF_ROLES.includes(r) ? "bg-[#0C356A]/10 text-[#0C356A]" : "bg-slate-100 text-slate-600")}>
+                    {STAFF_ROLES.includes(r) ? "Espace de gestion" : "Espace personnel"} · {counts[r] ?? 0} compte(s)
+                  </span>
+                </p>
+                <p className="text-sm text-slate-700">{ROLE_SCOPE[r]}</p>
+                {c.allowedPaths.length > 1 && (
+                  <p className="text-xs text-slate-500">Pages : {c.allowedPaths.filter((x) => x !== "/dashboard").map((x) => x.replace("/dashboard/", "")).join(", ")}</p>
+                )}
+                <p className="text-xs font-semibold text-slate-500">Postes : {positions.filter((p) => p.default_role === r).map((p) => p.label).join(", ") || "—"}</p>
+              </article>
+            );
+          })}
+        </section>
+      )}
+
+      {tab === "postes" && <PositionsEditor positions={positions} onSaved={load} />}
+    </div>
+  );
+}
+
+function CreateAccount({ positions, onCreated }: { positions: Position[]; onCreated: () => void }) {
+  const [form, setForm] = useState({ email: "", first_name: "", last_name: "", phone: "", role: "personnel" as RoleType, position: "" });
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<{ ok: boolean; text: string; password?: string; email?: string } | null>(null);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setResult(null);
+    const res = await fetch("/api/admin/comptes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    const j = await res.json();
+    setBusy(false);
+    if (!res.ok) return setResult({ ok: false, text: j.error ?? "Création impossible" });
+    setResult({ ok: true, text: j.message, password: j.password, email: j.email });
+    setForm({ ...form, email: "", first_name: "", last_name: "", phone: "" });
+    onCreated();
+  };
+
+  return (
+    <form onSubmit={submit} className="flex max-w-2xl flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-6">
+      <p className="text-sm text-slate-600">
+        Créez directement les comptes des gestionnaires et du personnel. La personne reçoit un mot de passe provisoire, complète ensuite son profil (photo,
+        informations, pièces) et change son mot de passe.
+      </p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">
+          Prénom
+          <input required value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} className={input} />
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">
+          Nom
+          <input required value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} className={input} />
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">
+          E-mail
+          <input required type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className={input} />
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">
+          Téléphone
+          <input type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className={input} />
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">
+          Poste (remplit le rôle)
+          <select
+            value={form.position}
+            onChange={(e) => {
+              const p = positions.find((x) => x.code === e.target.value);
+              setForm({ ...form, position: e.target.value, role: (p?.default_role as RoleType) ?? form.role });
+            }}
+            className={input}
+          >
+            <option value="">— Choisir —</option>
+            {positions.map((p) => (
+              <option key={p.code} value={p.code}>
+                {p.label} ({p.department === "hotel" ? "Hôtel" : p.department === "ecole" ? "École" : "Direction"})
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">
+          Rôle attribué
+          <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as RoleType })} className={input}>
+            {ROLES.filter((r) => r !== "candidat").map((r) => (
+              <option key={r} value={r}>
+                {ROLE_CONFIG[r].label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <p className="rounded-xl bg-slate-50 p-3 text-xs text-slate-600">{ROLE_SCOPE[form.role]}</p>
+      <button type="submit" disabled={busy} className="inline-flex items-center justify-center gap-2 self-start rounded-full bg-[#E30613] px-6 py-2.5 text-sm font-bold text-white disabled:opacity-60">
+        {busy ? <Loader2 aria-hidden className="size-4 animate-spin" /> : <PlusCircle aria-hidden className="size-4" />} Créer le compte
+      </button>
+      {result && (
+        <div role="status" className={cn("rounded-2xl p-4 text-sm", result.ok ? "bg-emerald-50 text-emerald-900" : "bg-red-50 text-[#DC2626]")}>
+          <p className="font-semibold">{result.text}</p>
+          {result.password && (
+            <p className="mt-2 flex flex-wrap items-center gap-2 font-mono">
+              {result.email} · <strong>{result.password}</strong>
+              <button type="button" onClick={() => navigator.clipboard.writeText(`${result.email} / ${result.password}`)} className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 font-sans text-xs font-bold">
+                <Copy aria-hidden className="size-3.5" /> Copier
+              </button>
+            </p>
+          )}
         </div>
       )}
+    </form>
+  );
+}
+
+function PositionsEditor({ positions, onSaved }: { positions: Position[]; onSaved: () => void }) {
+  const [form, setForm] = useState({ code: "", label: "", department: "hotel", service: "", default_role: "personnel" });
+  const [error, setError] = useState("");
+
+  const add = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const code = form.code.trim().toLowerCase().replace(/[^a-z0-9_]+/g, "_") || form.label.trim().toLowerCase().normalize("NFD").replace(/[^a-z0-9]+/g, "_");
+    const { error: err } = await createClient().from("positions").upsert({ ...form, code, sort: 200 });
+    if (err) return setError(err.message);
+    setForm({ ...form, code: "", label: "", service: "" });
+    onSaved();
+  };
+
+  const remove = async (code: string) => {
+    if (!window.confirm("Supprimer ce poste ?")) return;
+    const { error: err } = await createClient().from("positions").delete().eq("code", code);
+    if (err) setError("Poste utilisé par des dossiers : impossible de le supprimer.");
+    onSaved();
+  };
+
+  const groups = (["direction", "ecole", "hotel"] as const).map((d) => ({ d, list: positions.filter((p) => p.department === d) }));
+
+  return (
+    <div className="flex flex-col gap-4">
+      <form onSubmit={add} className="grid gap-3 rounded-3xl border border-slate-200 bg-white p-5 sm:grid-cols-5">
+        <input required value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} placeholder="Intitulé du poste" aria-label="Intitulé" className={cn(input, "sm:col-span-2")} />
+        <select value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} aria-label="Département" className={input}>
+          <option value="direction">Direction</option>
+          <option value="ecole">École</option>
+          <option value="hotel">Hôtel</option>
+        </select>
+        <input value={form.service} onChange={(e) => setForm({ ...form, service: e.target.value })} placeholder="Service" aria-label="Service" className={input} />
+        <select value={form.default_role} onChange={(e) => setForm({ ...form, default_role: e.target.value })} aria-label="Rôle par défaut" className={input}>
+          {ROLES.filter((r) => r !== "candidat" && r !== "eleve" && r !== "parent" && r !== "client").map((r) => (
+            <option key={r} value={r}>
+              {ROLE_CONFIG[r].label}
+            </option>
+          ))}
+        </select>
+        <button type="submit" className="rounded-full bg-[#0C356A] px-4 py-2 text-sm font-bold text-white sm:col-span-5 sm:justify-self-start">
+          Ajouter le poste
+        </button>
+        {error && <p className="text-sm font-semibold text-[#DC2626] sm:col-span-5">{error}</p>}
+      </form>
+      <div className="grid gap-4 lg:grid-cols-3">
+        {groups.map(({ d, list }) => (
+          <section key={d} className="rounded-3xl border border-slate-200 bg-white p-5">
+            <h3 className="mb-3 font-black text-[#0C356A]">{d === "direction" ? "Direction" : d === "ecole" ? "École" : "Hôtel"}</h3>
+            <ul className="flex flex-col gap-2 text-sm">
+              {list.map((p) => (
+                <li key={p.code} className="flex items-start justify-between gap-2 border-b border-slate-100 pb-2">
+                  <span>
+                    <span className="block font-bold text-slate-800">{p.label}</span>
+                    <span className="text-xs text-slate-500">
+                      {p.service} · rôle {ROLE_CONFIG[p.default_role as RoleType]?.label ?? p.default_role}
+                    </span>
+                  </span>
+                  <button type="button" onClick={() => remove(p.code)} aria-label={`Supprimer ${p.label}`} className="text-xs font-bold text-slate-400 hover:text-[#DC2626]">
+                    ✕
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
+      </div>
     </div>
   );
 }

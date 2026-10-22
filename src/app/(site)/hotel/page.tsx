@@ -8,6 +8,7 @@ import { Reveal } from "@/components/site/Reveal";
 import { Section } from "@/components/site/Section";
 import { Accent, SectionTitle } from "@/components/site/SectionTitle";
 import { images, rooms, siteConfig } from "@/content/site";
+import { CmsSections } from "@/components/site/CmsBlocks";
 
 export const metadata: Metadata = {
   title: "L'Hôtel — chambres et restaurant à Lomé",
@@ -20,7 +21,9 @@ const services = [
   { title: "Bar", text: "Boissons et cocktails servis par nos élèves de la filière restaurant / bar.", icon: Wine, image: images.diningRoom },
 ];
 
-export default function HotelPage() {
+export const revalidate = 60;
+
+export default async function HotelPage() {
   return (
     <>
       <PageHeader
@@ -155,6 +158,7 @@ export default function HotelPage() {
           </div>
         </div>
       </Section>
+      <CmsSections page="hotel" />
     </>
   );
 }

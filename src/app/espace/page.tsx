@@ -38,6 +38,7 @@ export default function EspacePage() {
       {user.role === "parent" && <ParentView />}
       {user.role === "professeur" && <TeacherView />}
       {user.role === "candidat" && <CandidateApplications />}
+      {user.role === "client" && <ClientView email={user.email} />}
     </div>
   );
 }
@@ -159,3 +160,42 @@ function TeacherView() {
   );
 }
 
+
+type Booking = { id: string; created_at: string; check_in: string | null; check_out: string | null; guests: number | null; room_type: string | null; status: string | null };
+
+/** Client de l'hôtel : ses demandes de réservation et leur suivi. */
+function ClientView({ email }: { email: string }) {
+  const [rows, setRows] = useState<Booking[] | null>(null);
+  useEffect(() => {
+    createClient()
+      .from("booking_requests")
+      .select("id, created_at, check_in, check_out, guests, room_type, status")
+      .ilike("email", email)
+      .order("created_at", { ascending: false })
+      .then(({ data }) => setRows((data ?? []) as Booking[]));
+  }, [email]);
+  return (
+    <section className="flex flex-col gap-4 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-900/5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="font-display text-xl font-extrabold text-avenida-blue">Mes demandes de séjour</h2>
+        <Link href="/hotel#reserver" className="rounded-full bg-vif px-5 py-2.5 text-sm font-bold text-white hover:bg-vif-fonce">
+          Nouvelle demande
+        </Link>
+      </div>
+      {rows === null ? null : rows.length === 0 ? (
+        <p className="text-sm text-slate-500">Aucune demande pour le moment.</p>
+      ) : (
+        <ul className="divide-y divide-slate-100">
+          {rows.map((b) => (
+            <li key={b.id} className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm">
+              <span>
+                <strong>{b.room_type ?? "Chambre"}</strong> · {b.check_in ? new Date(b.check_in).toLocaleDateString("fr-FR") : "?"} → {b.check_out ? new Date(b.check_out).toLocaleDateString("fr-FR") : "?"} · {b.guests ?? 1} pers.
+              </span>
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">{b.status ?? "nouvelle"}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}

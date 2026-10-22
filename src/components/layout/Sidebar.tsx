@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import {
   BarChart3,
   BellRing,
+  ClipboardSignature,
+  Globe,
   ClipboardCheck,
   IdCard,
   MonitorPlay,
@@ -204,6 +206,12 @@ export function Sidebar() {
           allowedRoles: ["directeur_general"],
         },
         {
+          label: "Dossiers des membres",
+          href: "/dashboard/adhesions",
+          icon: ClipboardSignature,
+          allowedRoles: ["directeur_general", "directeur_pedagogique", "comptable", "ressources_humaines", "responsable_hotel"],
+        },
+        {
           label: "Alertes & annonces",
           href: "/dashboard/alertes",
           icon: BellRing,
@@ -401,9 +409,15 @@ export function Sidebar() {
       allowedRoles: ["directeur_general"],
       items: [
         {
-          label: "Gestion des Accès & Rôles",
+          label: "Comptes, rôles & postes",
           href: "/dashboard/users",
           icon: ShieldCheck,
+          allowedRoles: ["directeur_general"],
+        },
+        {
+          label: "Site web : contenu",
+          href: "/dashboard/site",
+          icon: Globe,
           allowedRoles: ["directeur_general"],
         },
         {

@@ -4,12 +4,14 @@ import { ChevronDown, LayoutDashboard, Mail, Menu, Phone, X } from "lucide-react
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { isActivePath, mainNav, siteConfig } from "@/content/site";
+import { isActivePath, siteConfig } from "@/content/site";
+import { useSiteNav } from "./SiteContent";
 import { cn } from "@/lib/utils";
 
 /** Menu burger (< 1024 px) : panneau latéral avec rubriques dépliables et contacts. */
 export function MobileNav() {
   const pathname = usePathname();
+  const mainNav = useSiteNav();
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
 

@@ -11,11 +11,16 @@ import { Section } from "@/components/site/Section";
 import { Accent, SectionTitle } from "@/components/site/SectionTitle";
 import { StatCounter } from "@/components/site/StatCounter";
 import { admissionSteps, careers, faq, images, keyFigures, marqueeWords, pillars, siteConfig, studyOptions, whatsappUrl } from "@/content/site";
+import { CmsSections } from "@/components/site/CmsBlocks";
+import { getSettings } from "@/lib/cms";
 
-export default function HomePage() {
+export const revalidate = 60;
+
+export default async function HomePage() {
+  const { hero } = await getSettings();
   return (
     <>
-      <HeroSlider />
+      <HeroSlider custom={hero} />
       <Marquee words={marqueeWords} />
 
       {/* Chiffres clés */}
@@ -318,6 +323,7 @@ export default function HomePage() {
           </div>
         </div>
       </Section>
+      <CmsSections page="accueil" />
     </>
   );
 }

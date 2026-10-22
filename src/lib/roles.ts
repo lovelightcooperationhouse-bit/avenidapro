@@ -14,6 +14,7 @@ export type RoleType =
   | "professeur"
   | "eleve"
   | "parent"
+  | "client"
   | "candidat";
 
 /** Rôles qui travaillent dans l'espace de gestion (/dashboard). Les autres ont leur espace personnel (/espace). */
@@ -54,7 +55,7 @@ export const ROLE_CONFIG: Record<RoleType, RoleConfig> = {
     department: "Direction des Études",
     avatarColor: "from-[#0C356A] to-[#1E4D82]",
     home: "/dashboard",
-    allowedPaths: ["/dashboard", "/dashboard/admissions", "/dashboard/students", "/dashboard/programs", "/dashboard/attendance", "/dashboard/grades", "/dashboard/payments", "/dashboard/demandes", "/dashboard/messages", "/dashboard/alertes", "/dashboard/correspondance", "/dashboard/cartes", "/dashboard/recherche", "/dashboard/economat"],
+    allowedPaths: ["/dashboard", "/dashboard/admissions", "/dashboard/students", "/dashboard/programs", "/dashboard/attendance", "/dashboard/grades", "/dashboard/payments", "/dashboard/demandes", "/dashboard/messages", "/dashboard/alertes", "/dashboard/adhesions", "/dashboard/correspondance", "/dashboard/cartes", "/dashboard/recherche", "/dashboard/economat"],
   },
   comptable: {
     label: "Comptabilité",
@@ -62,7 +63,7 @@ export const ROLE_CONFIG: Record<RoleType, RoleConfig> = {
     department: "Service Financier",
     avatarColor: "from-emerald-600 to-teal-800",
     home: "/dashboard",
-    allowedPaths: ["/dashboard", "/dashboard/payments", "/dashboard/finances", "/dashboard/salaries", "/dashboard/reports", "/dashboard/inventory", "/dashboard/messages", "/dashboard/alertes", "/dashboard/economat", "/dashboard/recherche"],
+    allowedPaths: ["/dashboard", "/dashboard/payments", "/dashboard/finances", "/dashboard/salaries", "/dashboard/reports", "/dashboard/inventory", "/dashboard/messages", "/dashboard/alertes", "/dashboard/adhesions", "/dashboard/economat", "/dashboard/recherche"],
   },
   ressources_humaines: {
     label: "Ressources Humaines",
@@ -70,7 +71,7 @@ export const ROLE_CONFIG: Record<RoleType, RoleConfig> = {
     department: "Ressources Humaines",
     avatarColor: "from-amber-600 to-orange-700",
     home: "/dashboard",
-    allowedPaths: ["/dashboard", "/dashboard/employees", "/dashboard/salaries", "/dashboard/messages", "/dashboard/alertes", "/dashboard/cartes", "/dashboard/recherche"],
+    allowedPaths: ["/dashboard", "/dashboard/employees", "/dashboard/salaries", "/dashboard/messages", "/dashboard/alertes", "/dashboard/adhesions", "/dashboard/cartes", "/dashboard/recherche"],
   },
   responsable_hotel: {
     label: "Responsable Hôtel",
@@ -78,7 +79,7 @@ export const ROLE_CONFIG: Record<RoleType, RoleConfig> = {
     department: "Hébergement & Réception",
     avatarColor: "from-rose-600 to-red-800",
     home: "/dashboard",
-    allowedPaths: ["/dashboard", "/dashboard/hotel", "/dashboard/reservations", "/dashboard/customers", "/dashboard/demandes", "/dashboard/messages", "/dashboard/alertes", "/dashboard/economat", "/dashboard/recherche"],
+    allowedPaths: ["/dashboard", "/dashboard/hotel", "/dashboard/reservations", "/dashboard/customers", "/dashboard/demandes", "/dashboard/messages", "/dashboard/alertes", "/dashboard/adhesions", "/dashboard/economat", "/dashboard/recherche"],
   },
   personnel: {
     label: "Personnel",
@@ -112,9 +113,17 @@ export const ROLE_CONFIG: Record<RoleType, RoleConfig> = {
     home: "/espace",
     allowedPaths: [],
   },
+  client: {
+    label: "Client de l'hôtel",
+    description: "Mes séjours, mes demandes de réservation et mes documents.",
+    department: "Hôtel Avenida",
+    avatarColor: "from-amber-500 to-amber-700",
+    home: "/espace",
+    allowedPaths: [],
+  },
   candidat: {
-    label: "Candidat",
-    description: "Ma pré-inscription, mes pièces et le suivi de mon dossier.",
+    label: "Nouveau membre",
+    description: "Compléter mon profil et choisir mon statut ; l'administration valide mon accès.",
     department: "Admissions",
     avatarColor: "from-slate-500 to-slate-700",
     home: "/espace",

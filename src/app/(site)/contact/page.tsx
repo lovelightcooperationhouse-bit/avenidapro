@@ -8,13 +8,16 @@ import { Section } from "@/components/site/Section";
 import { Accent } from "@/components/site/SectionTitle";
 import { SocialLinks } from "@/components/site/SocialLinks";
 import { images, siteConfig } from "@/content/site";
+import { CmsSections } from "@/components/site/CmsBlocks";
 
 export const metadata: Metadata = {
   title: "Contact",
   description: "Contactez l'Hôtel École Avenida : 30, rue d'Almeida Léopold, Cocoteraie, Lomé. Téléphone, e-mail, WhatsApp, formulaire et plan d'accès.",
 };
 
-export default function ContactPage() {
+export const revalidate = 60;
+
+export default async function ContactPage() {
   const { address } = siteConfig;
   const cards = [
     { icon: MapPin, title: "Adresse", lines: [address.street, address.district, `${address.postal} ${address.city} – ${address.country}`] },
@@ -102,6 +105,7 @@ export default function ContactPage() {
           </Reveal>
         </div>
       </Section>
+      <CmsSections page="contact" />
     </>
   );
 }

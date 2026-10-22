@@ -7,13 +7,16 @@ import { Reveal } from "@/components/site/Reveal";
 import { Section } from "@/components/site/Section";
 import { Accent, SectionTitle } from "@/components/site/SectionTitle";
 import { admissionSteps, fees, formatCFA, formations, images, intakes, paymentFacts, requiredDocuments, siteConfig, whatsappUrl } from "@/content/site";
+import { CmsSections } from "@/components/site/CmsBlocks";
 
 export const metadata: Metadata = {
   title: "Admissions — frais, pièces à fournir et rentrées 2026-2027",
   description: "Inscriptions à l'Hôtel École Avenida : pré-inscription en ligne, frais de scolarité, paiement en 8 tranches, pièces à fournir, rentrées 2026-2027 et internat.",
 };
 
-export default function AdmissionsPage() {
+export const revalidate = 60;
+
+export default async function AdmissionsPage() {
   return (
     <>
       <PageHeader
@@ -215,6 +218,7 @@ export default function AdmissionsPage() {
           </ul>
         </div>
       </Section>
+      <CmsSections page="admissions" />
     </>
   );
 }

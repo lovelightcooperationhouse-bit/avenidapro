@@ -4,7 +4,8 @@ import { ArrowRight, ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { isActivePath, mainNav } from "@/content/site";
+import { isActivePath } from "@/content/site";
+import { useSiteNav } from "./SiteContent";
 import { cn } from "@/lib/utils";
 
 /**
@@ -14,6 +15,7 @@ import { cn } from "@/lib/utils";
  */
 export function DesktopNav() {
   const pathname = usePathname();
+  const mainNav = useSiteNav();
   const [open, setOpen] = useState<string | null>(null);
   const closeTimer = useRef<number | undefined>(undefined);
   const navRef = useRef<HTMLElement>(null);

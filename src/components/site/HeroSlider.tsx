@@ -3,7 +3,8 @@
 import { ArrowRight, Award, BedDouble, CalendarDays, ChevronLeft, ChevronRight, ClipboardList, Pause, Play } from "lucide-react";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { heroSlides as slides, intakeDates, intakes } from "@/content/site";
+import { heroSlides, intakeDates, intakes, type HeroSlide } from "@/content/site";
+import type { HeroSlideSetting } from "@/lib/cms-types";
 import { cn } from "@/lib/utils";
 import { ButtonLink } from "./ButtonLink";
 
@@ -25,7 +26,17 @@ function useNextIntake() {
  * titre animé mot à mot, cartes flottantes, miniatures avec barre de progression.
  * Pause au survol, flèches clavier, balayage tactile ; immobile si « réduire les animations ».
  */
-export function HeroSlider() {
+export function HeroSlider({ custom }: { custom?: HeroSlideSetting[] }) {
+  // Diapositives saisies par la direction (administration du site), sinon celles par défaut
+  const slides: HeroSlide[] = custom?.length
+    ? custom.map((c) => ({
+        image: { src: c.image, alt: c.alt ?? c.eyebrow },
+        focus: c.focus,
+        eyebrow: c.eyebrow,
+        title: [c.title, c.highlight ?? "", c.titleEnd ?? ""],
+        subtitle: c.subtitle,
+      }))
+    : heroSlides;
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const [hovered, setHovered] = useState(false);
@@ -37,7 +48,7 @@ export function HeroSlider() {
     setReduceMotion(window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   }, []);
 
-  const go = useCallback((delta: number) => setIndex((i) => (i + delta + slides.length) % slides.length), []);
+  const go = useCallback((delta: number) => setIndex((i) => (i + delta + slides.length) % slides.length), [slides.length]);
 
   const autoplay = !paused && !hovered && !reduceMotion;
   useEffect(() => {
@@ -104,7 +115,7 @@ export function HeroSlider() {
             <h1 className="font-display text-[2.6rem] leading-[1.02] font-extrabold tracking-tight sm:text-6xl lg:text-[5.2rem]">
               {slide.title.map((part, p) => (
                 <span key={p} className={cn(p === 1 && "font-elegant font-bold text-vif-clair italic")}>
-                  {part.split(" ").map((w) => {
+                  {part.split(" ").filter(Boolean).map((w) => {
                     const k = wordIndex++;
                     return (
                       <span key={k} className="site-word inline-block" style={{ animationDelay: `${k * 70}ms` }}>
