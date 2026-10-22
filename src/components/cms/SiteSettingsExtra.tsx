@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { input, label, publishSite } from "./shared";
 
 /** Lecture des réglages du site (clé → valeur). */
-function useSettings() {
+export function useSettings() {
   const [s, setS] = useState<CmsSettings | null>(null);
   useEffect(() => {
     createClient()
@@ -20,14 +20,14 @@ function useSettings() {
   return [s, setS] as const;
 }
 
-async function saveKeys(entries: Record<string, unknown>) {
+export async function saveKeys(entries: Record<string, unknown>) {
   const rows = Object.entries(entries).map(([key, value]) => ({ key, value, updated_at: new Date().toISOString() }));
   const { error } = await createClient().from("site_settings").upsert(rows);
   await publishSite();
   return error;
 }
 
-function SaveBar({ busy, msg, onSave, extra }: { busy: boolean; msg: string; onSave: () => void; extra?: React.ReactNode }) {
+export function SaveBar({ busy, msg, onSave, extra }: { busy: boolean; msg: string; onSave: () => void; extra?: React.ReactNode }) {
   return (
     <div className="sticky bottom-4 flex flex-wrap items-center gap-3 rounded-2xl bg-white/95 p-3 shadow-lg ring-1 ring-slate-200">
       <button type="button" onClick={onSave} disabled={busy} className="inline-flex items-center gap-2 rounded-full bg-[#E30613] px-6 py-2.5 text-sm font-bold text-white disabled:opacity-60">

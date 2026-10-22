@@ -1,4 +1,5 @@
 import { Clock, Mail, MapPin, Navigation, Phone } from "lucide-react";
+import { getSiteImages } from "@/lib/site-images";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { ContactForm } from "@/components/site/ContactForm";
@@ -7,7 +8,7 @@ import { Reveal } from "@/components/site/Reveal";
 import { Section } from "@/components/site/Section";
 import { Accent } from "@/components/site/SectionTitle";
 import { SocialLinks } from "@/components/site/SocialLinks";
-import { images, siteConfig } from "@/content/site";
+import { siteConfig } from "@/content/site";
 import { CmsSections } from "@/components/site/CmsBlocks";
 import { getSettings } from "@/lib/cms";
 import { mergeContact } from "@/lib/site-contact";
@@ -20,6 +21,7 @@ export const metadata: Metadata = {
 export const revalidate = 60;
 
 export default async function ContactPage() {
+  const { images } = await getSiteImages();
   const contact = mergeContact((await getSettings()).contact);
   const { address } = contact;
   const cards = [

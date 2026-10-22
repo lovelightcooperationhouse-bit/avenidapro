@@ -85,10 +85,24 @@ export const HOME_SECTIONS = [
   { key: "appel", label: "Appel final (pré-inscription)" },
 ] as const;
 
+export type CardSettings = {
+  motto?: string;
+  signatureTitle?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  /** Texte du verso par catégorie (eleve, professeur, personnel, hotel, client). */
+  rules?: Partial<Record<"eleve" | "professeur" | "personnel" | "hotel" | "client", string>>;
+};
+
 export type CmsSettings = {
   theme?: ThemeSetting;
   contact?: ContactSetting;
   home_hidden?: string[];
+  /** Remplacement des images du site (clé de l'emplacement → image). */
+  images?: Record<string, { src: string; alt?: string }>;
+  /** Textes et réglages communs des cartes (recto, verso, signature). */
+  cards?: CardSettings;
   hero?: HeroSlideSetting[];
   bandeau?: { text: string; href?: string; visible: boolean };
   socials?: Partial<Record<"facebook" | "instagram" | "tiktok" | "youtube" | "linkedin" | "whatsapp", string>>;

@@ -1,4 +1,5 @@
 import { ArrowRight, Check, ClipboardList, Clock, GraduationCap, Moon, Sun } from "lucide-react";
+import { getSiteImages } from "@/lib/site-images";
 import type { Metadata } from "next";
 import Image from "next/image";
 import { ButtonLink } from "@/components/site/ButtonLink";
@@ -8,7 +9,8 @@ import { PageHeader } from "@/components/site/PageHeader";
 import { Reveal } from "@/components/site/Reveal";
 import { Section } from "@/components/site/Section";
 import { Accent, SectionTitle } from "@/components/site/SectionTitle";
-import { careers, formatCFA, formations, images, pillars, schedules, specialties, studyOptions } from "@/content/site";
+import { careers, formatCFA, formations, pillars, schedules, schoolGallery, specialties, studyOptions } from "@/content/site";
+import { PhotoGallery } from "@/components/site/PhotoGallery";
 import { CmsSections } from "@/components/site/CmsBlocks";
 
 export const metadata: Metadata = {
@@ -19,6 +21,7 @@ export const metadata: Metadata = {
 export const revalidate = 60;
 
 export default async function SchoolPage() {
+  const { images, im, imageMap } = await getSiteImages();
   return (
     <>
       <PageHeader
@@ -58,7 +61,7 @@ export default async function SchoolPage() {
           inverted
           className="mb-12"
         />
-        <FormationExplorer />
+        <FormationExplorer imageMap={imageMap} />
       </Section>
 
       {/* Tableau récapitulatif */}
@@ -112,7 +115,7 @@ export default async function SchoolPage() {
           {specialties.map((s, i) => (
             <Reveal key={s.title} className="grid items-center gap-8 lg:grid-cols-2 lg:gap-16">
               <div className={`relative aspect-[16/11] overflow-hidden rounded-[2rem] shadow-2xl ${i % 2 ? "lg:order-2" : ""}`}>
-                <Image src={s.image.src} alt={s.image.alt} fill sizes="(min-width: 1024px) 50vw, 100vw" className="object-cover object-[50%_30%] transition-transform duration-700 hover:scale-105" />
+                <Image src={im(s.image).src} alt={im(s.image).alt} fill sizes="(min-width: 1024px) 50vw, 100vw" className="object-cover object-[50%_30%] transition-transform duration-700 hover:scale-105" />
                 <span className="absolute top-5 left-5 rounded-full bg-white/90 px-4 py-1.5 font-display text-sm font-extrabold text-vif backdrop-blur">0{i + 1}</span>
               </div>
               <div className="flex flex-col gap-4">
@@ -129,6 +132,22 @@ export default async function SchoolPage() {
             </Reveal>
           ))}
         </div>
+      </Section>
+
+      {/* Galerie */}
+      <Section id="en-action" aria-labelledby="action-title" className="scroll-mt-28">
+        <SectionTitle
+          id="action-title"
+          eyebrow="Nos élèves en action"
+          title={
+            <>
+              Apprendre en <Accent>pratiquant</Accent>
+            </>
+          }
+          description="Ateliers de cuisine et de pâtisserie, service en salle, hygiène : la formation se vit chaque jour dans nos cuisines et notre restaurant d'application."
+          className="mb-10"
+        />
+        <PhotoGallery photos={schoolGallery.map((k) => images[k])} />
       </Section>
 
       {/* Pédagogie */}

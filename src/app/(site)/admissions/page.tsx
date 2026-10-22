@@ -1,4 +1,5 @@
 import { CalendarDays, CheckCircle2, ClipboardList, FileText, Home, MessageCircle, Phone, Upload } from "lucide-react";
+import { getSiteImages } from "@/lib/site-images";
 import type { Metadata } from "next";
 import Image from "next/image";
 import { ButtonLink } from "@/components/site/ButtonLink";
@@ -6,7 +7,7 @@ import { PageHeader } from "@/components/site/PageHeader";
 import { Reveal } from "@/components/site/Reveal";
 import { Section } from "@/components/site/Section";
 import { Accent, SectionTitle } from "@/components/site/SectionTitle";
-import { admissionSteps, fees, formatCFA, formations, images, intakes, paymentFacts, requiredDocuments, siteConfig, whatsappUrl } from "@/content/site";
+import { admissionSteps, fees, formatCFA, formations, intakes, paymentFacts, requiredDocuments, siteConfig, whatsappUrl } from "@/content/site";
 import { CmsSections } from "@/components/site/CmsBlocks";
 
 export const metadata: Metadata = {
@@ -17,6 +18,7 @@ export const metadata: Metadata = {
 export const revalidate = 60;
 
 export default async function AdmissionsPage() {
+  const { images } = await getSiteImages();
   return (
     <>
       <PageHeader

@@ -3,12 +3,13 @@
 import { ArrowRight, CalendarClock, Check, ClipboardList, GraduationCap, Wallet } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
-import { formatCFA, formations } from "@/content/site";
+import { formatCFA, formations, type SiteImage } from "@/content/site";
 import { cn } from "@/lib/utils";
 import { ButtonLink } from "./ButtonLink";
 
 /** Explorateur des 5 diplômes : onglets (CFA → BTS) et fiche détaillée avec photo. */
-export function FormationExplorer() {
+/** `imageMap` : images remplacées depuis la gestion du site (clé = image d'origine). */
+export function FormationExplorer({ imageMap }: { imageMap?: Record<string, SiteImage> }) {
   const [active, setActive] = useState(1);
   const f = formations[active];
 
@@ -43,7 +44,7 @@ export function FormationExplorer() {
         className="site-rise grid overflow-hidden rounded-[2rem] bg-white text-slate-900 shadow-2xl lg:grid-cols-[1.05fr_1fr]"
       >
         <div className="relative min-h-72 lg:min-h-full">
-          <Image src={f.image.src} alt={f.image.alt} fill sizes="(min-width: 1024px) 50vw, 100vw" className="object-cover" />
+          <Image src={(imageMap?.[f.image.src] ?? f.image).src} alt={(imageMap?.[f.image.src] ?? f.image).alt} fill sizes="(min-width: 1024px) 50vw, 100vw" className="object-cover" />
           <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-nuit/80 via-nuit/10 to-transparent" />
           <div className="absolute bottom-0 left-0 p-7 text-white">
             <p className="font-display text-6xl font-extrabold">{f.code}</p>

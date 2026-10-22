@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
+import { getSiteImages } from "@/lib/site-images";
 import Link from "next/link";
 import { LegalDocument, type LegalSection } from "@/components/site/LegalDocument";
 import { PageHeader } from "@/components/site/PageHeader";
 import { Accent } from "@/components/site/SectionTitle";
-import { images, siteConfig } from "@/content/site";
+import { siteConfig } from "@/content/site";
 
 export const metadata: Metadata = {
   title: "Conditions d'utilisation",
@@ -143,7 +144,8 @@ const sections: LegalSection[] = [
   },
 ];
 
-export default function ConditionsPage() {
+export default async function ConditionsPage() {
+  const { images } = await getSiteImages();
   return (
     <>
       <PageHeader

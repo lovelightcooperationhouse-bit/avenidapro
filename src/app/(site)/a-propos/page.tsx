@@ -1,4 +1,5 @@
 import { ArrowRight, BedDouble, ClipboardList, GraduationCap, Quote } from "lucide-react";
+import { getSiteImages } from "@/lib/site-images";
 import type { Metadata } from "next";
 import Image from "next/image";
 import { ButtonLink } from "@/components/site/ButtonLink";
@@ -7,8 +8,9 @@ import { PageHeader } from "@/components/site/PageHeader";
 import { Reveal } from "@/components/site/Reveal";
 import { Section } from "@/components/site/Section";
 import { Accent, SectionTitle } from "@/components/site/SectionTitle";
-import { aboutValues, images, marqueeWords, siteConfig, studyOptions } from "@/content/site";
+import { aboutValues, marqueeWords, siteConfig, studyOptions } from "@/content/site";
 import { CmsSections } from "@/components/site/CmsBlocks";
+import { getPublicStaff } from "@/lib/cms";
 
 export const metadata: Metadata = {
   title: "À propos",
@@ -18,6 +20,9 @@ export const metadata: Metadata = {
 export const revalidate = 60;
 
 export default async function AboutPage() {
+  const [{ images }, staff] = await Promise.all([getSiteImages(), getPublicStaff()]);
+  const admin = staff.filter((s) => s.function_title);
+  const profs = staff.filter((s) => s.subjects).sort((a, b) => a.full_name.localeCompare(b.full_name));
   return (
     <>
       <PageHeader
@@ -135,6 +140,41 @@ export default async function AboutPage() {
           </div>
         </div>
       </Section>
+      {/* Équipe */}
+      {staff.length > 0 && (
+        <Section id="equipe" tone="muted" aria-labelledby="team-title" className="scroll-mt-28">
+          <SectionTitle
+            id="team-title"
+            eyebrow="Notre équipe"
+            title={
+              <>
+                L&apos;administration et le <Accent>corps professoral</Accent>
+              </>
+            }
+            description="Une équipe de direction et des professeurs issus du métier, qui accompagnent chaque apprenant de l'atelier au diplôme."
+            align="center"
+          />
+          <ul className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            {admin.map((a, i) => (
+              <li key={a.full_name}>
+                <Reveal delay={(i % 5) * 60} className="flex h-full flex-col gap-1 rounded-2xl bg-white p-5 text-center shadow-sm ring-1 ring-slate-900/5">
+                  <p className="text-[11px] font-extrabold tracking-widest text-vif uppercase">{a.function_title}</p>
+                  <p className="font-display text-lg font-bold text-avenida-blue-950">{a.full_name}</p>
+                </Reveal>
+              </li>
+            ))}
+          </ul>
+          <h3 className="mt-14 mb-5 text-center font-display text-2xl font-extrabold text-avenida-blue-950">Professeurs et matières enseignées</h3>
+          <ul className="grid gap-x-8 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
+            {profs.map((p) => (
+              <li key={p.full_name} className="flex flex-col border-b border-slate-200 py-2.5">
+                <span className="font-bold text-slate-900">{p.full_name}</span>
+                <span className="text-sm text-slate-600">{p.subjects}</span>
+              </li>
+            ))}
+          </ul>
+        </Section>
+      )}
       <CmsSections page="a-propos" />
     </>
   );

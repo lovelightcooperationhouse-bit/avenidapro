@@ -53,3 +53,11 @@ export async function getPages(): Promise<CmsPage[]> {
   const { data } = await db().from("site_pages").select("*").eq("published", true);
   return (data ?? []) as CmsPage[];
 }
+
+export type PublicStaff = { full_name: string; function_title: string | null; subjects: string | null; position: number };
+
+/** Équipe affichée sur le site (noms, fonctions, matières ; jamais les téléphones). */
+export async function getPublicStaff(): Promise<PublicStaff[]> {
+  const { data } = await db().rpc("public_staff_directory");
+  return (data ?? []) as PublicStaff[];
+}

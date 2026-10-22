@@ -1,3 +1,4 @@
+import { getSiteImages } from "@/lib/site-images";
 import {
   ArrowRight,
   BedDouble,
@@ -21,24 +22,14 @@ import { Reveal } from "@/components/site/Reveal";
 import { Section } from "@/components/site/Section";
 import { Accent, SectionTitle } from "@/components/site/SectionTitle";
 import { StatCounter } from "@/components/site/StatCounter";
-import {
-  admissionSteps,
-  careers,
-  faq,
-  images,
-  keyFigures,
-  marqueeWords,
-  pillars,
-  siteConfig,
-  studyOptions,
-  whatsappUrl,
-} from "@/content/site";
+import { admissionSteps, careers, faq, keyFigures, marqueeWords, pillars, siteConfig, studyOptions, whatsappUrl } from "@/content/site";
 import { CmsSections } from "@/components/site/CmsBlocks";
 import { getSettings } from "@/lib/cms";
 
 export const revalidate = 60;
 
 export default async function HomePage() {
+  const { images, imageMap } = await getSiteImages();
   const { hero, home_hidden } = await getSettings();
   // Sections de l'accueil masquées depuis « Site web → Sections de l'accueil »
   const show = (key: string) => !(home_hidden ?? []).includes(key);
@@ -208,7 +199,7 @@ export default async function HomePage() {
                 <ArrowRight aria-hidden />
               </ButtonLink>
             </div>
-            <FormationExplorer />
+            <FormationExplorer imageMap={imageMap} />
           </Section>
         </>
       )}

@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
+import { getSiteImages } from "@/lib/site-images";
 import { LegalDocument, type LegalSection } from "@/components/site/LegalDocument";
 import { PageHeader } from "@/components/site/PageHeader";
 import { Accent } from "@/components/site/SectionTitle";
-import { images, siteConfig } from "@/content/site";
+import { siteConfig } from "@/content/site";
 
 export const metadata: Metadata = {
   title: "Politique de confidentialité",
@@ -187,7 +188,8 @@ const sections: LegalSection[] = [
   },
 ];
 
-export default function ConfidentialitePage() {
+export default async function ConfidentialitePage() {
+  const { images } = await getSiteImages();
   return (
     <>
       <PageHeader

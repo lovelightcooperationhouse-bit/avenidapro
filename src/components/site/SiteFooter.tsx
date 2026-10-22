@@ -115,6 +115,9 @@ export function SiteFooter({ contact }: { contact: SiteContact }) {
             </p>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-3">
+            <Link href="/reglement" className="hover:text-white hover:underline">
+              Règlement intérieur
+            </Link>
             <Link href="/confidentialite" className="hover:text-white hover:underline">
               Politique de confidentialité
             </Link>

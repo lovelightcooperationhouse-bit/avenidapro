@@ -1,6 +1,6 @@
 "use client";
 
-import { BedDouble, Bell, CalendarClock, FileSpreadsheet, LifeBuoy, ClipboardCheck, FileText, FolderOpen, Megaphone, GraduationCap, Home, IdCard, KeyRound, LayoutDashboard, LogOut, MessageSquare, UserRound, Wallet } from "lucide-react";
+import { BedDouble, Bell, CalendarClock, FileSpreadsheet, LifeBuoy, ClipboardCheck, FileText, FolderOpen, Megaphone, GraduationCap, Home, IdCard, KeyRound, LayoutDashboard, LogOut, MessageSquare, ScrollText, UserRound, UsersRound, Wallet } from "lucide-react";
 import { NotificationBell } from "@/components/espace/NotificationBell";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -43,6 +43,8 @@ export default function EspaceLayout({ children }: { children: React.ReactNode }
     { href: "/espace/bulletins", label: "Bulletins", icon: FileSpreadsheet, show: ["eleve", "parent"].includes(role ?? "") },
     { href: "/espace/situation", label: "Situation financière", icon: Wallet, show: ["eleve", "parent"].includes(role ?? "") },
     { href: "/espace/carte", label: role === "eleve" || role === "parent" ? "Carte scolaire" : "Carte de travail", icon: IdCard, show: role !== "candidat" && role !== "client" },
+    { href: "/espace/reglement", label: "Règlement intérieur", icon: ScrollText, show: ["eleve", "parent", "professeur", "personnel"].includes(role ?? "") },
+    { href: "/espace/annuaire", label: "Annuaire", icon: UsersRound, show: role !== "candidat" && role !== "client" },
     { href: "/espace/documents", label: "Mes documents", icon: FolderOpen, show: true },
     { href: "/espace/annonces", label: "Annonces", icon: Megaphone, show: role !== "candidat" },
     { href: "/espace/notifications", label: "Notifications", icon: Bell, show: true },

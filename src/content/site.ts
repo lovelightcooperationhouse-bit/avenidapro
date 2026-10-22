@@ -84,21 +84,56 @@ export const whatsappUrl = (e164: string, text?: string) =>
 export type SiteImage = { src: string; alt: string; /** Photo d'illustration (pas l'établissement). */ stock?: boolean };
 
 export const images = {
-  building: { src: "/avenida_building.jpg", alt: "Façade bleu, blanc et rouge du bâtiment de l'Hôtel École Avenida à Lomé" },
+  building: { src: "/site/reel/facade-ecole.webp", alt: "Façade bleu, blanc et rouge du bâtiment de l'Hôtel École Avenida à Lomé" },
   chef: { src: "/site/chef.webp", alt: "Élève cuisinier portant la toque officielle Avenida aux motifs bleu, blanc, rouge" },
   uniforms: { src: "/site/uniformes.webp", alt: "Une élève et un élève de l'Hôtel École Avenida en uniforme officiel" },
   graduates: { src: "/site/diplomes.webp", alt: "Diplômés de l'Hôtel École Avenida en toge officielle, diplôme en main" },
   waiter: { src: "/site/serveur.webp", alt: "Maître d'hôtel en gilet Avenida, plateau d'argent en main" },
   fabric: { src: "/site/tissu.webp", alt: "Tissu Avenida : losanges bleus, fleurs de lys, toques et couverts" },
-  plating: { src: "/site/dressage.webp", alt: "Chef nappant de sauce une assiette dressée", stock: true },
-  pastry: { src: "/site/patisserie.webp", alt: "Pâtissière en toque préparant une pâte", stock: true },
-  service: { src: "/site/service-salle.webp", alt: "Service à table dans un restaurant gastronomique", stock: true },
-  diningRoom: { src: "/site/salle-restaurant.webp", alt: "Salle de restaurant élégante, tables dressées", stock: true },
-  reception: { src: "/site/reception.webp", alt: "Hall de réception d'un hôtel avec salon", stock: true },
-  roomGarden: { src: "/site/chambre-jardin.webp", alt: "Chambre d'hôtel avec vue sur jardin", stock: true },
-  roomComfort: { src: "/site/chambre-confort.webp", alt: "Chambre d'hôtel confort, grand lit et lampes de chevet", stock: true },
-  roomSuite: { src: "/site/chambre-suite.webp", alt: "Suite lumineuse avec salon et grand lit", stock: true },
+  // Photos réelles de l'établissement
+  hotelEntrance: { src: "/site/reel/entree-hotel.webp", alt: "Entrée de l'Hôtel École Avenida, rue d'Almeida, à Lomé" },
+  plating: { src: "/site/reel/cuisine-dressage.webp", alt: "Cuisinière de l'Hôtel École Avenida dressant une assiette en cuisine" },
+  pastry: { src: "/site/reel/eleves-atelier-cuisine.webp", alt: "Élèves en atelier pratique de cuisine et pâtisserie" },
+  service: { src: "/site/reel/eleves-service-salle.webp", alt: "Élèves en atelier de service en salle autour d'une table dressée" },
+  diningRoom: { src: "/site/reel/bar-salon.webp", alt: "Bar-salon et restaurant de l'hôtel : salon, réfrigérateur à boissons et table dressée" },
+  reception: { src: "/site/reel/couloir-hotel.webp", alt: "Couloir lumineux des chambres rénovées de l'hôtel" },
+  roomGarden: { src: "/site/reel/chambre-verte.webp", alt: "Chambre confort : grand lit, réfrigérateur, bureau et télévision" },
+  roomComfort: { src: "/site/reel/chambre-rouge.webp", alt: "Chambre standard : grand lit, bureau, réfrigérateur et fauteuil" },
+  roomSuite: { src: "/site/reel/chambre-renovee.webp", alt: "Chambre rénovée : lit en bois massif, chevet et téléphone" },
+  roomTv: { src: "/site/reel/chambre-tv.webp", alt: "Entrée de chambre rénovée avec télévision murale et salle d'eau" },
+  conference: { src: "/site/reel/salle-conference.webp", alt: "Salle de conférence et de réunion de l'hôtel, tables en U" },
+  kitchenPractice: { src: "/site/reel/eleves-pratique-cuisine.webp", alt: "Élèves cuisiniers en travaux pratiques autour des fourneaux" },
+  kitchenHygiene: { src: "/site/reel/eleves-cuisine-plonge.webp", alt: "Élèves en tenue appliquant les règles d'hygiène en cuisine" },
 } satisfies Record<string, SiteImage>;
+
+export type ImageKey = keyof typeof images;
+
+/** Emplacements d'images modifiables depuis « Site web › Images » (le reste des visuels se gère dans les sections). */
+export const IMAGE_SLOTS: { key: ImageKey; label: string; where: string }[] = [
+  { key: "building", label: "Façade de l'école", where: "À propos, Admissions, pages créées" },
+  { key: "hotelEntrance", label: "Entrée de l'hôtel", where: "Page Hôtel, galerie" },
+  { key: "chef", label: "Élève cuisinier (toque)", where: "Accueil, École" },
+  { key: "uniforms", label: "Élèves en uniforme", where: "Accueil, Admissions, Pré-inscription" },
+  { key: "graduates", label: "Diplômés", where: "Accueil, À propos, Actualités" },
+  { key: "waiter", label: "Maître d'hôtel", where: "Accueil, Hôtel, Connexion" },
+  { key: "fabric", label: "Tissu Avenida", where: "À propos" },
+  { key: "reception", label: "Accueil et réception", where: "Hôtel, Accueil" },
+  { key: "diningRoom", label: "Bar et restaurant", where: "Hôtel, Accueil" },
+  { key: "plating", label: "Cuisine du restaurant", where: "Hôtel, Accueil" },
+  { key: "service", label: "Élèves au service en salle", where: "Formations, Contact, galerie École" },
+  { key: "pastry", label: "Élèves en atelier cuisine / pâtisserie", where: "Formations, galerie École" },
+  { key: "kitchenPractice", label: "Élèves aux fourneaux", where: "Galerie École" },
+  { key: "kitchenHygiene", label: "Élèves : hygiène en cuisine", where: "Galerie École" },
+  { key: "roomComfort", label: "Chambre Standard", where: "Hôtel, Accueil" },
+  { key: "roomGarden", label: "Chambre Confort", where: "Hôtel, Accueil" },
+  { key: "roomSuite", label: "Suite Junior", where: "Hôtel" },
+  { key: "roomTv", label: "Suite Présidentielle", where: "Hôtel" },
+  { key: "conference", label: "Salle de conférence", where: "Hôtel, galerie" },
+];
+
+/** Galeries de photos réelles (pages Hôtel et École). */
+export const hotelGallery: ImageKey[] = ["hotelEntrance", "diningRoom", "conference", "roomSuite", "roomGarden", "roomComfort", "roomTv", "reception", "service"];
+export const schoolGallery: ImageKey[] = ["service", "kitchenPractice", "pastry", "plating", "kitchenHygiene"];
 
 /* ─────────────────────────── Navigation ─────────────────────────── */
 
@@ -408,7 +443,7 @@ export const rooms = [
   { name: "Chambre Standard", text: "Confortable et fonctionnelle, idéale pour un court séjour à Lomé.", image: images.roomComfort },
   { name: "Chambre Confort", text: "Plus d'espace et d'équipements pour un séjour en toute sérénité.", image: images.roomGarden },
   { name: "Suite Junior", text: "Un espace salon pour se détendre ou travailler.", image: images.roomSuite },
-  { name: "Suite Présidentielle", text: "Notre meilleure prestation, pour les séjours d'exception.", image: images.reception },
+  { name: "Suite Présidentielle", text: "Notre meilleure prestation, pour les séjours d'exception.", image: images.roomTv },
 ];
 
 /* ─────────────────────────── Contact ─────────────────────────── */

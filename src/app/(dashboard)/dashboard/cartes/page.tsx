@@ -1,8 +1,9 @@
 "use client";
 
-import { Ban, CheckCircle2, Eye, IdCard as IdCardIcon, Loader2, Printer, RefreshCw, Search, Send, Sparkles, X } from "lucide-react";
+import { Ban, CheckCircle2, Eye, Pencil, IdCard as IdCardIcon, Loader2, Printer, RefreshCw, Search, Send, Sparkles, X } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { CardEditor } from "@/components/cards/CardEditor";
 import { IdCard } from "@/components/cards/IdCard";
 import { useAuth } from "@/context/AuthContext";
 import { customerCardData, employeeCardData, issueCard, CARD_REVIEW, loyaltyLevel, studentCardData, type CardRow, type CustomerRow, type EmployeeRow, type StudentRow, STUDENT_CARD_COLS, EMPLOYEE_CARD_COLS } from "@/lib/cards";
@@ -32,6 +33,7 @@ function CardsAdmin() {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [preview, setPreview] = useState<string | null>(null);
+  const [editing, setEditing] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -302,6 +304,10 @@ function CardsAdmin() {
                   </td>
                   <td className="p-3">
                     <div className="flex justify-end gap-1">
+                      <button type="button" title="Modifier la carte (toutes les informations)" onClick={() => setEditing(r.id)} className="rounded-lg p-2 text-[#E30613] hover:bg-red-50">
+                        <Pencil aria-hidden className="size-4" />
+                        <span className="sr-only">Modifier</span>
+                      </button>
                       <button type="button" title={card ? "Actualiser la carte" : "Émettre la carte"} onClick={() => run([r.id])} className="rounded-lg p-2 text-[#0C356A] hover:bg-blue-50">
                         <Sparkles aria-hidden className="size-4" />
                         <span className="sr-only">{card ? "Actualiser" : "Émettre"}</span>
@@ -340,6 +346,18 @@ function CardsAdmin() {
         {rows.length === 0 && <p className="p-8 text-center text-sm text-slate-500">Aucune personne pour ce filtre.</p>}
       </div>
 
+      {editing && (
+        <CardEditor
+          kind={tab}
+          holderId={editing}
+          onClose={() => setEditing(null)}
+          onSaved={(m) => {
+            setEditing(null);
+            setMessage(m);
+            load();
+          }}
+        />
+      )}
       {previewData && (
         <div role="dialog" aria-modal="true" aria-label="Aperçu de la carte" className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4" onClick={() => setPreview(null)}>
           <div className="relative max-h-full overflow-auto rounded-3xl bg-slate-100 p-6" onClick={(e) => e.stopPropagation()}>

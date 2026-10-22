@@ -1,18 +1,20 @@
 import { Clock, MessageCircle, Phone, ShieldCheck } from "lucide-react";
+import { getSiteImages } from "@/lib/site-images";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { PageHeader } from "@/components/site/PageHeader";
 import { PreinscriptionForm } from "@/components/site/PreinscriptionForm";
 import { Section } from "@/components/site/Section";
 import { Accent } from "@/components/site/SectionTitle";
-import { images, siteConfig, whatsappUrl } from "@/content/site";
+import { siteConfig, whatsappUrl } from "@/content/site";
 
 export const metadata: Metadata = {
   title: "Pré-inscription en ligne",
   description: "Déposez votre dossier de pré-inscription à l'Hôtel École Avenida en 5 minutes : formation, informations, pièces et suivi en ligne.",
 };
 
-export default function PreinscriptionPage() {
+export default async function PreinscriptionPage() {
+  const { images } = await getSiteImages();
   return (
     <>
       <PageHeader

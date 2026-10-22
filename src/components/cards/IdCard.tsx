@@ -3,6 +3,8 @@
 import QRCode from "qrcode";
 import { useEffect, useState } from "react";
 import { siteConfig } from "@/content/site";
+import type { CardSettings } from "@/lib/cms-types";
+import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 export type CardVariant = "eleve" | "professeur" | "hotel" | "personnel" | "client";
@@ -48,6 +50,29 @@ const initials = (n: string) =>
     .join("")
     .toUpperCase();
 
+/** Texte par défaut du verso, selon la catégorie. */
+export const defaultCardRules = (variant: CardVariant) =>
+  `Carte personnelle à présenter sur demande. Scannez le QR code au recto pour vérifier en temps réel la situation ${CARD_THEMES[variant].holder}.` +
+  (variant === "client" ? " Présentez-la à la réception pour vos avantages fidélité." : " En cas de perte, prévenez l'administration.");
+
+let settingsCache: Promise<CardSettings> | null = null;
+/** Réglages des cartes (« Site web › Cartes »), lus une seule fois par page. */
+export function useCardSettings() {
+  const [s, setS] = useState<CardSettings>({});
+  useEffect(() => {
+    settingsCache ??= Promise.resolve(
+      createClient()
+        .from("site_settings")
+        .select("value")
+        .eq("key", "cards")
+        .maybeSingle()
+        .then(({ data }) => (data?.value ?? {}) as CardSettings),
+    );
+    settingsCache.then(setS);
+  }, []);
+  return s;
+}
+
 /** Lien de vérification encodé dans le QR code. */
 export const verifyUrl = (token: string) => `${typeof window !== "undefined" ? window.location.origin : ""}/verifier/${token}`;
 
@@ -55,14 +80,17 @@ export const verifyUrl = (token: string) => `${typeof window !== "undefined" ? w
  * Carte au format 9 × 5,5 cm. Recto : photo, identité complète, matricule, QR code de vérification.
  * Verso : établissement, contact d'urgence, validité, règles d'usage et signature.
  */
-export function IdCard({ data, side = "both", className }: { data: CardData; side?: "front" | "back" | "both"; className?: string }) {
+export function IdCard({ data, side = "both", className, settings }: { data: CardData; side?: "front" | "back" | "both"; className?: string; settings?: CardSettings }) {
   const [qr, setQr] = useState<string | null>(null);
+  const loaded = useCardSettings();
+  const cs = settings ?? loaded;
 
   useEffect(() => {
     QRCode.toDataURL(verifyUrl(data.token), { margin: 1, width: 300, errorCorrectionLevel: "M", color: { dark: "#06152E", light: "#FFFFFF" } }).then(setQr);
   }, [data.token]);
 
-  const theme = CARD_THEMES[data.variant ?? (data.type === "client" ? "client" : data.type === "eleve" ? "eleve" : "personnel")];
+  const variant: CardVariant = data.variant ?? (data.type === "client" ? "client" : data.type === "eleve" ? "eleve" : "personnel");
+  const theme = CARD_THEMES[variant];
   const isClient = data.type === "client";
   const photoOk = data.photo && !data.photo.includes("default.png");
   const accentText = theme.accent === "#D4A017" ? theme.dark : theme.accent;
@@ -155,7 +183,7 @@ export function IdCard({ data, side = "both", className }: { data: CardData; sid
         <p className="font-serif text-[11px] font-extrabold tracking-[0.15em]">
           HÔTEL ÉCOLE <span className="text-[#FF5A63]">AVENIDA</span>
         </p>
-        <p className="ml-auto text-[7px] font-bold tracking-widest text-white/75 uppercase">{siteConfig.motto}</p>
+        <p className="ml-auto text-[7px] font-bold tracking-widest text-white/75 uppercase">{cs.motto || siteConfig.motto}</p>
       </div>
 
       <div className="relative grid flex-1 grid-cols-2 gap-3 px-3.5 py-2 text-[8px] leading-snug">
@@ -180,27 +208,32 @@ export function IdCard({ data, side = "both", className }: { data: CardData; sid
         <div className="flex flex-col gap-1.5">
           <div>
             <p className="text-[6.5px] font-bold tracking-widest text-white/60 uppercase">Établissement</p>
-            <p className="text-white">{siteConfig.address.street}</p>
-            <p className="text-white">
-              {siteConfig.address.district}, {siteConfig.address.city}
-            </p>
+            {cs.address ? (
+              <p className="whitespace-pre-line text-white">{cs.address}</p>
+            ) : (
+              <>
+                <p className="text-white">{siteConfig.address.street}</p>
+                <p className="text-white">
+                  {siteConfig.address.district}, {siteConfig.address.city}
+                </p>
+              </>
+            )}
           </div>
           <div>
             <p className="text-[6.5px] font-bold tracking-widest text-white/60 uppercase">Contact</p>
-            <p className="text-white">{siteConfig.phones[0].display}</p>
-            <p className="truncate text-white">{siteConfig.email}</p>
+            <p className="text-white">{cs.phone || siteConfig.phones[0].display}</p>
+            <p className="truncate text-white">{cs.email || siteConfig.email}</p>
           </div>
         </div>
       </div>
 
       <div className="relative flex items-end gap-3 px-3.5 pb-2.5">
         <p className="flex-1 rounded-lg bg-white/12 p-1.5 text-[6.8px] leading-snug text-white/90" style={{ background: "rgb(255 255 255 / 0.1)" }}>
-          Carte personnelle à présenter sur demande. Scannez le QR code au recto pour vérifier en temps réel la situation {theme.holder}.
-          {isClient ? " Présentez-la à la réception pour vos avantages fidélité." : " En cas de perte, prévenez l'administration."}
+          {cs.rules?.[variant] || defaultCardRules(variant)}
         </p>
         <div className="w-[26%] text-center">
           <div className="h-5 border-b border-white/50" />
-          <p className="mt-0.5 text-[6.5px] font-bold text-white/80">La Direction</p>
+          <p className="mt-0.5 text-[6.5px] font-bold text-white/80">{cs.signatureTitle || "La Direction"}</p>
         </div>
       </div>
       {stripe("h-1")}

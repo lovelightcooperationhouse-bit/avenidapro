@@ -1,4 +1,5 @@
 import { ArrowRight, BedDouble, ConciergeBell, Mail, Phone, Utensils, Wine } from "lucide-react";
+import { getSiteImages } from "@/lib/site-images";
 import type { Metadata } from "next";
 import Image from "next/image";
 import { BookingForm } from "@/components/site/BookingForm";
@@ -7,7 +8,8 @@ import { PageHeader } from "@/components/site/PageHeader";
 import { Reveal } from "@/components/site/Reveal";
 import { Section } from "@/components/site/Section";
 import { Accent, SectionTitle } from "@/components/site/SectionTitle";
-import { images, rooms, siteConfig } from "@/content/site";
+import { hotelGallery, rooms, siteConfig } from "@/content/site";
+import { PhotoGallery } from "@/components/site/PhotoGallery";
 import { CmsSections } from "@/components/site/CmsBlocks";
 
 export const metadata: Metadata = {
@@ -15,15 +17,16 @@ export const metadata: Metadata = {
   description: "Séjournez à l'Hôtel École Avenida, à la Cocoteraie (Lomé) : chambres, restaurant et bar tenus par nos équipes et nos élèves. Demande de réservation en ligne.",
 };
 
-const services = [
-  { title: "Accueil & réception", text: "Une réception attentive, assurée par nos équipes et nos élèves de la filière hébergement.", icon: ConciergeBell, image: images.reception },
-  { title: "Restaurant", text: "Une cuisine préparée par notre brigade, avec nos élèves cuisiniers et pâtissiers.", icon: Utensils, image: images.plating },
-  { title: "Bar", text: "Boissons et cocktails servis par nos élèves de la filière restaurant / bar.", icon: Wine, image: images.diningRoom },
-];
 
 export const revalidate = 60;
 
 export default async function HotelPage() {
+  const { images, im } = await getSiteImages();
+  const services = [
+    { title: "Accueil & réception", text: "Une réception attentive, assurée par nos équipes et nos élèves de la filière hébergement.", icon: ConciergeBell, image: images.reception },
+    { title: "Restaurant", text: "Une cuisine préparée par notre brigade, avec nos élèves cuisiniers et pâtissiers.", icon: Utensils, image: images.plating },
+    { title: "Bar", text: "Boissons et cocktails servis par nos élèves de la filière restaurant / bar.", icon: Wine, image: images.diningRoom },
+  ];
   return (
     <>
       <PageHeader
@@ -72,7 +75,7 @@ export default async function HotelPage() {
             <li key={r.name}>
               <Reveal delay={i * 90} className="group flex h-full flex-col overflow-hidden rounded-3xl bg-white shadow-lg ring-1 ring-slate-900/5 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl">
                 <div className="relative aspect-[4/3] overflow-hidden">
-                  <Image src={r.image.src} alt={r.image.alt} fill sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw" className="object-cover transition-transform duration-700 group-hover:scale-110" />
+                  <Image src={im(r.image).src} alt={im(r.image).alt} fill sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw" className="object-cover transition-transform duration-700 group-hover:scale-110" />
                   <span className="absolute top-4 left-4 rounded-full bg-vif px-3 py-1 text-xs font-bold text-white">0{i + 1}</span>
                 </div>
                 <div className="flex flex-1 flex-col gap-2 p-6">
@@ -87,7 +90,6 @@ export default async function HotelPage() {
             </li>
           ))}
         </ul>
-        <p className="mt-3 text-right text-xs text-slate-400">Photos d&apos;ambiance · visuels non contractuels</p>
       </Section>
 
       {/* Restaurant & services */}
@@ -122,6 +124,22 @@ export default async function HotelPage() {
             </li>
           ))}
         </ul>
+      </Section>
+
+      {/* Galerie */}
+      <Section id="galerie" aria-labelledby="gallery-title" className="scroll-mt-28">
+        <SectionTitle
+          id="gallery-title"
+          eyebrow="L'hôtel en images"
+          title={
+            <>
+              Chambres, bar et <Accent>salle de conférence</Accent>
+            </>
+          }
+          description="Des chambres rénovées, un bar-salon, une salle de réunion équipée : découvrez l'établissement tel qu'il est."
+          className="mb-10"
+        />
+        <PhotoGallery photos={hotelGallery.map((k) => images[k])} />
       </Section>
 
       {/* Réserver */}

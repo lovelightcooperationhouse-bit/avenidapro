@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
+import { getSiteImages } from "@/lib/site-images";
 import { notFound } from "next/navigation";
 import { CmsSections } from "@/components/site/CmsBlocks";
 import { PageHeader } from "@/components/site/PageHeader";
-import { images } from "@/content/site";
 import { getPage } from "@/lib/cms";
 
 export const revalidate = 60;
@@ -16,6 +16,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 /** Page créée par la direction depuis l'administration : en-tête + sections. */
 export default async function CustomPage({ params }: Props) {
+  const { images } = await getSiteImages();
   const { slug } = await params;
   const page = await getPage(slug);
   if (!page) notFound();
