@@ -27,7 +27,7 @@ export function Newsletter() {
 
   return (
     <section aria-labelledby="newsletter-title" className="relative isolate overflow-hidden bg-avenida-blue-950 text-white">
-      <div aria-hidden className="absolute inset-0 -z-10 bg-[linear-gradient(120deg,#06152E,#0C356A,#06152E,#3a0610)] opacity-90" />
+      <div aria-hidden className="absolute inset-0 -z-10 bg-[linear-gradient(120deg,rgb(var(--nuit)),rgb(var(--av-blue)),rgb(var(--nuit)))]" />
       <div aria-hidden className="bg-avenida-pattern absolute inset-0 -z-10 opacity-[0.06]" />
       <Container className="grid items-center gap-8 py-14 lg:grid-cols-[1fr_1.2fr] lg:py-16">
         <div className="flex flex-col gap-3">

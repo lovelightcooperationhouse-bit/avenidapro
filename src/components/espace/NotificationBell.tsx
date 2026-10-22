@@ -1,6 +1,7 @@
 "use client";
 
 import { Bell } from "lucide-react";
+import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
@@ -35,11 +36,11 @@ export function NotificationBell({ href = "/espace/notifications", className }: 
     <Link
       href={href}
       aria-label={unread ? `${unread} notification(s) non lue(s)` : "Notifications"}
-      className={className ?? "relative flex size-10 items-center justify-center rounded-full text-avenida-blue hover:bg-avenida-blue-50"}
+      className={className ?? cn("relative flex size-10 items-center justify-center rounded-full transition-colors hover:bg-red-50", unread ? "text-[#E30613]" : "text-[#E30613]/80 hover:text-[#E30613]")}
     >
-      <Bell aria-hidden className="size-5" />
+      <Bell aria-hidden className={cn("size-5", unread > 0 && "fill-[#E30613]/15")} />
       {unread > 0 && (
-        <span className="absolute -top-0.5 -right-0.5 flex min-w-5 items-center justify-center rounded-full bg-vif px-1 text-[10px] font-bold text-white ring-2 ring-white">{unread > 99 ? "99+" : unread}</span>
+        <span className="absolute -top-0.5 -right-0.5 flex min-w-5 items-center justify-center rounded-full bg-[#E30613] px-1 text-[10px] font-bold text-white ring-2 ring-white">{unread > 99 ? "99+" : unread}</span>
       )}
     </Link>
   );

@@ -6,9 +6,11 @@ import {
 import { Newsletter } from "@/components/site/Newsletter";
 import { SiteFooter } from "@/components/site/SiteFooter";
 import { SupportDock } from "@/components/site/SupportDock";
+import { VisitTracker } from "@/components/site/VisitTracker";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { TopBar } from "@/components/site/TopBar";
 import { getMenu, getSettings } from "@/lib/cms";
+import { mergeContact, themeCss } from "@/lib/site-contact";
 
 export const metadata: Metadata = {
   title: {
@@ -26,8 +28,12 @@ export default async function SiteLayout({
   children: React.ReactNode;
 }) {
   const [menu, settings] = await Promise.all([getMenu(), getSettings()]);
+  const contact = mergeContact(settings.contact);
+  const theme = themeCss(settings.theme);
   return (
     <SiteContentProvider menu={menu} settings={settings}>
+      {/* Couleurs personnalisées dans « Site web → Couleurs » */}
+      {theme && <style dangerouslySetInnerHTML={{ __html: theme }} />}
       <div id="top" className="flex min-h-dvh flex-col bg-white text-slate-900">
         {/* Lien d'évitement : premier élément focusable */}
         <a
@@ -37,14 +43,15 @@ export default async function SiteLayout({
           Aller au contenu
         </a>
         <AnnouncementBar />
-        <TopBar />
+        <TopBar contact={contact} />
         <SiteHeader />
         <main id="main" tabIndex={-1} className="flex-1 outline-none">
           {children}
         </main>
         <Newsletter />
-      <SiteFooter />
-      <SupportDock />
+        <SiteFooter contact={contact} />
+        <SupportDock />
+        <VisitTracker />
       </div>
     </SiteContentProvider>
   );

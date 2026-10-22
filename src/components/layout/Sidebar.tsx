@@ -32,7 +32,7 @@ function ModuleLinks({ module, pathname, search, onNavigate }: { module: NavModu
                 aria-current={active ? "page" : undefined}
                 className={cn(
                   "group flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors",
-                  active ? "bg-white text-[#06152E] shadow-lg" : "text-white/80 hover:bg-white/10 hover:text-white"
+                  active ? "bg-white text-[#06152E] shadow-lg" : "text-white/80 hover:bg-[#E30613] hover:text-white"
                 )}
               >
                 <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg", active ? "text-white" : "bg-white/10")} style={active ? { backgroundColor: "#E30613" } : undefined}>

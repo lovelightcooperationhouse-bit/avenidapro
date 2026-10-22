@@ -3,6 +3,7 @@
 import { AlertTriangle, ArrowRight, CalendarDays, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { SiteStats } from "@/components/cms/SiteStats";
 import { modulesFor } from "@/components/layout/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useSchoolYear } from "@/context/SchoolYearContext";
@@ -141,6 +142,15 @@ export default function DashboardHome() {
               </li>
             ))}
           </ul>
+        </section>
+      )}
+
+      {(r === "directeur_general" || r === "gestionnaire_site") && (
+        <section className="rounded-2xl border border-slate-200 bg-slate-50/60 p-5">
+          <SiteStats compact />
+          <Link href="/dashboard/site?tab=statistiques" className="mt-3 inline-flex items-center gap-1.5 text-sm font-bold text-[#0C356A] hover:text-[#E30613]">
+            Statistiques détaillées (par jour, pages, appareils) <ArrowRight aria-hidden className="size-4" />
+          </Link>
         </section>
       )}
 

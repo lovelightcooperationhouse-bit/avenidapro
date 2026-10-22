@@ -10,6 +10,7 @@ export type RoleType =
   | "comptable"
   | "ressources_humaines"
   | "responsable_hotel"
+  | "gestionnaire_site"
   | "personnel"
   | "professeur"
   | "eleve"
@@ -24,6 +25,7 @@ export const STAFF_ROLES: RoleType[] = [
   "comptable",
   "ressources_humaines",
   "responsable_hotel",
+  "gestionnaire_site",
   "personnel",
 ];
 
@@ -80,6 +82,14 @@ export const ROLE_CONFIG: Record<RoleType, RoleConfig> = {
     avatarColor: "from-rose-600 to-red-800",
     home: "/dashboard",
     allowedPaths: ["/dashboard", "/dashboard/guide", "/dashboard/hotel", "/dashboard/reservations", "/dashboard/customers", "/dashboard/demandes", "/dashboard/messages", "/dashboard/alertes", "/dashboard/adhesions", "/dashboard/economat", "/dashboard/recherche"],
+  },
+  gestionnaire_site: {
+    label: "Gestionnaire du site web",
+    description: "Contenu, publications, menus, apparence et statistiques du site public.",
+    department: "Communication",
+    avatarColor: "from-sky-600 to-sky-800",
+    home: "/dashboard",
+    allowedPaths: ["/dashboard", "/dashboard/guide", "/dashboard/site"],
   },
   personnel: {
     label: "Personnel",
@@ -141,6 +151,7 @@ export const ROLE_SCOPE: Record<RoleType, string> = {
   comptable: "Finances : paiements, caisse, dépenses, salaires, économat, rapports financiers ; consulte les dossiers élèves et clients.",
   ressources_humaines: "Personnel : dossiers RH, contrats, salaires, cartes de travail ; avis sur les dossiers du personnel, des professeurs et de la direction.",
   responsable_hotel: "Hôtel : réservations, chambres, clients, économat, Espace Hôtel ; avis sur le personnel de l'hôtel et les clients.",
+  gestionnaire_site: "Site public : publications (articles, annonces, photos, vidéos), menus et sous-menus, pages et sections, coordonnées, réseaux sociaux, couleurs, sections de l'accueil, statistiques de visite, lettre d'information.",
   personnel: "Opérations de son service (réception, restaurant, cuisine, étages…) et Espace Hôtel ; pas d'accès aux décisions.",
   professeur: "Ses classes : Espace École (cours, devoirs, direct), appel et correspondance, notes de ses élèves.",
   eleve: "Son dossier : cours de sa filière, devoirs, notes, paiements, correspondance, carte scolaire, documents.",

@@ -1,6 +1,7 @@
 import { ArrowUp, Globe, Mail, MapPin, Navigation, Phone, UserRound } from "lucide-react";
 import Link from "next/link";
 import { footerNav, siteConfig } from "@/content/site";
+import type { SiteContact } from "@/lib/site-contact";
 import { Container } from "./Section";
 import { SiteLogo } from "./SiteLogo";
 import { SocialLinks } from "./SocialLinks";
@@ -26,8 +27,8 @@ function FooterColumn({ title, items }: { title: string; items: { label: string;
 }
 
 /** Pied de page : appel à la pré-inscription, présentation, liens, coordonnées et carte, barre basse. */
-export function SiteFooter() {
-  const { address } = siteConfig;
+export function SiteFooter({ contact }: { contact: SiteContact }) {
+  const { address } = contact;
   const year = new Date().getFullYear();
 
   return (
@@ -69,7 +70,7 @@ export function SiteFooter() {
               <p className="flex gap-3">
                 <Phone aria-hidden className="mt-0.5 size-4 shrink-0 text-vif-clair" />
                 <span className="flex flex-wrap gap-x-3 gap-y-1">
-                  {siteConfig.phones.map((p) => (
+                  {contact.phones.map((p) => (
                     <a key={p.e164} href={`tel:${p.e164}`} className="hover:text-white">
                       {p.display}
                     </a>
@@ -78,20 +79,20 @@ export function SiteFooter() {
               </p>
               <p className="flex gap-3">
                 <Mail aria-hidden className="mt-0.5 size-4 shrink-0 text-vif-clair" />
-                <a href={`mailto:${siteConfig.email}`} className="break-all hover:text-white">
-                  {siteConfig.email}
+                <a href={`mailto:${contact.email}`} className="break-all hover:text-white">
+                  {contact.email}
                 </a>
               </p>
               <p className="flex gap-3">
                 <Globe aria-hidden className="mt-0.5 size-4 shrink-0 text-vif-clair" />
-                {siteConfig.website}
+                {contact.website}
               </p>
             </address>
             <div className="overflow-hidden rounded-2xl border border-white/10">
-              <iframe title="Plan d'accès à l'Hôtel École Avenida" src={siteConfig.mapsEmbedUrl} loading="lazy" referrerPolicy="no-referrer-when-downgrade" className="h-40 w-full" />
+              <iframe title="Plan d'accès à l'Hôtel École Avenida" src={contact.mapsEmbedUrl} loading="lazy" referrerPolicy="no-referrer-when-downgrade" className="h-40 w-full" />
             </div>
             <div className="flex flex-wrap gap-2">
-              <a href={siteConfig.mapsUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-10 items-center gap-2 rounded-full bg-white px-4 text-sm font-bold text-avenida-blue-950 transition-colors hover:bg-red-50">
+              <a href={contact.mapsUrl} target="_blank" rel="noopener noreferrer" className="inline-flex h-10 items-center gap-2 rounded-full bg-white px-4 text-sm font-bold text-avenida-blue-950 transition-colors hover:bg-red-50">
                 <Navigation aria-hidden className="size-4 text-vif" />
                 Itinéraire
                 <span className="sr-only">(nouvel onglet)</span>

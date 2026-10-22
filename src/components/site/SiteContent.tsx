@@ -6,6 +6,7 @@ import { createContext, useContext, useMemo, useState } from "react";
 import { mainNav, siteConfig, type NavEntry } from "@/content/site";
 import type { CmsMenuItem, CmsSettings } from "@/lib/cms-types";
 import { iconByName } from "@/lib/icons";
+import { mergeContact } from "@/lib/site-contact";
 
 type Ctx = { nav: NavEntry[]; settings: CmsSettings };
 const SiteContentContext = createContext<Ctx>({ nav: mainNav, settings: {} });
@@ -29,6 +30,8 @@ export function SiteContentProvider({ menu, settings, children }: { menu: CmsMen
 
 export const useSiteNav = () => useContext(SiteContentContext).nav;
 export const useSiteSettings = () => useContext(SiteContentContext).settings;
+/** Coordonnées du site (saisies dans l'administration, sinon valeurs par défaut). */
+export const useContact = () => mergeContact(useSiteSettings().contact);
 
 /** Réseaux sociaux : ceux saisis dans l'administration remplacent les valeurs par défaut. */
 export function useSocials() {

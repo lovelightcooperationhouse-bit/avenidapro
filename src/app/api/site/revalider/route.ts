@@ -10,7 +10,7 @@ export async function POST() {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Non connecté" }, { status: 401 });
   const { data: me } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
-  if (me?.role !== "directeur_general") return NextResponse.json({ error: "Réservé au Directeur général" }, { status: 403 });
+  if (!["directeur_general", "gestionnaire_site"].includes(me?.role ?? "")) return NextResponse.json({ error: "Réservé à la gestion du site" }, { status: 403 });
   revalidateTag("cms");
   revalidatePath("/", "layout");
   return NextResponse.json({ ok: true });

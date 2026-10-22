@@ -87,7 +87,7 @@ export function Topbar() {
               key={m.key}
               href={first.href}
               aria-current={active ? "true" : undefined}
-              className={cn("flex shrink-0 items-center gap-2 border-b-[3px] px-2.5 py-2.5 text-sm font-bold whitespace-nowrap transition-colors xl:px-3", active ? "text-[#06152E]" : "border-transparent text-slate-500 hover:text-[#E30613]")}
+              className={cn("flex shrink-0 items-center gap-2 rounded-t-lg border-b-[3px] px-2.5 py-2.5 text-sm font-bold whitespace-nowrap transition-colors xl:px-3", active ? "bg-red-50/60 text-[#06152E]" : "border-transparent text-slate-500 hover:bg-red-50 hover:text-[#E30613]")}
               style={active ? { borderColor: "#E30613" } : undefined}
             >
               <m.icon aria-hidden className={cn("size-4", active && "text-[#E30613]")} />

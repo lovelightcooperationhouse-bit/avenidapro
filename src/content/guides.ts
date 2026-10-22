@@ -134,7 +134,7 @@ export const adminWorkflows: (Guide & { roles: RoleType[] })[] = [
       { title: "1. Créer les comptes des responsables", text: "« Comptes, rôles & postes » → « Créer un compte » : directeur pédagogique, comptable, RH, directeur de l'hôtel. Choisissez le poste, le rôle se remplit seul.", href: "/dashboard/users", cta: "Comptes et rôles" },
       { title: "2. Vérifier les postes", text: "Onglet « Postes » : ajoutez les postes propres à Avenida (ex. chef de rang) et le rôle donné par défaut.", href: "/dashboard/users" },
       { title: "3. Valider les dossiers", text: "Les nouveaux membres complètent leur profil ; le service concerné donne son avis ; vous validez dans « Dossiers des membres » (onglet « Décision du DG »).", href: "/dashboard/adhesions" },
-      { title: "4. Personnaliser le site", text: "« Site web : contenu » : diaporama, bandeau d'annonce, menus, pages, sections, actualités et réseaux sociaux.", href: "/dashboard/site" },
+      { title: "4. Personnaliser le site", text: "Module « Site web » (ou un gestionnaire du site désigné) : publications, menus, pages, sections, coordonnées, réseaux, couleurs et statistiques de visite.", href: "/dashboard/site?tab=statistiques" },
       { title: "5. Activer e-mails et SMS", text: "Ajoutez les clés Resend et Twilio dans Vercel pour que les alertes partent aussi par e-mail et SMS." },
       { title: "6. Piloter", text: "« Pilotage & rapports » : chiffres du jour, de la semaine, du mois, exportables et imprimables.", href: "/dashboard/pilotage" },
     ],
@@ -182,6 +182,21 @@ export const adminWorkflows: (Guide & { roles: RoleType[] })[] = [
     steps: [
       { title: "Alerte ciblée", text: "Un rôle, une filière, une classe ou une personne ; espace + e-mail + SMS au choix. Seul le DG écrit à tout l'établissement.", href: "/dashboard/alertes" },
       { title: "Publication sur le site", text: "Le DG publie articles, annonces, photos et vidéos, partageables sur les réseaux ; il peut prévenir les membres en même temps.", href: "/dashboard/site" },
+    ],
+  },
+  {
+    id: "site-web",
+    roles: ["directeur_general", "gestionnaire_site"],
+    title: "Gérer le site web",
+    intro: "Module « Site web » : tout le contenu et l'apparence du site public, sans toucher au code.",
+    steps: [
+      { title: "Vue d'ensemble", text: "Visites du jour, de la période et depuis le lancement, pages les plus consultées, tableau par jour, appareils utilisés.", href: "/dashboard/site?tab=statistiques" },
+      { title: "Publications", text: "Articles, annonces, événements, albums photo et vidéos, avec boutons de partage sur les réseaux ; possibilité de prévenir les membres.", href: "/dashboard/site?tab=publications" },
+      { title: "Menus et pages", text: "Ajoutez, renommez, réordonnez ou masquez menus et sous-menus ; créez des pages et ajoutez des sections (texte, image, vidéo, galerie, bouton).", href: "/dashboard/site?tab=menus" },
+      { title: "Accueil", text: "Masquez ou réaffichez les sections de l'accueil ; modifiez le diaporama et le bandeau d'annonce.", href: "/dashboard/site?tab=accueil" },
+      { title: "Coordonnées, réseaux et couleurs", text: "Téléphones, e-mail, adresse, localisation, numéro WhatsApp, liens TikTok, Facebook… et couleurs du site, avec aperçu avant publication.", href: "/dashboard/site?tab=coordonnees" },
+      { title: "Lettre d'information", text: "Liste des abonnés, export Excel.", href: "/dashboard/site?tab=abonnes" },
+      { title: "Attribuer le rôle", text: "Le DG crée le compte avec le poste « Gestionnaire du site web / communication » : cette personne n'a accès qu'au module Site web, aux discussions et aux réunions.", href: "/dashboard/users" },
     ],
   },
   {

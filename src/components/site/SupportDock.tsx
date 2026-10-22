@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { faq, formations, fees, requiredDocuments, siteConfig, whatsappUrl } from "@/content/site";
 import { cn, formatFCFA } from "@/lib/utils";
+import { useContact } from "./SiteContent";
 
 type Msg = { from: "bot" | "me"; text: string; links?: { label: string; href: string }[] };
 
@@ -73,6 +74,7 @@ const SUGGESTIONS = ["Comment s'inscrire ?", "Combien coûte la scolarité ?", "
 
 /** Boutons flottants : assistant, WhatsApp (petite icône) et retour en haut. */
 export function SupportDock() {
+  const contact = useContact();
   const [open, setOpen] = useState(false);
   const [top, setTop] = useState(false);
   const [text, setText] = useState("");
@@ -158,7 +160,7 @@ export function SupportDock() {
         </button>
       )}
       <a
-        href={whatsappUrl(siteConfig.whatsapp, "Bonjour, je souhaite des informations sur l'Hôtel École Avenida.")}
+        href={whatsappUrl(contact.whatsapp, "Bonjour, je souhaite des informations sur l'Hôtel École Avenida.")}
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Nous écrire sur WhatsApp (nouvel onglet)"

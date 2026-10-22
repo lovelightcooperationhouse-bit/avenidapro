@@ -106,11 +106,11 @@ export function HeroSlider({ custom }: { custom?: HeroSlideSetting[] }) {
       ))}
 
       {/* Voiles de lisibilité + motif Avenida */}
-      <div aria-hidden className="absolute inset-0 -z-10 bg-[linear-gradient(100deg,#06152E_0%,rgb(6_21_46/0.92)_30%,rgb(6_21_46/0.55)_58%,rgb(6_21_46/0.05)_100%)]" />
+      <div aria-hidden className="absolute inset-0 -z-10 bg-[linear-gradient(100deg,rgb(var(--nuit))_0%,rgb(var(--nuit)/0.92)_30%,rgb(var(--nuit)/0.55)_58%,rgb(var(--nuit)/0.05)_100%)]" />
       <div aria-hidden className="absolute inset-x-0 bottom-0 -z-10 h-2/5 bg-gradient-to-t from-nuit to-transparent" />
       <div aria-hidden className="bg-avenida-pattern absolute inset-y-0 left-0 -z-10 w-24 opacity-20 [mask-image:linear-gradient(90deg,black,transparent)] sm:w-40" />
 
-      <div className="mx-auto flex w-full max-w-7xl flex-1 items-center gap-10 px-4 pt-14 pb-36 sm:px-6 lg:px-8 lg:pb-60 xl:pb-40">
+      <div className="mx-auto flex w-full max-w-7xl flex-1 items-center gap-10 px-4 pt-14 pb-36 sm:px-6 lg:px-8 lg:pb-64 xl:pb-60">
         <div className="max-w-3xl flex-1" aria-live={autoplay ? "off" : "polite"}>
           <div key={index} aria-roledescription="diapositive" aria-label={`${index + 1} sur ${slides.length}`}>
             <p className="site-from-left mb-7 inline-flex items-center gap-2.5 rounded-full border border-white/20 bg-white/10 py-1.5 pr-4 pl-2 text-xs font-bold tracking-[0.18em] uppercase backdrop-blur-md sm:text-sm">
@@ -153,14 +153,24 @@ export function HeroSlider({ custom }: { custom?: HeroSlideSetting[] }) {
             </ButtonLink>
           </div>
 
-          {/* Rentrée : bien visible sur téléphone et tablette */}
+          {/* Rentrée : message fort, à gauche à côté de la personne, sur tous les écrans */}
           {next && (
-            <Link href="/preinscription" className="site-pop mt-6 inline-flex items-center gap-3 rounded-2xl bg-or px-4 py-3 text-avenida-blue-950 shadow-lg xl:hidden" style={{ animationDelay: "1300ms" }}>
-              <CalendarDays aria-hidden className="size-6" />
-              <span className="leading-tight">
-                <span className="block text-[11px] font-extrabold tracking-widest uppercase">Prochaine rentrée</span>
-                <span className="block font-display text-lg font-extrabold">
-                  J-{next.days} · {next.date}
+            <Link
+              href="/preinscription"
+              className="site-pop mt-8 flex max-w-xl items-center gap-4 rounded-3xl bg-or p-4 text-avenida-blue-950 shadow-2xl ring-4 ring-white/20 transition-colors hover:bg-or-clair sm:gap-5 sm:p-5"
+              style={{ animationDelay: "1300ms" }}
+            >
+              <span className="flex shrink-0 flex-col items-center justify-center rounded-2xl bg-avenida-blue-950 px-4 py-3 text-white sm:px-5">
+                <span className="text-[10px] font-bold tracking-widest uppercase">Rentrée</span>
+                <span className="font-display text-3xl leading-none font-extrabold sm:text-4xl">J-{next.days}</span>
+              </span>
+              <span className="min-w-0 flex-1 leading-tight">
+                <span className="flex items-center gap-1.5 text-[11px] font-extrabold tracking-widest uppercase">
+                  <CalendarDays aria-hidden className="size-4" /> Inscriptions ouvertes
+                </span>
+                <span className="mt-1 block font-display text-xl font-extrabold sm:text-2xl">Rentrée le {next.date}</span>
+                <span className="mt-1 inline-flex items-center gap-1 text-sm font-bold text-vif-fonce">
+                  Je réserve ma place <ArrowRight aria-hidden className="size-4" />
                 </span>
               </span>
             </Link>
@@ -205,19 +215,6 @@ export function HeroSlider({ custom }: { custom?: HeroSlideSetting[] }) {
             ))}
           </div>
 
-          {next && (
-            <Link
-              href="/preinscription"
-              className="hidden shrink-0 items-center gap-4 rounded-2xl bg-or px-5 py-3 text-avenida-blue-950 shadow-2xl ring-4 ring-or/30 transition-colors hover:bg-or-clair xl:flex"
-            >
-              <CalendarDays aria-hidden className="size-8" />
-              <span className="leading-tight">
-                <span className="block text-[11px] font-extrabold tracking-widest uppercase">Prochaine rentrée</span>
-                <span className="block font-display text-3xl font-extrabold">J-{next.days}</span>
-                <span className="block text-sm font-bold">{next.date}</span>
-              </span>
-            </Link>
-          )}
 
           <div className="flex items-center gap-2">
             {[

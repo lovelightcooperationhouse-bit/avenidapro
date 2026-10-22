@@ -57,7 +57,38 @@ export type CmsPost = {
 
 export type HeroSlideSetting = { image: string; alt?: string; focus?: string; eyebrow: string; title: string; highlight?: string; titleEnd?: string; subtitle: string };
 
+export type ThemeSetting = { blue?: string; vif?: string; or?: string; nuit?: string };
+export type ContactSetting = {
+  phones?: string[];
+  email?: string;
+  street?: string;
+  district?: string;
+  postal?: string;
+  city?: string;
+  country?: string;
+  hours?: string;
+  whatsapp?: string;
+  mapsUrl?: string;
+  website?: string;
+};
+
+/** Sections intégrées de l'accueil que l'on peut masquer. */
+export const HOME_SECTIONS = [
+  { key: "chiffres", label: "Chiffres clés" },
+  { key: "apropos", label: "L'excellence, notre passion" },
+  { key: "formations", label: "Nos formations" },
+  { key: "pedagogie", label: "Pédagogie" },
+  { key: "etapes", label: "Étapes d'admission" },
+  { key: "metiers", label: "Débouchés / métiers" },
+  { key: "hotel", label: "L'Hôtel" },
+  { key: "faq", label: "Questions fréquentes" },
+  { key: "appel", label: "Appel final (pré-inscription)" },
+] as const;
+
 export type CmsSettings = {
+  theme?: ThemeSetting;
+  contact?: ContactSetting;
+  home_hidden?: string[];
   hero?: HeroSlideSetting[];
   bandeau?: { text: string; href?: string; visible: boolean };
   socials?: Partial<Record<"facebook" | "instagram" | "tiktok" | "youtube" | "linkedin" | "whatsapp", string>>;

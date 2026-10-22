@@ -9,6 +9,8 @@ import { Accent } from "@/components/site/SectionTitle";
 import { SocialLinks } from "@/components/site/SocialLinks";
 import { images, siteConfig } from "@/content/site";
 import { CmsSections } from "@/components/site/CmsBlocks";
+import { getSettings } from "@/lib/cms";
+import { mergeContact } from "@/lib/site-contact";
 
 export const metadata: Metadata = {
   title: "Contact",
@@ -18,12 +20,13 @@ export const metadata: Metadata = {
 export const revalidate = 60;
 
 export default async function ContactPage() {
-  const { address } = siteConfig;
+  const contact = mergeContact((await getSettings()).contact);
+  const { address } = contact;
   const cards = [
     { icon: MapPin, title: "Adresse", lines: [address.street, address.district, `${address.postal} ${address.city} – ${address.country}`] },
-    { icon: Phone, title: "Téléphone", lines: siteConfig.phones.map((p) => p.display), links: siteConfig.phones.map((p) => `tel:${p.e164}`) },
-    { icon: Mail, title: "E-mail", lines: [siteConfig.email], links: [`mailto:${siteConfig.email}`] },
-    { icon: Clock, title: "Bureau", lines: ["Du lundi au vendredi", "de 9 h à 14 h"] },
+    { icon: Phone, title: "Téléphone", lines: contact.phones.map((p) => p.display), links: contact.phones.map((p) => `tel:${p.e164}`) },
+    { icon: Mail, title: "E-mail", lines: [contact.email], links: [`mailto:${contact.email}`] },
+    { icon: Clock, title: "Bureau", lines: [contact.officeHours] },
   ];
 
   return (
@@ -76,10 +79,10 @@ export default async function ContactPage() {
 
           <Reveal delay={120} className="flex flex-col gap-4 lg:col-span-2">
             <div className="min-h-80 flex-1 overflow-hidden rounded-[2rem] shadow-xl ring-1 ring-slate-900/5">
-              <iframe title="Plan d'accès à l'Hôtel École Avenida" src={siteConfig.mapsEmbedUrl} loading="lazy" referrerPolicy="no-referrer-when-downgrade" className="size-full min-h-80" />
+              <iframe title="Plan d'accès à l'Hôtel École Avenida" src={contact.mapsEmbedUrl} loading="lazy" referrerPolicy="no-referrer-when-downgrade" className="size-full min-h-80" />
             </div>
             <a
-              href={siteConfig.mapsUrl}
+              href={contact.mapsUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex h-12 items-center justify-center gap-2 rounded-full bg-avenida-blue font-bold text-white hover:bg-avenida-blue-950"

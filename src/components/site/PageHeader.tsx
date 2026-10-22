@@ -33,7 +33,7 @@ export function PageHeader({
   return (
     <header className="relative isolate overflow-hidden bg-nuit text-white">
       <Image src={image.src} alt="" fill priority sizes="100vw" style={{ objectPosition: focus }} className="site-kenburns-slow -z-20 object-cover opacity-70" />
-      <div aria-hidden className="absolute inset-0 -z-10 bg-[linear-gradient(100deg,#06152E_0%,rgb(6_21_46/0.9)_40%,rgb(6_21_46/0.35)_100%)]" />
+      <div aria-hidden className="absolute inset-0 -z-10 bg-[linear-gradient(100deg,rgb(var(--nuit))_0%,rgb(var(--nuit)/0.9)_40%,rgb(var(--nuit)/0.35)_100%)]" />
       <div aria-hidden className="absolute inset-x-0 bottom-0 -z-10 h-1/2 bg-gradient-to-t from-nuit/80 to-transparent" />
       <div aria-hidden className="bg-avenida-pattern absolute inset-y-0 left-0 -z-10 w-24 opacity-20 [mask-image:linear-gradient(90deg,black,transparent)] sm:w-40" />
 

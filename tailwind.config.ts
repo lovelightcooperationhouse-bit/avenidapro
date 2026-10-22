@@ -17,8 +17,9 @@ const config: Config = {
         foreground: "var(--foreground)",
         // Official Avenida Palette: Bleu, Rouge, Blanc
         avenida: {
+          // Couleurs principales pilotées par des variables CSS (modifiables dans « Site web → Couleurs »)
           blue: {
-            DEFAULT: "#0C356A",
+            DEFAULT: "rgb(var(--av-blue) / <alpha-value>)",
             50: "#F0F5FA",
             100: "#E1ECF6",
             200: "#C4DAEC",
@@ -28,8 +29,8 @@ const config: Config = {
             600: "#2B67A4",
             700: "#205185",
             800: "#1A436D",
-            900: "#0C356A",
-            950: "#072042",
+            900: "rgb(var(--av-blue) / <alpha-value>)",
+            950: "rgb(var(--av-blue-950) / <alpha-value>)",
           },
           red: {
             DEFAULT: "#DC2626",
@@ -49,15 +50,15 @@ const config: Config = {
         },
         // Site public : rouge vif franc (texte et accents) et or des étoles de remise des diplômes
         vif: {
-          DEFAULT: "#E30613",
-          fonce: "#B8000F",
-          clair: "#FF3B47",
+          DEFAULT: "rgb(var(--vif) / <alpha-value>)",
+          fonce: "rgb(var(--vif-fonce) / <alpha-value>)",
+          clair: "rgb(var(--vif-clair) / <alpha-value>)",
         },
         or: {
-          DEFAULT: "#F2B705",
-          clair: "#FFD54A",
+          DEFAULT: "rgb(var(--or) / <alpha-value>)",
+          clair: "rgb(var(--or-clair) / <alpha-value>)",
         },
-        nuit: "#06152E",
+        nuit: "rgb(var(--nuit) / <alpha-value>)",
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

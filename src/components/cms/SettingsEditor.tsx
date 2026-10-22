@@ -8,14 +8,6 @@ import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { MediaPicker, Toggle, input, label, publishSite } from "./shared";
 
-const SOCIALS = [
-  ["facebook", "Facebook"],
-  ["instagram", "Instagram"],
-  ["tiktok", "TikTok"],
-  ["youtube", "YouTube"],
-  ["linkedin", "LinkedIn"],
-  ["whatsapp", "WhatsApp (lien wa.me/…)"],
-] as const;
 
 /** Diapositives d'origine (contenu par défaut du site) : point de départ de l'édition. */
 const defaults: HeroSlideSetting[] = heroSlides.map((s) => ({ image: s.image.src, alt: s.image.alt, focus: s.focus, eyebrow: s.eyebrow, title: s.title[0], highlight: s.title[1], titleEnd: s.title[2], subtitle: s.subtitle }));
@@ -52,7 +44,7 @@ export function SettingsEditor() {
     setBusy(true);
     setMsg("");
     const supabase = createClient();
-    const rows = (["hero", "bandeau", "socials", "footer"] as const).filter((k) => s[k] !== undefined).map((k) => ({ key: k, value: s[k], updated_at: new Date().toISOString() }));
+    const rows = (["hero", "bandeau", "footer"] as const).filter((k) => s[k] !== undefined).map((k) => ({ key: k, value: s[k], updated_at: new Date().toISOString() }));
     const { error } = await supabase.from("site_settings").upsert(rows);
     await publishSite();
     setBusy(false);
@@ -103,17 +95,6 @@ export function SettingsEditor() {
         </button>
       </section>
 
-      <section className="flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white p-5">
-        <h3 className="font-black text-[#0C356A]">Réseaux sociaux (en-tête, pied de page, contact)</h3>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {SOCIALS.map(([k, l]) => (
-            <label key={k} className={label}>
-              {l}
-              <input value={s.socials?.[k] ?? ""} onChange={(e) => setS({ ...s, socials: { ...s.socials, [k]: e.target.value } })} placeholder="https://…" className={input} />
-            </label>
-          ))}
-        </div>
-      </section>
 
       <div className="sticky bottom-4 flex items-center gap-3 rounded-2xl bg-white/95 p-3 shadow-lg ring-1 ring-slate-200">
         <button type="button" onClick={save} disabled={busy} className="inline-flex items-center gap-2 rounded-full bg-[#E30613] px-6 py-2.5 text-sm font-bold text-white disabled:opacity-60">

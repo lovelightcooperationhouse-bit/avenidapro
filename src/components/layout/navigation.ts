@@ -1,5 +1,12 @@
 import {
   BarChart3,
+  LayoutTemplate,
+  Menu as MenuIcon,
+  Newspaper,
+  Palette,
+  PanelTop,
+  Phone,
+  Rows3,
   BedDouble,
   BellRing,
   Boxes,
@@ -41,8 +48,10 @@ const CPT: RoleType = "comptable";
 const RH: RoleType = "ressources_humaines";
 const HOT: RoleType = "responsable_hotel";
 const PER: RoleType = "personnel";
+const WEB: RoleType = "gestionnaire_site";
 const MANAGERS: RoleType[] = [DG, DP, CPT, RH, HOT];
-const STAFF: RoleType[] = [...MANAGERS, PER];
+const STAFF: RoleType[] = [...MANAGERS, WEB, PER];
+const SITE: RoleType[] = [DG, WEB];
 
 /**
  * Navigation de l'espace de gestion : un module par département (menu horizontal),
@@ -165,7 +174,38 @@ export const MODULES: NavModule[] = [
           { label: "Discussions & appels", href: "/discussions", icon: MessageSquare, roles: STAFF, hint: "Messages, vocaux, appels" },
           { label: "Réunions (visio)", href: "/reunions", icon: CalendarClock, roles: STAFF, hint: "Planifier, rejoindre" },
           { label: "Alertes & annonces", href: "/dashboard/alertes", icon: BellRing, roles: MANAGERS, hint: "Espace, e-mail, SMS" },
-          { label: "Site web : contenu", href: "/dashboard/site", icon: Globe, roles: [DG], hint: "Actualités, menus, pages" },
+        ],
+      },
+    ],
+  },
+  {
+    key: "site",
+    label: "Site web",
+    icon: Globe,
+    accent: "#0C356A",
+    sections: [
+      {
+        title: "Suivi",
+        items: [
+          { label: "Vue d'ensemble", href: "/dashboard/site?tab=statistiques", icon: BarChart3, roles: SITE, hint: "Visites, pages, par jour" },
+          { label: "Lettre d'information", href: "/dashboard/site?tab=abonnes", icon: Inbox, roles: SITE, hint: "Abonnés, export" },
+        ],
+      },
+      {
+        title: "Contenus",
+        items: [
+          { label: "Publications", href: "/dashboard/site?tab=publications", icon: Newspaper, roles: SITE, hint: "Articles, annonces, photos, vidéos" },
+          { label: "Menus et sous-menus", href: "/dashboard/site?tab=menus", icon: MenuIcon, roles: SITE, hint: "Ajouter, renommer, ordonner" },
+          { label: "Pages et sections", href: "/dashboard/site?tab=pages", icon: LayoutTemplate, roles: SITE, hint: "Textes, images, vidéos" },
+          { label: "Sections de l'accueil", href: "/dashboard/site?tab=accueil", icon: Rows3, roles: SITE, hint: "Afficher ou masquer" },
+          { label: "Diaporama et bandeau", href: "/dashboard/site?tab=entete", icon: PanelTop, roles: SITE, hint: "Héros de l'accueil" },
+        ],
+      },
+      {
+        title: "Apparence",
+        items: [
+          { label: "Coordonnées et réseaux", href: "/dashboard/site?tab=coordonnees", icon: Phone, roles: SITE, hint: "Pied de page, WhatsApp, TikTok" },
+          { label: "Couleurs", href: "/dashboard/site?tab=couleurs", icon: Palette, roles: SITE, hint: "Couleurs du site" },
         ],
       },
     ],

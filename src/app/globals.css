@@ -55,6 +55,18 @@
   }
 }
 
+/* Couleurs de la charte (triplets RVB), remplacées par celles choisies dans « Site web → Couleurs » */
+:root {
+  --av-blue: 12 53 106;
+  --av-blue-950: 7 32 66;
+  --vif: 227 6 19;
+  --vif-fonce: 184 0 15;
+  --vif-clair: 255 59 71;
+  --or: 242 183 5;
+  --or-clair: 255 213 74;
+  --nuit: 6 21 46;
+}
+
 /* « clip » coupe le débordement horizontal sans créer de seconde zone de défilement
    (avec « hidden » sur html et body, le corps défilait à l'intérieur de la fenêtre). */
 html {
