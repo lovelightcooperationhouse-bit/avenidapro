@@ -1,41 +1,58 @@
 "use client";
 
-import { CheckCircle2, FileSpreadsheet, Loader2, Printer, Save, Send, Sparkles } from "lucide-react";
+import { BookOpenCheck, CheckCircle2, FileSpreadsheet, ListOrdered, Loader2, Pencil, Plus, Printer, RefreshCw, Save, Signature, Trash2, Trophy, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { DocumentToolbar } from "@/components/cards/DocumentToolbar";
+import { reglementSignataire } from "@/content/reglement";
 import { useAuth } from "@/context/AuthContext";
 import { useSchoolYear } from "@/context/SchoolYearContext";
-import { TERMS, generalAverage, mention, ranks, round2, subjectLines, termRange, type BulletinStudent, type GradeRow } from "@/lib/bulletins";
+import { GROUPS, MARK_CLASS, MARK_COMPO, SANCTIONS, SEMESTERS, appreciation, maquetteFor, round2, type BulletinExtras, type BulletinStudent, type GradeRow, type MaquetteSubject, type SubjectGroup } from "@/lib/bulletins";
+import { loadClass, recalcClass, saveMarks } from "@/lib/bulletins-sync";
 import { pingNotifications } from "@/lib/notify";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
-const SUBJECTS = ["Cuisine (pratique)", "Technologie culinaire", "Pâtisserie", "Service et commercialisation", "Hébergement", "Réception", "Hygiène et sécurité", "Gestion", "Français", "Anglais", "Mathématiques", "Droit et législation", "Environnement économique", "Éducation civique"];
-const TYPES = ["Devoir", "Interrogation", "Composition", "Travaux pratiques", "Oral"];
 const input = "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#0C356A]";
+const markInput = "w-20 rounded-lg border border-slate-200 bg-amber-50 px-2 py-1.5 text-center text-sm font-bold outline-none focus:border-[#0C356A] focus:bg-white";
 const yearLabel = (v: string) => v.replace("-", " - ");
+const f2 = (n: number | null | undefined) => (n === null || n === undefined ? "—" : Number(n).toFixed(2).replace(".", ","));
+const avgOf = (a: string, b: string) => {
+  const n = [a, b].map((x) => x.trim().replace(",", ".")).filter(Boolean).map(Number).filter((x) => !Number.isNaN(x));
+  return n.length ? round2(n.reduce((s, x) => s + x, 0) / n.length) : null;
+};
 
-type Card = { id: string; student_id: string; student_name: string | null; general_average: number | null; rank_display: string | null; published: boolean; bulletin_number: string | null };
+type Tab = "maquette" | "saisie" | "bulletins" | "resultats";
 
+/** Notes et bulletins sur le modèle officiel : matières et coefficients, saisie, calcul automatique, signature, résultats. */
 export default function NotesPage() {
   const { selectedYear } = useSchoolYear();
   const year = yearLabel(selectedYear);
-  const [tab, setTab] = useState<"saisie" | "bulletins">("saisie");
-  const [classes, setClasses] = useState<string[]>([]);
+  const [tab, setTab] = useState<Tab>("saisie");
+  const [classes, setClasses] = useState<{ name: string; program: string | null }[]>([]);
   const [cls, setCls] = useState("");
-  const [term, setTerm] = useState(1);
+  const [semester, setSemester] = useState(1);
 
   useEffect(() => {
     createClient()
       .from("students")
-      .select("class_name")
+      .select("class_name, program_code")
       .eq("status", "actif")
       .then(({ data }) => {
-        const list = [...new Set((data ?? []).map((d) => d.class_name).filter(Boolean) as string[])].sort();
+        const map = new Map<string, string | null>();
+        (data ?? []).forEach((d) => d.class_name && map.set(d.class_name, d.program_code));
+        const list = [...map.entries()].map(([name, program]) => ({ name, program })).sort((a, b) => a.name.localeCompare(b.name, "fr"));
         setClasses(list);
-        setCls((c) => c || list[0] || "");
+        setCls((c) => c || list[0]?.name || "");
       });
   }, []);
+
+  const TABS: { k: Tab; label: string; icon: typeof FileSpreadsheet }[] = [
+    { k: "maquette", label: "Matières et coefficients", icon: BookOpenCheck },
+    { k: "saisie", label: "Saisie des notes", icon: Pencil },
+    { k: "bulletins", label: "Bulletins", icon: FileSpreadsheet },
+    { k: "resultats", label: "Résultats et classements", icon: Trophy },
+  ];
 
   return (
     <div className="flex flex-col gap-6">
@@ -43,322 +60,414 @@ export default function NotesPage() {
         <h1 className="flex items-center gap-2 text-2xl font-black text-[#0C356A]">
           <FileSpreadsheet aria-hidden className="size-6 text-[#E30613]" /> Notes et bulletins
         </h1>
-        <p className="mt-1 text-sm text-slate-600">Saisissez les évaluations par classe et par matière ; les bulletins se calculent automatiquement (moyennes, coefficients, rang, assiduité) avec un QR code de vérification.</p>
+        <p className="mt-1 text-sm text-slate-600">
+          Modèle officiel : note de classe et note de composition par matière. Moyennes, produits, rangs, classement, appréciations et distinctions se calculent automatiquement ; le
+          Directeur pédagogique valide et signe, puis les bulletins arrivent dans l&apos;espace et la boîte e-mail des élèves et des parents.
+        </p>
       </header>
 
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="flex gap-1 rounded-xl bg-slate-100 p-1">
-          {(["saisie", "bulletins"] as const).map((t) => (
-            <button key={t} type="button" onClick={() => setTab(t)} className={cn("rounded-lg px-4 py-2 text-sm font-bold", tab === t ? "bg-white text-[#0C356A] shadow-sm" : "text-slate-500 hover:text-[#E30613]")}>
-              {t === "saisie" ? "Saisie des notes" : "Bulletins"}
-            </button>
-          ))}
-        </div>
-        <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">
-          Classe
-          <select value={cls} onChange={(e) => setCls(e.target.value)} className={input}>
-            {classes.map((c) => (
-              <option key={c}>{c}</option>
-            ))}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">
-          Trimestre
-          <select value={term} onChange={(e) => setTerm(Number(e.target.value))} className={input}>
-            {[1, 2, 3].map((t) => (
-              <option key={t} value={t}>
-                {TERMS[t]}
-              </option>
-            ))}
-          </select>
-        </label>
-        <p className="pb-2 text-sm font-semibold text-slate-600">Année {year}</p>
-      </div>
+      <nav className="flex flex-wrap gap-2" aria-label="Étapes">
+        {TABS.map((t, i) => (
+          <button key={t.k} type="button" onClick={() => setTab(t.k)} className={cn("inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold ring-1", tab === t.k ? "bg-[#0C356A] text-white ring-[#0C356A]" : "bg-white text-slate-600 ring-slate-200 hover:text-[#E30613]")}>
+            <span className="text-xs opacity-70">{i + 1}.</span> <t.icon aria-hidden className="size-4" /> {t.label}
+          </button>
+        ))}
+      </nav>
 
-      {!cls ? (
-        <p className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">Aucune classe : les élèves inscrits définitivement apparaissent ici.</p>
+      {tab !== "maquette" && (
+        <div className="flex flex-wrap items-end gap-3">
+          {tab !== "resultats" && (
+            <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">
+              Classe
+              <select value={cls} onChange={(e) => setCls(e.target.value)} className={input}>
+                {classes.map((c) => (
+                  <option key={c.name} value={c.name}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">
+            Semestre
+            <select value={semester} onChange={(e) => setSemester(Number(e.target.value))} className={input}>
+              {[1, 2].map((t) => (
+                <option key={t} value={t}>
+                  {SEMESTERS[t]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="pb-2 text-sm font-semibold text-slate-600">Année {year}</p>
+        </div>
+      )}
+
+      {tab === "maquette" ? (
+        <Maquette programs={[...new Set(classes.map((c) => c.program).filter(Boolean) as string[])]} />
+      ) : tab === "resultats" ? (
+        <Results key={`${semester}-${year}`} semester={semester} year={year} />
+      ) : !cls ? (
+        <p className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">Aucune classe : les élèves inscrits définitivement apparaissent ici, classés par filière.</p>
       ) : tab === "saisie" ? (
-        <Entry key={`${cls}-${term}-${year}`} cls={cls} term={term} year={year} />
+        <Entry key={`${cls}-${semester}-${year}`} cls={cls} semester={semester} year={year} />
       ) : (
-        <Bulletins key={`${cls}-${term}-${year}`} cls={cls} term={term} year={year} />
+        <Bulletins key={`${cls}-${semester}-${year}`} cls={cls} semester={semester} year={year} />
       )}
     </div>
   );
 }
 
-function Entry({ cls, term, year }: { cls: string; term: number; year: string }) {
-  const { user } = useAuth();
-  const [students, setStudents] = useState<BulletinStudent[]>([]);
-  const [grades, setGrades] = useState<GradeRow[]>([]);
-  const [form, setForm] = useState({ subject: SUBJECTS[0], type: TYPES[0], coefficient: "2", date: new Date().toISOString().slice(0, 10) });
-  const [scores, setScores] = useState<Record<string, { score: string; appreciation: string }>>({});
-  const [busy, setBusy] = useState(false);
+/* ───────────────────── 1. Matières et coefficients ───────────────────── */
+
+function Maquette({ programs }: { programs: string[] }) {
+  const [all, setAll] = useState<MaquetteSubject[] | null>(null);
+  const [program, setProgram] = useState<string>("");
+  const [teachers, setTeachers] = useState<string[]>([]);
   const [msg, setMsg] = useState("");
 
   const load = useCallback(async () => {
     const supabase = createClient();
-    const { data: s } = await supabase.from("students").select("id, first_name, last_name, registration_number, student_number, class_name, program_code, gender, birth_date, birth_place, nationality, photo_url").eq("class_name", cls).eq("status", "actif").order("last_name");
-    const list = (s ?? []) as BulletinStudent[];
-    setStudents(list);
-    if (!list.length) return setGrades([]);
-    const { data: g } = await supabase.from("grades").select("student_id, subject, score, coefficient, evaluation_type, appreciation, teacher_name").in("student_id", list.map((x) => x.id)).eq("term", term).eq("academic_year", year);
-    setGrades((g ?? []) as GradeRow[]);
-  }, [cls, term, year]);
-
+    const [{ data }, { data: t }] = await Promise.all([supabase.from("bulletin_subjects").select("*"), supabase.from("staff_directory").select("full_name, subjects").not("subjects", "is", null)]);
+    setAll((data ?? []) as MaquetteSubject[]);
+    setTeachers((t ?? []).map((x) => x.full_name as string));
+  }, []);
   useEffect(() => {
     load();
   }, [load]);
 
-  const save = async () => {
-    const rows = students
-      .filter((s) => scores[s.id]?.score.trim())
-      .map((s) => ({
-        student_id: s.id,
-        student_name: `${s.last_name} ${s.first_name}`,
-        student_matricule: s.registration_number,
-        class_name: cls,
-        subject: form.subject,
-        evaluation_type: form.type,
-        coefficient: Number(form.coefficient) || 1,
-        score: Math.min(20, Math.max(0, Number(scores[s.id].score.replace(",", ".")))),
-        appreciation: scores[s.id].appreciation.trim() || null,
-        date: form.date,
-        teacher_name: user?.fullName ?? null,
-        term,
-        academic_year: year,
-      }));
-    if (!rows.length) return setMsg("Saisissez au moins une note.");
-    if (rows.some((r) => Number.isNaN(r.score))) return setMsg("Une note n'est pas un nombre valide.");
-    setBusy(true);
-    const { error } = await createClient().from("grades").insert(rows);
-    setBusy(false);
-    if (error) return setMsg("Enregistrement impossible : " + error.message);
-    setMsg(`${rows.length} note(s) enregistrée(s) en ${form.subject} (${form.type}).`);
-    setScores({});
+  if (!all) return <Loader2 aria-label="Chargement" className="size-6 animate-spin" />;
+  const own = all.filter((m) => (program ? m.program_code === program : !m.program_code));
+  const list = program && !own.length ? maquetteFor(all, null) : own.sort((a, b) => a.position - b.position);
+  const usesCommon = !!program && !own.length;
+
+  const supabase = createClient();
+  const run = async (p: PromiseLike<{ error: { message: string } | null }>) => {
+    const { error } = await p;
+    setMsg(error ? error.message : "Enregistré. Recalculez les bulletins concernés pour appliquer les nouveaux coefficients.");
     load();
   };
-
-  const summary = useMemo(() => {
-    const m = new Map<string, number>();
-    grades.forEach((g) => g.subject && m.set(`${g.subject} · ${g.evaluation_type ?? ""}`, (m.get(`${g.subject} · ${g.evaluation_type ?? ""}`) ?? 0) + 1));
-    return [...m.entries()];
-  }, [grades]);
+  const customize = () =>
+    run(
+      supabase.from("bulletin_subjects").insert(
+        maquetteFor(all, null).map((m) => ({ program_code: program, name: m.name, grp: m.grp, coefficient: m.coefficient, position: m.position, teacher_name: m.teacher_name })),
+      ),
+    );
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[1fr_20rem]">
-      <section className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5">
-        <div className="grid gap-3 sm:grid-cols-4">
-          <label className="flex flex-col gap-1 text-xs font-bold text-slate-600 sm:col-span-2">
-            Matière
-            <input list="matieres" value={form.subject} onChange={(e) => setForm({ ...form, subject: e.target.value })} className={input} />
-            <datalist id="matieres">
-              {SUBJECTS.map((s) => (
-                <option key={s} value={s} />
+    <section className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5">
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">
+          Filière
+          <select value={program} onChange={(e) => setProgram(e.target.value)} className={input}>
+            <option value="">Maquette commune (toutes les filières)</option>
+            {programs.map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
+          </select>
+        </label>
+        {usesCommon && (
+          <button type="button" onClick={customize} className="rounded-full bg-[#E30613] px-4 py-2 text-sm font-bold text-white">
+            Personnaliser les matières de {program}
+          </button>
+        )}
+      </div>
+      <p className="text-sm text-slate-600">
+        {usesCommon
+          ? `${program} utilise la maquette commune ci-dessous. Personnalisez-la pour avoir des matières ou coefficients propres à cette filière.`
+          : "Matières du bulletin, regroupées comme sur le modèle officiel. Le professeur indiqué apparaît sur chaque bulletin."}
+      </p>
+      <datalist id="profs">
+        {teachers.map((t) => (
+          <option key={t} value={t} />
+        ))}
+      </datalist>
+      {GROUPS.map((g) => (
+        <div key={g.key}>
+          <p className="mb-2 bg-[#0C356A] px-3 py-1.5 text-xs font-extrabold tracking-wider text-white uppercase">{g.label}</p>
+          <ul className="flex flex-col gap-2">
+            {list
+              .filter((m) => m.grp === g.key)
+              .map((m) => (
+                <SubjectRow key={m.id} m={m} readOnly={usesCommon} onSave={(patch) => run(supabase.from("bulletin_subjects").update(patch).eq("id", m.id))} onDelete={() => window.confirm(`Retirer « ${m.name} » ?`) && run(supabase.from("bulletin_subjects").delete().eq("id", m.id))} />
               ))}
-            </datalist>
-          </label>
-          <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">
-            Évaluation
-            <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className={input}>
-              {TYPES.map((t) => (
-                <option key={t}>{t}</option>
+          </ul>
+          {!usesCommon && (
+            <button
+              type="button"
+              onClick={() => {
+                const name = window.prompt(`Nouvelle matière (${g.label}) :`);
+                if (name?.trim()) run(supabase.from("bulletin_subjects").insert({ program_code: program || null, name: name.trim(), grp: g.key, coefficient: 1, position: 100 + list.length }));
+              }}
+              className="mt-2 inline-flex items-center gap-1.5 text-sm font-bold text-[#0C356A] hover:text-[#E30613]"
+            >
+              <Plus aria-hidden className="size-4" /> Ajouter une matière
+            </button>
+          )}
+        </div>
+      ))}
+      <p className="text-sm font-bold text-[#0C356A]">Total des coefficients : {list.reduce((a, m) => a + Number(m.coefficient), 0)}</p>
+      {msg && <p className="text-sm font-semibold text-emerald-700">{msg}</p>}
+    </section>
+  );
+}
+
+function SubjectRow({ m, readOnly, onSave, onDelete }: { m: MaquetteSubject; readOnly: boolean; onSave: (p: Partial<MaquetteSubject>) => void; onDelete: () => void }) {
+  const [v, setV] = useState({ name: m.name, coefficient: String(m.coefficient), teacher_name: m.teacher_name ?? "", grp: m.grp, position: String(m.position) });
+  const dirty = v.name !== m.name || Number(v.coefficient) !== Number(m.coefficient) || v.teacher_name !== (m.teacher_name ?? "") || v.grp !== m.grp || Number(v.position) !== m.position;
+  return (
+    <li className="grid items-center gap-2 rounded-xl bg-slate-50 p-2 sm:grid-cols-[3rem_1fr_6rem_1fr_9rem_auto]">
+      <input value={v.position} disabled={readOnly} onChange={(e) => setV({ ...v, position: e.target.value })} aria-label="Ordre" className={cn(input, "text-center")} />
+      <input value={v.name} disabled={readOnly} onChange={(e) => setV({ ...v, name: e.target.value })} aria-label="Matière" className={cn(input, "font-semibold")} />
+      <label className="flex items-center gap-1 text-xs font-bold text-slate-500">
+        Coef
+        <input type="number" min={0.5} step={0.5} value={v.coefficient} disabled={readOnly} onChange={(e) => setV({ ...v, coefficient: e.target.value })} className={cn(input, "text-center font-bold")} />
+      </label>
+      <input list="profs" value={v.teacher_name} disabled={readOnly} onChange={(e) => setV({ ...v, teacher_name: e.target.value })} placeholder="Professeur" aria-label="Professeur" className={input} />
+      <select value={v.grp} disabled={readOnly} onChange={(e) => setV({ ...v, grp: e.target.value as SubjectGroup })} aria-label="Groupe" className={input}>
+        {GROUPS.map((g) => (
+          <option key={g.key} value={g.key}>
+            {g.label.replace("Matières ", "")}
+          </option>
+        ))}
+      </select>
+      {!readOnly && (
+        <span className="flex gap-1">
+          <button type="button" disabled={!dirty} onClick={() => onSave({ name: v.name.trim(), coefficient: Number(v.coefficient) || 1, teacher_name: v.teacher_name.trim() || null, grp: v.grp, position: Number(v.position) || 100 })} aria-label="Enregistrer" className="rounded-lg p-2 text-emerald-700 hover:bg-emerald-50 disabled:opacity-30">
+            <Save aria-hidden className="size-4" />
+          </button>
+          <button type="button" onClick={onDelete} aria-label="Retirer" className="rounded-lg p-2 text-red-600 hover:bg-red-50">
+            <Trash2 aria-hidden className="size-4" />
+          </button>
+        </span>
+      )}
+    </li>
+  );
+}
+
+/* ───────────────────── 2. Saisie des notes ───────────────────── */
+
+function Entry({ cls, semester, year }: { cls: string; semester: number; year: string }) {
+  const [data, setData] = useState<Awaited<ReturnType<typeof loadClass>> | null>(null);
+  const [subject, setSubject] = useState("");
+  const [marks, setMarks] = useState<Record<string, { c: string; p: string }>>({});
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const load = useCallback(async () => {
+    const d = await loadClass(cls, semester, year);
+    setData(d);
+    setSubject((s) => s || d.maquette[0]?.name || "");
+  }, [cls, semester, year]);
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  // Notes déjà enregistrées pour la matière choisie
+  useEffect(() => {
+    if (!data || !subject) return;
+    const get = (sid: string, t: string) => data.grades.find((g) => g.student_id === sid && g.subject === subject && g.evaluation_type === t)?.score;
+    setMarks(Object.fromEntries(data.students.map((s) => [s.id, { c: get(s.id, MARK_CLASS)?.toString() ?? "", p: get(s.id, MARK_COMPO)?.toString() ?? "" }])));
+  }, [data, subject]);
+
+  if (!data) return <Loader2 aria-label="Chargement" className="size-6 animate-spin" />;
+  const m = data.maquette.find((x) => x.name === subject);
+  const filled = (name: string) => new Set(data.grades.filter((g) => g.subject === name).map((g) => g.student_id)).size;
+
+  const save = async () => {
+    if (!m) return;
+    setBusy(true);
+    setMsg(null);
+    try {
+      const n = await saveMarks(
+        data.students.map((s) => ({ student: s, subject: m.name, coefficient: Number(m.coefficient), teacher: m.teacher_name, classMark: marks[s.id]?.c ?? "", compoMark: marks[s.id]?.p ?? "" })),
+        cls,
+        semester,
+        year,
+      );
+      const r = await recalcClass(cls, semester, year);
+      pingNotifications();
+      setMsg({ ok: true, text: `${n} note(s) enregistrée(s) en ${m.name}. Bulletins recalculés automatiquement (${r.count} élève(s))${r.rectified ? ` · ${r.rectified} bulletin(s) publié(s) rectifié(s), familles prévenues` : ""}.` });
+      load();
+    } catch (e) {
+      setMsg({ ok: false, text: e instanceof Error ? e.message : "Enregistrement impossible" });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="grid gap-6 xl:grid-cols-[1fr_19rem]">
+      <section className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5">
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="flex min-w-64 flex-1 flex-col gap-1 text-xs font-bold text-slate-600">
+            Matière (filière {data.program ?? "—"})
+            <select value={subject} onChange={(e) => setSubject(e.target.value)} className={input}>
+              {GROUPS.map((g) => (
+                <optgroup key={g.key} label={g.label}>
+                  {data.maquette
+                    .filter((x) => x.grp === g.key)
+                    .map((x) => (
+                      <option key={x.id} value={x.name}>
+                        {x.name} (coef {x.coefficient})
+                      </option>
+                    ))}
+                </optgroup>
               ))}
             </select>
           </label>
-          <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">
-            Coefficient de la matière
-            <input type="number" min={1} max={10} value={form.coefficient} onChange={(e) => setForm({ ...form, coefficient: e.target.value })} className={input} />
-          </label>
+          {m?.teacher_name && <p className="pb-2 text-sm text-slate-600">Professeur : {m.teacher_name}</p>}
         </div>
-        {students.length === 0 ? (
+        {data.students.length === 0 ? (
           <p className="text-sm text-slate-500">Aucun élève actif dans cette classe.</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[36rem] text-sm">
+            <table className="w-full min-w-[40rem] text-sm">
               <thead className="bg-slate-50 text-left text-xs text-slate-500 uppercase">
                 <tr>
                   <th className="px-3 py-2">Élève</th>
-                  <th className="px-3 py-2">Note /20</th>
-                  <th className="px-3 py-2">Appréciation (facultatif)</th>
+                  <th className="px-3 py-2 text-center">Moy. classe /20</th>
+                  <th className="px-3 py-2 text-center">Note de compo. /20</th>
+                  <th className="px-3 py-2 text-center">Moy. géné.</th>
+                  <th className="px-3 py-2">Appréciation</th>
                 </tr>
               </thead>
               <tbody>
-                {students.map((s) => (
-                  <tr key={s.id} className="border-t border-slate-100">
-                    <td className="px-3 py-2">
-                      <span className="block font-bold text-slate-800">
-                        {s.last_name} {s.first_name}
-                      </span>
-                      <span className="font-mono text-xs text-[#E30613]">{s.registration_number}</span>
-                    </td>
-                    <td className="px-3 py-2">
-                      <input
-                        inputMode="decimal"
-                        value={scores[s.id]?.score ?? ""}
-                        onChange={(e) => setScores({ ...scores, [s.id]: { score: e.target.value, appreciation: scores[s.id]?.appreciation ?? "" } })}
-                        aria-label={`Note de ${s.first_name}`}
-                        placeholder="—"
-                        className={cn(input, "w-20 text-center font-bold")}
-                      />
-                    </td>
-                    <td className="px-3 py-2">
-                      <input
-                        value={scores[s.id]?.appreciation ?? ""}
-                        onChange={(e) => setScores({ ...scores, [s.id]: { score: scores[s.id]?.score ?? "", appreciation: e.target.value } })}
-                        aria-label={`Appréciation de ${s.first_name}`}
-                        className={input}
-                      />
-                    </td>
-                  </tr>
-                ))}
+                {data.students.map((s) => {
+                  const v = marks[s.id] ?? { c: "", p: "" };
+                  const avg = avgOf(v.c, v.p);
+                  return (
+                    <tr key={s.id} className="border-t border-slate-100">
+                      <td className="px-3 py-2">
+                        <span className="block font-bold text-slate-800">
+                          {s.last_name} {s.first_name}
+                        </span>
+                        <span className="font-mono text-xs text-[#E30613]">{s.registration_number}</span>
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        <input inputMode="decimal" value={v.c} onChange={(e) => setMarks({ ...marks, [s.id]: { ...v, c: e.target.value } })} aria-label={`Moyenne de classe de ${s.first_name}`} placeholder="—" className={markInput} />
+                      </td>
+                      <td className="px-3 py-2 text-center">
+                        <input inputMode="decimal" value={v.p} onChange={(e) => setMarks({ ...marks, [s.id]: { ...v, p: e.target.value } })} aria-label={`Note de composition de ${s.first_name}`} placeholder="—" className={markInput} />
+                      </td>
+                      <td className={cn("px-3 py-2 text-center font-black", avg !== null && avg < 10 ? "text-[#E30613]" : "text-[#0C356A]")}>{f2(avg)}</td>
+                      <td className="px-3 py-2 text-slate-600">{avg !== null ? appreciation(avg) : ""}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
-        {msg && <p className="text-sm font-semibold text-emerald-700">{msg}</p>}
-        <button type="button" onClick={save} disabled={busy || !students.length} className="inline-flex items-center gap-2 self-start rounded-full bg-[#E30613] px-6 py-2.5 text-sm font-bold text-white disabled:opacity-50">
-          {busy ? <Loader2 aria-hidden className="size-4 animate-spin" /> : <Save aria-hidden className="size-4" />} Enregistrer les notes
+        <p className="text-xs text-slate-500">Cases jaunes : notes sur 20 (virgule acceptée). Une case vidée efface la note. Moyenne et appréciation se calculent automatiquement.</p>
+        {msg && <p className={cn("rounded-xl p-3 text-sm font-semibold", msg.ok ? "bg-emerald-50 text-emerald-800" : "bg-red-50 text-[#B8000F]")}>{msg.text}</p>}
+        <button type="button" onClick={save} disabled={busy || !data.students.length || !m} className="inline-flex items-center gap-2 self-start rounded-full bg-[#E30613] px-6 py-2.5 text-sm font-bold text-white disabled:opacity-50">
+          {busy ? <Loader2 aria-hidden className="size-4 animate-spin" /> : <Save aria-hidden className="size-4" />} Enregistrer et recalculer
         </button>
       </section>
       <aside className="rounded-2xl border border-slate-200 bg-white p-5">
-        <p className="mb-2 text-xs font-bold tracking-wide text-slate-500 uppercase">Évaluations saisies ce trimestre</p>
-        {summary.length === 0 ? (
-          <p className="text-sm text-slate-500">Aucune note pour le moment.</p>
-        ) : (
-          <ul className="flex flex-col gap-1.5 text-sm">
-            {summary.map(([k, n]) => (
-              <li key={k} className="flex justify-between gap-2">
-                <span className="text-slate-700">{k}</span>
-                <span className="font-bold text-[#0C356A]">{n}</span>
+        <p className="mb-2 text-xs font-bold tracking-wide text-slate-500 uppercase">Avancement de la saisie</p>
+        <ul className="flex flex-col gap-1.5 text-sm">
+          {data.maquette.map((x) => {
+            const n = filled(x.name);
+            const done = n === data.students.length && n > 0;
+            return (
+              <li key={x.id}>
+                <button type="button" onClick={() => setSubject(x.name)} className={cn("flex w-full justify-between gap-2 rounded-lg px-2 py-1 text-left hover:bg-slate-50", subject === x.name && "bg-blue-50")}>
+                  <span className="text-slate-700">{x.name}</span>
+                  <span className={cn("font-bold", done ? "text-emerald-700" : n ? "text-amber-700" : "text-slate-400")}>
+                    {n}/{data.students.length}
+                  </span>
+                </button>
               </li>
-            ))}
-          </ul>
-        )}
+            );
+          })}
+        </ul>
       </aside>
     </div>
   );
 }
 
-function Bulletins({ cls, term, year }: { cls: string; term: number; year: string }) {
+/* ───────────────────── 3. Bulletins ───────────────────── */
+
+type Card = { id: string; student_id: string; student_name: string | null; general_average: number | null; rank_display: string | null; total_students: number | null; mention: string | null; published: boolean; revision: number; signed_by_name: string | null; signed_at: string | null; raw_data: { extras?: BulletinExtras } | null };
+
+function Bulletins({ cls, semester, year }: { cls: string; semester: number; year: string }) {
+  const { user } = useAuth();
   const [cards, setCards] = useState<Card[] | null>(null);
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState("");
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [fixing, setFixing] = useState<Card | null>(null);
+  const canSign = user?.role === "directeur_pedagogique" || user?.role === "directeur_general";
 
   const load = useCallback(async () => {
-    const { data } = await createClient().from("report_cards").select("id, student_id, student_name, general_average, rank_display, published, bulletin_number").eq("class_name", cls).eq("term", term).eq("academic_year", year).order("general_average", { ascending: false });
+    const { data } = await createClient()
+      .from("report_cards")
+      .select("id, student_id, student_name, general_average, rank_display, total_students, mention, published, revision, signed_by_name, signed_at, raw_data")
+      .eq("class_name", cls)
+      .eq("term", semester)
+      .eq("academic_year", year)
+      .order("rank", { ascending: true });
     setCards((data ?? []) as Card[]);
-  }, [cls, term, year]);
+  }, [cls, semester, year]);
   useEffect(() => {
     load();
   }, [load]);
 
-  /** Calcule (ou recalcule) les bulletins de la classe à partir des notes et de l'assiduité. */
-  const generate = async () => {
+  const recalc = async () => {
     setBusy(true);
-    setMsg("");
-    const supabase = createClient();
-    const { data: s } = await supabase.from("students").select("id, first_name, last_name, registration_number, student_number, class_name, program_code, gender, birth_date, birth_place, nationality, photo_url").eq("class_name", cls).eq("status", "actif");
-    const students = (s ?? []) as BulletinStudent[];
-    const ids = students.map((x) => x.id);
-    if (!ids.length) {
-      setBusy(false);
-      return setMsg("Aucun élève dans cette classe.");
+    try {
+      const r = await recalcClass(cls, semester, year);
+      pingNotifications();
+      setMsg(r.count ? { ok: true, text: `${r.count} bulletin(s) calculé(s) : moyennes, rangs et classement à jour${r.rectified ? ` · ${r.rectified} bulletin(s) rectifié(s)` : ""}.` } : { ok: false, text: "Aucune note saisie pour ce semestre : saisissez d'abord les notes." });
+    } catch (e) {
+      setMsg({ ok: false, text: e instanceof Error ? e.message : "Calcul impossible" });
     }
-    const [from, to] = termRange(year, term);
-    const [{ data: g }, { data: att }] = await Promise.all([
-      supabase.from("grades").select("student_id, subject, score, coefficient, evaluation_type, appreciation, teacher_name").in("student_id", ids).eq("term", term).eq("academic_year", year),
-      supabase.from("student_attendance").select("student_id, status").in("student_id", ids).gte("date", from).lte("date", to).neq("status", "present"),
-    ]);
-    const all = (g ?? []) as GradeRow[];
-    const computed = students.map((st) => {
-      const lines = subjectLines(all.filter((x) => x.student_id === st.id));
-      return { st, lines, ...generalAverage(lines) };
-    });
-    const withGrades = computed.filter((c) => c.lines.length);
-    if (!withGrades.length) {
-      setBusy(false);
-      return setMsg("Aucune note saisie pour ce trimestre : saisissez d'abord les notes.");
-    }
-    const r = ranks(withGrades.map((c) => ({ id: c.st.id, average: c.average })));
-    const avgs = withGrades.map((c) => c.average);
-    const classAvg = round2(avgs.reduce((a, b) => a + b, 0) / avgs.length);
-    const rows = withGrades.map((c) => {
-      const mine = (att ?? []).filter((a) => a.student_id === c.st.id);
-      const unjust = mine.filter((a) => a.status === "absent").length;
-      const late = mine.filter((a) => a.status === "retard").length;
-      return {
-        student_id: c.st.id,
-        student_name: `${c.st.last_name.toUpperCase()} ${c.st.first_name}`,
-        student_matricule: c.st.registration_number,
-        student_number: c.st.student_number,
-        class_name: cls,
-        program_code: c.st.program_code,
-        academic_year: year,
-        term,
-        period: TERMS[term],
-        gender: c.st.gender,
-        birth_date: c.st.birth_date,
-        birth_place: c.st.birth_place,
-        nationality: c.st.nationality,
-        photo_url: c.st.photo_url,
-        subjects_data: c.lines,
-        total_coefficients: c.coef,
-        total_points: c.points,
-        general_average: c.average,
-        rank: r.get(c.st.id)?.rank ?? null,
-        rank_display: r.get(c.st.id)?.display ?? null,
-        total_students: withGrades.length,
-        class_general_average: classAvg,
-        class_highest_average: Math.max(...avgs),
-        class_lowest_average: Math.min(...avgs),
-        absences_unjustified: unjust,
-        absences_justified: mine.filter((a) => a.status === "permission").length,
-        lates_count: late,
-        mention: mention(c.average),
-        conduct_appreciation: unjust + late === 0 ? "Très bonne" : unjust + late <= 3 ? "Bonne" : "À améliorer",
-        council_decision: c.average >= 10 ? "Travail satisfaisant, continuez ainsi." : "Résultats insuffisants : des efforts sont attendus.",
-        bulletin_number: `BUL-${year.slice(2, 4)}${term}-${c.st.registration_number ?? c.st.id.slice(0, 6)}`,
-        issue_date: new Date().toISOString().slice(0, 10),
-      };
-    });
-    const { error } = await supabase.from("report_cards").upsert(rows, { onConflict: "student_id,academic_year,term" });
     setBusy(false);
-    setMsg(error ? "Génération impossible : " + error.message : `${rows.length} bulletin(s) calculé(s). Vérifiez-les puis publiez-les pour les familles.`);
     load();
   };
 
-  const publish = async (ids: string[]) => {
-    await createClient().from("report_cards").update({ published: true }).in("id", ids);
+  const sign = async (ids: string[]) => {
+    if (!user || !ids.length) return;
+    const name = user.role === "directeur_pedagogique" ? user.fullName : reglementSignataire.name;
+    if (!window.confirm(`Valider, signer (${name}, Directeur pédagogique) et publier ${ids.length} bulletin(s) ? Élèves et parents les recevront dans leur espace et par e-mail.`)) return;
+    setBusy(true);
+    const { error } = await createClient().from("report_cards").update({ published: true, signed_by_name: name, signed_at: new Date().toISOString() }).in("id", ids);
+    setBusy(false);
     pingNotifications();
-    setMsg(`${ids.length} bulletin(s) publié(s) : élèves et parents sont prévenus.`);
+    setMsg(error ? { ok: false, text: error.message } : { ok: true, text: `${ids.length} bulletin(s) signé(s) et publié(s) : déposés dans les espaces, e-mails envoyés aux élèves et parents.` });
     load();
   };
 
+  const pending = (cards ?? []).filter((c) => !c.published);
   return (
     <section className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5">
       <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={generate} disabled={busy} className="inline-flex items-center gap-2 rounded-full bg-[#0C356A] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#E30613] disabled:opacity-60">
-          {busy ? <Loader2 aria-hidden className="size-4 animate-spin" /> : <Sparkles aria-hidden className="size-4" />} Calculer les bulletins de la classe
+        <button type="button" onClick={recalc} disabled={busy} className="inline-flex items-center gap-2 rounded-full bg-[#0C356A] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#E30613] disabled:opacity-60">
+          {busy ? <Loader2 aria-hidden className="size-4 animate-spin" /> : <RefreshCw aria-hidden className="size-4" />} Calculer / recalculer la classe
         </button>
-        {cards && cards.some((c) => !c.published) && (
-          <button type="button" onClick={() => publish(cards.filter((c) => !c.published).map((c) => c.id))} className="inline-flex items-center gap-2 rounded-full bg-[#E30613] px-5 py-2.5 text-sm font-bold text-white">
-            <Send aria-hidden className="size-4" /> Publier pour les familles
+        {canSign && pending.length > 0 && (
+          <button type="button" onClick={() => sign(pending.map((c) => c.id))} disabled={busy} className="inline-flex items-center gap-2 rounded-full bg-[#E30613] px-5 py-2.5 text-sm font-bold text-white">
+            <Signature aria-hidden className="size-4" /> Valider, signer et publier ({pending.length})
           </button>
         )}
       </div>
-      {msg && <p className="text-sm font-semibold text-emerald-700">{msg}</p>}
+      {msg && <p className={cn("rounded-xl p-3 text-sm font-semibold", msg.ok ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-900")}>{msg.text}</p>}
       {cards === null ? (
         <Loader2 aria-label="Chargement" className="size-6 animate-spin" />
       ) : cards.length === 0 ? (
-        <p className="text-sm text-slate-500">Aucun bulletin pour ce trimestre. Saisissez les notes puis cliquez sur « Calculer les bulletins ».</p>
+        <p className="text-sm text-slate-500">Aucun bulletin pour ce semestre. Saisissez les notes : les bulletins se calculent automatiquement.</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[36rem] text-sm">
+          <table className="w-full min-w-[48rem] text-sm">
             <thead className="bg-slate-50 text-left text-xs text-slate-500 uppercase">
               <tr>
                 <th className="px-3 py-2">Rang</th>
                 <th className="px-3 py-2">Élève</th>
                 <th className="px-3 py-2 text-right">Moyenne</th>
+                <th className="px-3 py-2">Appréciation</th>
+                <th className="px-3 py-2">Distinction</th>
                 <th className="px-3 py-2">État</th>
                 <th className="px-3 py-2" />
               </tr>
@@ -366,22 +475,31 @@ function Bulletins({ cls, term, year }: { cls: string; term: number; year: strin
             <tbody>
               {cards.map((c) => (
                 <tr key={c.id} className="border-t border-slate-100">
-                  <td className="px-3 py-2 font-bold text-[#0C356A]">{c.rank_display}</td>
+                  <td className="px-3 py-2 font-bold whitespace-nowrap text-[#0C356A]">
+                    {c.rank_display} <span className="text-xs font-normal text-slate-500">/ {c.total_students}</span>
+                  </td>
                   <td className="px-3 py-2 font-semibold">{c.student_name}</td>
-                  <td className={cn("px-3 py-2 text-right font-black", Number(c.general_average) < 10 ? "text-[#E30613]" : "text-[#0C356A]")}>{Number(c.general_average).toFixed(2)}</td>
+                  <td className={cn("px-3 py-2 text-right font-black", Number(c.general_average) < 10 ? "text-[#E30613]" : "text-[#0C356A]")}>{f2(c.general_average)}</td>
+                  <td className="px-3 py-2">{c.mention}</td>
+                  <td className="px-3 py-2 text-xs text-emerald-700">{c.raw_data?.extras?.distinction}</td>
                   <td className="px-3 py-2">
                     {c.published ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-800">
-                        <CheckCircle2 aria-hidden className="size-3.5" /> Publié
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold whitespace-nowrap text-emerald-800">
+                        <CheckCircle2 aria-hidden className="size-3.5" /> Signé{c.revision ? ` · rectifié ${c.revision}×` : ""}
                       </span>
                     ) : (
-                      <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-800">À vérifier</span>
+                      <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold whitespace-nowrap text-amber-800">À valider</span>
                     )}
                   </td>
-                  <td className="px-3 py-2 text-right">
-                    <Link href={`/impression/bulletin/${c.id}`} target="_blank" className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold text-[#0C356A] ring-1 ring-slate-200 hover:text-[#E30613]">
-                      <Printer aria-hidden className="size-3.5" /> Voir / imprimer
-                    </Link>
+                  <td className="px-3 py-2">
+                    <div className="flex justify-end gap-1">
+                      <button type="button" onClick={() => setFixing(c)} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold text-[#E30613] ring-1 ring-red-200">
+                        <Pencil aria-hidden className="size-3.5" /> Corriger
+                      </button>
+                      <Link href={`/impression/bulletin/${c.id}`} target="_blank" className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold text-[#0C356A] ring-1 ring-slate-200 hover:text-[#E30613]">
+                        <Printer aria-hidden className="size-3.5" /> Bulletin A4
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -389,6 +507,291 @@ function Bulletins({ cls, term, year }: { cls: string; term: number; year: strin
           </table>
         </div>
       )}
+      {fixing && (
+        <Correction
+          card={fixing}
+          cls={cls}
+          semester={semester}
+          year={year}
+          onClose={() => setFixing(null)}
+          onDone={(t) => {
+            setFixing(null);
+            setMsg({ ok: true, text: t });
+            load();
+          }}
+        />
+      )}
+    </section>
+  );
+}
+
+/** Réclamation ou erreur : toutes les notes de l'élève, distinction, sanctions et remarque ; tout est recalculé ensuite. */
+function Correction({ card, cls, semester, year, onClose, onDone }: { card: Card; cls: string; semester: number; year: string; onClose: () => void; onDone: (msg: string) => void }) {
+  const [data, setData] = useState<{ student: BulletinStudent; maquette: MaquetteSubject[]; grades: GradeRow[] } | null>(null);
+  const [marks, setMarks] = useState<Record<string, { c: string; p: string }>>({});
+  const [extras, setExtras] = useState<BulletinExtras>(card.raw_data?.extras ?? { distinctionAuto: true });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    loadClass(cls, semester, year).then((d) => {
+      const student = d.students.find((s) => s.id === card.student_id);
+      if (!student) return;
+      const mine = d.grades.filter((g) => g.student_id === student.id);
+      const get = (sub: string, t: string) => mine.find((g) => g.subject === sub && g.evaluation_type === t)?.score?.toString() ?? "";
+      setMarks(Object.fromEntries(d.maquette.map((m) => [m.name, { c: get(m.name, MARK_CLASS), p: get(m.name, MARK_COMPO) }])));
+      setData({ student, maquette: d.maquette, grades: mine });
+    });
+  }, [card.student_id, cls, semester, year]);
+
+  const save = async () => {
+    if (!data) return;
+    setBusy(true);
+    setError("");
+    try {
+      await saveMarks(
+        data.maquette.map((m) => ({ student: data.student, subject: m.name, coefficient: Number(m.coefficient), teacher: m.teacher_name, classMark: marks[m.name]?.c ?? "", compoMark: marks[m.name]?.p ?? "" })),
+        cls,
+        semester,
+        year,
+      );
+      await createClient()
+        .from("report_cards")
+        .update({ raw_data: { ...(card.raw_data ?? {}), extras } })
+        .eq("id", card.id);
+      const r = await recalcClass(cls, semester, year);
+      pingNotifications();
+      onDone(`Correction enregistrée pour ${card.student_name} : toute la classe est recalculée (moyennes, rangs, classement)${r.rectified ? `, ${r.rectified} bulletin(s) publié(s) rectifié(s) et familles prévenues` : ""}.`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Correction impossible");
+      setBusy(false);
+    }
+  };
+
+  const total = data ? data.maquette.reduce((a, m) => {
+      const avg = avgOf(marks[m.name]?.c ?? "", marks[m.name]?.p ?? "");
+      return avg === null ? a : { coef: a.coef + Number(m.coefficient), pts: a.pts + avg * Number(m.coefficient) };
+    }, { coef: 0, pts: 0 }) : { coef: 0, pts: 0 };
+
+  return (
+    <div role="dialog" aria-modal="true" aria-label="Corriger le bulletin" className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/60 p-3 sm:p-6" onClick={onClose}>
+      <div className="relative w-full max-w-4xl rounded-3xl bg-white p-5 shadow-2xl sm:p-6" onClick={(e) => e.stopPropagation()}>
+        <button type="button" onClick={onClose} aria-label="Fermer" className="absolute top-3 right-3 rounded-full p-2 hover:bg-slate-100">
+          <X aria-hidden className="size-5" />
+        </button>
+        <h2 className="text-xl font-black text-[#0C356A]">Corriger le bulletin · {card.student_name}</h2>
+        <p className="mb-4 text-sm text-slate-600">Réclamation ou erreur de saisie : modifiez les notes, puis enregistrez. Toute la classe est recalculée et, si le bulletin était publié, la famille reçoit le bulletin rectifié.</p>
+        {!data ? (
+          <Loader2 aria-label="Chargement" className="size-6 animate-spin" />
+        ) : (
+          <div className="flex flex-col gap-4">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[34rem] text-sm">
+                <thead className="bg-slate-50 text-left text-xs text-slate-500 uppercase">
+                  <tr>
+                    <th className="px-2 py-1.5">Matière</th>
+                    <th className="px-2 py-1.5 text-center">Coef</th>
+                    <th className="px-2 py-1.5 text-center">Moy. classe</th>
+                    <th className="px-2 py-1.5 text-center">Compo.</th>
+                    <th className="px-2 py-1.5 text-center">Moy.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.maquette.map((m) => {
+                    const v = marks[m.name] ?? { c: "", p: "" };
+                    const avg = avgOf(v.c, v.p);
+                    return (
+                      <tr key={m.id} className="border-t border-slate-100">
+                        <td className="px-2 py-1.5 font-semibold">{m.name}</td>
+                        <td className="px-2 py-1.5 text-center">{m.coefficient}</td>
+                        <td className="px-2 py-1.5 text-center">
+                          <input inputMode="decimal" value={v.c} onChange={(e) => setMarks({ ...marks, [m.name]: { ...v, c: e.target.value } })} aria-label={`Moyenne de classe en ${m.name}`} className={markInput} />
+                        </td>
+                        <td className="px-2 py-1.5 text-center">
+                          <input inputMode="decimal" value={v.p} onChange={(e) => setMarks({ ...marks, [m.name]: { ...v, p: e.target.value } })} aria-label={`Composition en ${m.name}`} className={markInput} />
+                        </td>
+                        <td className="px-2 py-1.5 text-center font-bold text-[#0C356A]">{f2(avg)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-sm font-bold text-[#0C356A]">Moyenne semestrielle provisoire : {total.coef ? f2(round2(total.pts / total.coef)) : "—"}/20</p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <fieldset className="flex flex-col gap-2 rounded-xl border border-slate-200 p-3">
+                <legend className="px-1 text-xs font-bold text-slate-600 uppercase">Distinction</legend>
+                <select
+                  value={extras.distinctionAuto === false ? (extras.distinction ?? "") : "auto"}
+                  onChange={(e) => setExtras(e.target.value === "auto" ? { ...extras, distinctionAuto: true } : { ...extras, distinctionAuto: false, distinction: e.target.value })}
+                  className={input}
+                >
+                  <option value="auto">Automatique (≥ 12 : tableau d&apos;honneur, ≥ 14 : félicitations)</option>
+                  <option value="">Aucune</option>
+                  <option value="Tableau d'honneur">Tableau d&apos;honneur</option>
+                  <option value="Tableau d'honneur et félicitations">Tableau d&apos;honneur et félicitations</option>
+                </select>
+              </fieldset>
+              <fieldset className="flex flex-col gap-1.5 rounded-xl border border-slate-200 p-3">
+                <legend className="px-1 text-xs font-bold text-slate-600 uppercase">Sanctions</legend>
+                {SANCTIONS.map((s) => (
+                  <label key={s.key} className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" checked={!!extras.sanctions?.[s.key]} onChange={(e) => setExtras({ ...extras, sanctions: { ...extras.sanctions, [s.key]: e.target.checked } })} className="size-4 accent-[#E30613]" />
+                    {s.label}
+                  </label>
+                ))}
+              </fieldset>
+            </div>
+            <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">
+              Observation de la direction (facultatif)
+              <input value={extras.remark ?? ""} onChange={(e) => setExtras({ ...extras, remark: e.target.value })} className={input} />
+            </label>
+            {error && <p className="text-sm font-semibold text-[#B8000F]">{error}</p>}
+            <div className="flex gap-2">
+              <button type="button" onClick={save} disabled={busy} className="inline-flex items-center gap-2 rounded-full bg-[#E30613] px-5 py-2.5 text-sm font-bold text-white disabled:opacity-60">
+                {busy ? <Loader2 aria-hidden className="size-4 animate-spin" /> : <Save aria-hidden className="size-4" />} Enregistrer la correction et recalculer
+              </button>
+              <button type="button" onClick={onClose} className="rounded-full px-5 py-2.5 text-sm font-bold text-slate-600 ring-1 ring-slate-200">
+                Annuler
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ───────────────────── 4. Résultats et classements ───────────────────── */
+
+type ResultRow = { id: string; student_name: string | null; class_name: string | null; program_code: string | null; general_average: number | null; rank_display: string | null; total_students: number | null; mention: string | null; published: boolean; raw_data: { extras?: BulletinExtras } | null };
+
+function Results({ semester, year }: { semester: number; year: string }) {
+  const [rows, setRows] = useState<ResultRow[] | null>(null);
+  const [view, setView] = useState<"filiere" | "classe">("filiere");
+  const [scope, setScope] = useState("");
+
+  useEffect(() => {
+    createClient()
+      .from("report_cards")
+      .select("id, student_name, class_name, program_code, general_average, rank_display, total_students, mention, published, raw_data")
+      .eq("term", semester)
+      .eq("academic_year", year)
+      .order("general_average", { ascending: false })
+      .then(({ data }) => setRows((data ?? []) as ResultRow[]));
+  }, [semester, year]);
+
+  const groups = useMemo(() => [...new Set((rows ?? []).map((r) => (view === "filiere" ? r.program_code : r.class_name) ?? "—"))].sort(), [rows, view]);
+  useEffect(() => {
+    setScope((s) => (groups.includes(s) ? s : (groups[0] ?? "")));
+  }, [groups]);
+
+  if (!rows) return <Loader2 aria-label="Chargement" className="size-6 animate-spin" />;
+  if (!rows.length) return <p className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">Aucun résultat pour ce semestre.</p>;
+
+  const list = rows.filter((r) => ((view === "filiere" ? r.program_code : r.class_name) ?? "—") === scope);
+  // Classement de la filière (toutes classes confondues) avec ex æquo
+  const ranked = list.map((r) => {
+    const rank = list.filter((x) => Number(x.general_average) > Number(r.general_average)).length + 1;
+    const tie = list.filter((x) => Number(x.general_average) === Number(r.general_average)).length > 1;
+    return { ...r, rank: `${rank}${rank === 1 ? "er" : "e"}${tie ? " ex æquo" : ""}` };
+  });
+  const avgs = list.map((r) => Number(r.general_average));
+  const pass = avgs.filter((a) => a >= 10).length;
+
+  return (
+    <section className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-end gap-3 print:hidden">
+        <div className="flex gap-1 rounded-xl bg-slate-100 p-1">
+          {(["filiere", "classe"] as const).map((v) => (
+            <button key={v} type="button" onClick={() => setView(v)} className={cn("rounded-lg px-4 py-2 text-sm font-bold", view === v ? "bg-white text-[#0C356A] shadow-sm" : "text-slate-500")}>
+              Par {v === "filiere" ? "filière" : "classe"}
+            </button>
+          ))}
+        </div>
+        <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">
+          {view === "filiere" ? "Filière" : "Classe"}
+          <select value={scope} onChange={(e) => setScope(e.target.value)} className={input}>
+            {groups.map((g) => (
+              <option key={g}>{g}</option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <div className="-mx-4 sm:mx-0">
+        <DocumentToolbar elementId="avenida-pv-resultats" fileName={`Resultats-${scope}-S${semester}-${year.replace(/\s/g, "")}`} archive={{ kind: "bulletin", title: `Résultats ${scope} · ${SEMESTERS[semester]} ${year}`, refType: "resultats", refId: `${scope}-${semester}-${year}` }} />
+        <article id="avenida-pv-resultats" className="mx-auto w-full max-w-[210mm] bg-white p-[8mm] text-[12px] shadow-lg print:shadow-none">
+          <header className="flex items-center gap-3 border-b-2 border-[#1B1652] pb-3">
+            {/* eslint-disable-next-line @next/next/no-img-element -- document imprimable */}
+            <img src="/logo-avenida.png" alt="" className="size-14 object-contain" />
+            <div className="flex-1">
+              <p className="font-serif text-lg font-extrabold text-[#1B1652]">
+                HÔTEL ÉCOLE <span className="text-[#E31B3A]">AVENIDA</span>
+              </p>
+              <p className="text-xs text-slate-500">Centre de formation hôtelière · Lomé</p>
+            </div>
+            <ListOrdered aria-hidden className="size-8 text-[#E31B3A]" />
+          </header>
+          <h2 className="mt-4 text-center text-xl font-black text-[#1B1652] uppercase">Procès-verbal des résultats</h2>
+          <p className="text-center text-sm">
+            {view === "filiere" ? "Filière" : "Classe"} <strong>{scope}</strong> · {SEMESTERS[semester]} · Année scolaire {year}
+          </p>
+          <div className="mt-4 grid grid-cols-4 gap-2 text-center text-xs">
+            {[
+              ["Effectif classé", list.length],
+              ["Moyenne générale", f2(avgs.length ? round2(avgs.reduce((a, b) => a + b, 0) / avgs.length) : null)],
+              ["Plus forte / plus faible", `${f2(Math.max(...avgs))} / ${f2(Math.min(...avgs))}`],
+              ["Moyenne ≥ 10", `${pass} (${list.length ? Math.round((pass / list.length) * 100) : 0} %)`],
+            ].map(([l, v]) => (
+              <div key={String(l)} className="rounded-lg border border-slate-200 p-2">
+                <p className="font-bold text-slate-500">{l}</p>
+                <p className="text-sm font-black text-[#1B1652]">{v}</p>
+              </div>
+            ))}
+          </div>
+          <table className="mt-4 w-full border-collapse text-left">
+            <thead>
+              <tr className="bg-[#1B1652] text-white">
+                <th className="border border-[#1B1652] px-2 py-1">Rang</th>
+                <th className="border border-[#1B1652] px-2 py-1">Nom et prénoms</th>
+                {view === "filiere" && <th className="border border-[#1B1652] px-2 py-1">Classe</th>}
+                <th className="border border-[#1B1652] px-2 py-1 text-center">Moyenne</th>
+                <th className="border border-[#1B1652] px-2 py-1">Appréciation</th>
+                <th className="border border-[#1B1652] px-2 py-1">Distinction</th>
+                {view === "filiere" && <th className="border border-[#1B1652] px-2 py-1">Rang classe</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {ranked.map((r) => (
+                <tr key={r.id} className="odd:bg-slate-50">
+                  <td className="border border-slate-300 px-2 py-1 font-bold">{view === "filiere" ? r.rank : r.rank_display}</td>
+                  <td className="border border-slate-300 px-2 py-1 font-semibold">
+                    <Link href={`/impression/bulletin/${r.id}`} target="_blank" className="hover:text-[#E31B3A]">
+                      {r.student_name}
+                    </Link>
+                  </td>
+                  {view === "filiere" && <td className="border border-slate-300 px-2 py-1">{r.class_name}</td>}
+                  <td className={cn("border border-slate-300 px-2 py-1 text-center font-black", Number(r.general_average) < 10 ? "text-[#E31B3A]" : "text-[#1B1652]")}>{f2(r.general_average)}</td>
+                  <td className="border border-slate-300 px-2 py-1">{r.mention}</td>
+                  <td className="border border-slate-300 px-2 py-1 text-xs">{r.raw_data?.extras?.distinction}</td>
+                  {view === "filiere" && (
+                    <td className="border border-slate-300 px-2 py-1 text-xs">
+                      {r.rank_display} / {r.total_students}
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div className="mt-8 flex justify-between text-sm">
+            <p>Fait à Lomé, le {new Date().toLocaleDateString("fr-FR")}</p>
+            <div className="text-center">
+              <p className="font-bold uppercase">Le Directeur pédagogique</p>
+              <p className="mt-10 font-semibold">{reglementSignataire.name}</p>
+            </div>
+          </div>
+        </article>
+      </div>
     </section>
   );
 }

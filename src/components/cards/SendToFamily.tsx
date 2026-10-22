@@ -9,7 +9,7 @@ import { createClient } from "@/lib/supabase/client";
  * Envoi d'un document de l'élève (fiche d'inscription, fiche de situation) en PDF :
  * par e-mail à l'élève et au tuteur, et dans « Mes documents » de leurs espaces.
  */
-export function SendToFamily({ studentId, elementId, docType }: { studentId: string; elementId: string; docType: "fiche" | "situation" }) {
+export function SendToFamily({ studentId, elementId, docType, title }: { studentId: string; elementId: string; docType: "fiche" | "situation" | "bulletin"; title?: string }) {
   const [emails, setEmails] = useState({ student: "", guardian: "", other: "" });
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -31,7 +31,7 @@ export function SendToFamily({ studentId, elementId, docType }: { studentId: str
       const el = document.getElementById(elementId);
       if (!el) throw new Error("Document non chargé");
       const pdf = await blobToBase64((await elementToPdf(el)).output("blob"));
-      const res = await fetch("/api/fiche/envoyer", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ studentId, pdf, docType, emails: emails.other.split(/[,;\s]+/).filter(Boolean) }) });
+      const res = await fetch("/api/fiche/envoyer", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ studentId, pdf, docType, title, emails: emails.other.split(/[,;\s]+/).filter(Boolean) }) });
       const j = await res.json();
       if (!res.ok) return setMsg({ ok: false, text: j.error ?? "Envoi impossible" });
       setMsg({ ok: !j.mailError, text: `Déposé dans ${j.delivered} espace(s) en ligne. ` + (j.mailed ? `E-mail envoyé à : ${j.emails.join(", ")}.` : j.mailError ? `${j.mailError}.` : "Aucune adresse e-mail renseignée.") });

@@ -1,9 +1,10 @@
 "use client";
 
 import QRCode from "qrcode";
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
+import { useCardSettings } from "@/components/cards/IdCard";
 import { siteConfig } from "@/content/site";
-import type { SubjectLine } from "@/lib/bulletins";
+import { GROUPS, SANCTIONS, type BulletinExtras, type SubjectLine } from "@/lib/bulletins";
 import { createClient } from "@/lib/supabase/client";
 
 export type ReportCard = {
@@ -43,18 +44,27 @@ export type ReportCard = {
   conduct_appreciation: string | null;
   issue_date: string | null;
   published: boolean;
+  signed_by_name: string | null;
+  signed_at: string | null;
+  revision: number | null;
+  raw_data: { extras?: BulletinExtras } | null;
 };
 
-const f2 = (n: number | null | undefined) => (n === null || n === undefined ? "—" : Number(n).toFixed(2).replace(".", ","));
-const d = (x: string | null) => (x ? new Date(x).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" }) : "—");
+const f2 = (n: number | null | undefined) => (n === null || n === undefined ? "" : Number(n).toFixed(2).replace(".", ","));
+const d = (x: string | null) => (x ? new Date(x).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" }) : "");
 
 /** URL de vérification publique d'un document (bulletin, reçu) encodée dans son QR code. */
 export const documentVerifyUrl = (kind: "bulletin" | "recu" | "situation", token: string) => `${typeof window !== "undefined" ? window.location.origin : ""}/verifier/document/${kind}/${token}`;
 
-/** Bulletin de notes trimestriel officiel (A4, une page) : uniquement les données de l'élève concerné. */
+const Box = ({ on }: { on: boolean }) => (
+  <span className="inline-flex size-[3.4mm] shrink-0 items-center justify-center border border-slate-700 text-[9px] leading-none font-black">{on ? "✓" : ""}</span>
+);
+
+/** Bulletin de notes semestriel officiel (A4) sur le modèle de l'Hôtel École Avenida. */
 export function ReportCardSheet({ id }: { id: string }) {
   const [r, setR] = useState<ReportCard | null | undefined>(undefined);
   const [qr, setQr] = useState<string | null>(null);
+  const cs = useCardSettings();
 
   useEffect(() => {
     createClient()
@@ -73,168 +83,211 @@ export function ReportCardSheet({ id }: { id: string }) {
 
   const photo = r.photo_url && !r.photo_url.includes("default") ? r.photo_url : null;
   const lines = r.subjects_data ?? [];
+  const extras = r.raw_data?.extras ?? {};
+  const grouped = GROUPS.map((g) => ({ ...g, lines: lines.filter((l) => l.group === g.key) })).filter((g) => g.lines.length);
+  const ungrouped = lines.filter((l) => !l.group);
+  if (ungrouped.length) grouped.push({ key: "generale", label: "Matières", lines: ungrouped });
+  const cell = "border border-slate-700 px-[1.5mm] py-[0.8mm]";
+  const head = "border border-slate-700 px-[1mm] py-[1mm] text-center text-[8.5px] font-extrabold leading-tight uppercase";
 
   return (
-    <article id="avenida-official-report-card" className="mx-auto w-full max-w-[210mm] bg-white p-[6mm] text-[11px] leading-snug text-slate-900 shadow-xl ring-1 ring-slate-200 sm:p-[8mm] print:p-0 print:shadow-none print:ring-0">
-      <div className="flex min-h-[265mm] flex-col border-[3px] border-double border-[#0C356A] p-[5mm] sm:p-[6mm]">
-        <header className="grid grid-cols-[1fr_auto_1fr] items-start gap-3 border-b-[3px] border-[#E30613] pb-[3mm]">
-          <div className="text-[9px] leading-tight text-slate-600">
-            <p className="font-bold tracking-wider text-slate-800 uppercase">République Togolaise</p>
-            <p className="italic">Travail – Liberté – Patrie</p>
-            <p className="mt-1.5">Enseignement technique et formation professionnelle</p>
-          </div>
-          <div className="flex flex-col items-center text-center">
-            {/* eslint-disable-next-line @next/next/no-img-element -- document imprimable */}
-            <img src="/logo-avenida.png" alt="" className="size-[16mm] object-contain" />
-            <p className="mt-1 font-serif text-[15px] font-extrabold tracking-wider text-[#0C356A]">
-              HÔTEL ÉCOLE <span className="text-[#E30613]">AVENIDA</span>
-            </p>
-            <p className="text-[9px] font-semibold tracking-widest text-slate-500 uppercase">{siteConfig.motto}</p>
-          </div>
-          <div className="text-right text-[9px] leading-tight text-slate-600">
-            <p>{siteConfig.address.street}</p>
-            <p>
-              {siteConfig.address.postal} {siteConfig.address.city}
-            </p>
-            <p>{siteConfig.phones[0].display}</p>
-            <p>{siteConfig.email}</p>
-          </div>
-        </header>
-
-        <div className="mt-[3mm] flex items-center justify-between gap-3">
-          <div>
-            <h1 className="font-display text-[19px] font-extrabold tracking-wide text-[#0C356A] uppercase">Bulletin de notes</h1>
-            <p className="text-[10px] text-slate-600">
-              {r.period ?? `Trimestre ${r.term}`} · Année scolaire <strong>{r.academic_year}</strong>
-            </p>
-          </div>
-          <div className="rounded border-2 border-[#E30613] px-3 py-1 text-center">
-            <p className="text-[8px] font-bold tracking-widest text-slate-500 uppercase">N° de bulletin</p>
-            <p className="font-mono text-[12px] font-extrabold text-[#E30613]">{r.bulletin_number}</p>
-          </div>
+    <article id="avenida-official-report-card" className="relative mx-auto w-full max-w-[210mm] bg-white p-[7mm] text-[10px] leading-snug text-slate-900 shadow-xl ring-1 ring-slate-200 print:p-[5mm] print:shadow-none print:ring-0">
+      {!r.published && (
+        <p aria-hidden className="pointer-events-none absolute top-1/3 left-1/2 -translate-x-1/2 -rotate-[25deg] text-[52px] font-black whitespace-nowrap text-red-600/10 select-none">
+          PROVISOIRE · À VALIDER
+        </p>
+      )}
+      {/* En-tête officiel */}
+      <header className="grid grid-cols-[1fr_auto_1fr] items-start gap-3">
+        <div className="text-[9.5px] leading-tight">
+          <p className="font-serif text-[13px] font-extrabold text-[#1B1652]">
+            HÔTEL ÉCOLE <span className="text-[#E31B3A]">AVENIDA</span>
+          </p>
+          <p className="font-bold uppercase">Centre de formation hôtelière</p>
+          <p>
+            {siteConfig.address.postal} · Tél. {siteConfig.phones[0].display} · {siteConfig.address.city} – Togo
+          </p>
         </div>
-
-        {/* Élève */}
-        <section className="mt-[3mm] flex gap-[4mm] rounded border border-slate-300 p-[3mm]">
-          <div className="flex h-[32mm] w-[25mm] shrink-0 items-center justify-center overflow-hidden border-2 border-[#0C356A] bg-slate-50">
-            {photo ? (
-              // eslint-disable-next-line @next/next/no-img-element -- photo d'identité en data URL
-              <img src={photo} alt="" className="size-full object-cover" />
-            ) : (
-              <span className="text-[8px] text-slate-400">PHOTO</span>
-            )}
-          </div>
-          <dl className="grid flex-1 grid-cols-2 gap-x-[5mm] gap-y-[2px] text-[10.5px]">
-            {[
-              ["Nom et prénoms", r.student_name],
-              ["Matricule", r.student_matricule],
-              ["Classe", r.class_name],
-              ["Filière", r.program_code],
-              ["Né(e) le", `${d(r.birth_date)}${r.birth_place ? ` à ${r.birth_place}` : ""}`],
-              ["Sexe", r.gender === "F" ? "Féminin" : r.gender === "M" ? "Masculin" : r.gender],
-              ["Effectif de la classe", r.total_students],
-              ["Nationalité", r.nationality],
-            ].map(([k, v]) => (
-              <div key={String(k)} className="flex gap-2 border-b border-dotted border-slate-300">
-                <dt className="w-[30mm] shrink-0 text-slate-500">{k}</dt>
-                <dd className="font-semibold">{v ?? "—"}</dd>
-              </div>
-            ))}
-          </dl>
-        </section>
-
-        {/* Notes */}
-        <table className="mt-[4mm] w-full border-collapse text-left text-[10.5px]">
-          <thead>
-            <tr className="bg-[#0C356A] text-white">
-              <th className="border border-[#0C356A] px-2 py-1">Matières</th>
-              <th className="border border-[#0C356A] px-2 py-1 text-center">Coef.</th>
-              <th className="border border-[#0C356A] px-2 py-1 text-center">Moyenne /20</th>
-              <th className="border border-[#0C356A] px-2 py-1 text-center">Points</th>
-              <th className="border border-[#0C356A] px-2 py-1">Appréciation</th>
-              <th className="border border-[#0C356A] px-2 py-1">Professeur</th>
-            </tr>
-          </thead>
-          <tbody>
-            {lines.map((l) => (
-              <tr key={l.subject} className="odd:bg-slate-50">
-                <td className="border border-slate-300 px-2 py-[3px] font-semibold">{l.subject}</td>
-                <td className="border border-slate-300 px-2 py-[3px] text-center">{l.coefficient}</td>
-                <td className={`border border-slate-300 px-2 py-[3px] text-center font-bold ${l.average < 10 ? "text-[#E30613]" : ""}`}>{f2(l.average)}</td>
-                <td className="border border-slate-300 px-2 py-[3px] text-center">{f2(l.points)}</td>
-                <td className="border border-slate-300 px-2 py-[3px]">{l.appreciation}</td>
-                <td className="border border-slate-300 px-2 py-[3px] text-slate-600">{l.teacher}</td>
-              </tr>
-            ))}
-            <tr className="bg-slate-100 font-bold">
-              <td className="border border-slate-300 px-2 py-1">TOTAUX</td>
-              <td className="border border-slate-300 px-2 py-1 text-center">{r.total_coefficients}</td>
-              <td className="border border-slate-300 px-2 py-1" />
-              <td className="border border-slate-300 px-2 py-1 text-center">{f2(r.total_points)}</td>
-              <td className="border border-slate-300 px-2 py-1" colSpan={2} />
-            </tr>
-          </tbody>
-        </table>
-
-        {/* Résultats */}
-        <div className="mt-[4mm] grid grid-cols-3 gap-[3mm]">
-          <div className="rounded border-2 border-[#0C356A] p-2 text-center">
-            <p className="text-[9px] font-bold tracking-widest text-slate-500 uppercase">Moyenne générale</p>
-            <p className="font-display text-[22px] font-extrabold text-[#0C356A]">{f2(r.general_average)}/20</p>
-            <p className="font-bold text-[#E30613]">{r.mention}</p>
-          </div>
-          <div className="rounded border border-slate-300 p-2 text-[10px]">
-            <p>
-              Rang : <strong>{r.rank_display ?? "—"}</strong> / {r.total_students ?? "—"}
-            </p>
-            <p>Moyenne de la classe : {f2(r.class_general_average)}</p>
-            <p>Plus forte : {f2(r.class_highest_average)}</p>
-            <p>Plus faible : {f2(r.class_lowest_average)}</p>
-          </div>
-          <div className="rounded border border-slate-300 p-2 text-[10px]">
-            <p className="font-bold text-[#0C356A]">Assiduité du trimestre</p>
-            <p>Absences non justifiées : {r.absences_unjustified ?? 0}</p>
-            <p>Absences justifiées : {r.absences_justified ?? 0}</p>
-            <p>Retards : {r.lates_count ?? 0}</p>
-            <p>Conduite : {r.conduct_appreciation ?? "—"}</p>
-          </div>
+        {/* eslint-disable-next-line @next/next/no-img-element -- document imprimable */}
+        <img src="/logo-avenida.png" alt="" className="size-[19mm] object-contain" />
+        <div className="text-right text-[9.5px] leading-tight">
+          <p className="font-extrabold tracking-wide uppercase">République Togolaise</p>
+          <p className="italic">Travail – Liberté – Patrie</p>
+          <p className="mt-1 font-mono text-[8.5px] text-slate-500">N° {r.bulletin_number}</p>
         </div>
+      </header>
 
-        <div className="mt-[3mm] grid grid-cols-2 gap-[3mm] text-[10px]">
-          <div className="min-h-[18mm] rounded border border-slate-300 p-2">
-            <p className="font-bold text-[#0C356A]">Appréciation du professeur principal</p>
-            <p className="mt-1">{r.principal_teacher_comment ?? ""}</p>
-          </div>
-          <div className="min-h-[18mm] rounded border border-slate-300 p-2">
-            <p className="font-bold text-[#0C356A]">Décision du conseil de classe</p>
-            <p className="mt-1">{r.council_decision ?? ""}</p>
-            {r.director_comment && <p className="mt-1 italic">{r.director_comment}</p>}
-          </div>
-        </div>
-
-        <div className="mt-auto grid grid-cols-[1fr_1fr_auto] items-end gap-[5mm] pt-[6mm] text-center text-[10px] font-semibold text-slate-600">
-          <div>
-            <p>Le parent / tuteur</p>
-            <div className="mt-[12mm] border-t border-slate-400 pt-1 text-[9px] font-normal">Signature</div>
-          </div>
-          <div>
-            <p>Le Directeur des études</p>
-            <div className="mt-[12mm] border-t border-slate-400 pt-1 text-[9px] font-normal">Signature et cachet</div>
-          </div>
-          <div className="flex flex-col items-center">
-            {qr ? (
-              // eslint-disable-next-line @next/next/no-img-element -- QR code généré
-              <img src={qr} alt="QR code de vérification" className="size-[20mm]" />
-            ) : (
-              <span className="size-[20mm] border border-dashed border-slate-300" />
-            )}
-            <span className="mt-0.5 text-[8px] font-normal">Vérification</span>
-          </div>
-        </div>
-        <p className="mt-[3mm] border-t border-slate-200 pt-1 text-center text-[8.5px] text-slate-400">
-          Bulletin établi le {d(r.issue_date)} · document généré par la plateforme Avenida · authenticité vérifiable par QR code
+      <div className="mt-[2.5mm] flex justify-between border-y border-slate-300 py-[1mm] text-[10.5px]">
+        <p>
+          Classe : <strong>{r.class_name}</strong>
+        </p>
+        <p>
+          Filière : <strong>{r.program_code}</strong>
         </p>
       </div>
+
+      <h1 className="mt-[2mm] bg-[#1B1652] py-[1.5mm] text-center font-display text-[17px] font-extrabold tracking-[0.2em] text-white">BULLETIN DE NOTES</h1>
+
+      <div className="mt-[2mm] grid grid-cols-3 text-[10.5px]">
+        <p>
+          Semestre : <strong>{r.period ?? r.term}</strong>
+        </p>
+        <p className="text-center">
+          Année scolaire : <strong>{r.academic_year}</strong>
+        </p>
+        <p className="text-right">
+          Effectif : <strong>{r.total_students}</strong>
+        </p>
+      </div>
+
+      <div className="mt-[2mm] flex items-center gap-[3mm] rounded border border-slate-300 p-[2mm]">
+        <div className="flex h-[22mm] w-[17mm] shrink-0 items-center justify-center overflow-hidden border border-[#1B1652] bg-slate-50">
+          {photo ? (
+            // eslint-disable-next-line @next/next/no-img-element -- photo d'identité
+            <img src={photo} alt="" className="size-full object-cover" />
+          ) : (
+            <span className="text-[7px] text-slate-400">PHOTO</span>
+          )}
+        </div>
+        <div className="flex-1 text-[10.5px]">
+          <p>
+            NOM DE L&apos;ÉLÈVE : <strong className="text-[12.5px] text-[#1B1652]">{r.student_name}</strong>
+          </p>
+          <p className="mt-0.5 text-slate-700">
+            Matricule : <strong>{r.student_matricule}</strong>
+            {r.birth_date ? ` · Né(e) le ${d(r.birth_date)}${r.birth_place ? ` à ${r.birth_place}` : ""}` : ""}
+            {r.gender ? ` · Sexe : ${r.gender === "F" ? "F" : r.gender === "M" ? "M" : r.gender}` : ""}
+          </p>
+        </div>
+      </div>
+
+      {/* Tableau des notes */}
+      <table className="mt-[2.5mm] w-full border-collapse text-[9.5px]">
+        <thead className="bg-slate-100">
+          <tr>
+            <th className={`${head} w-[26%] text-left`}>Matières</th>
+            <th className={head}>Moy. classe</th>
+            <th className={head}>Notes de comp.</th>
+            <th className={head}>Moy. géné.</th>
+            <th className={head}>Coef</th>
+            <th className={head}>Produit</th>
+            <th className={head}>Rang</th>
+            <th className={head}>Noms des professeurs</th>
+            <th className={head}>Appréciations des professeurs</th>
+            <th className={head}>Signatures</th>
+          </tr>
+        </thead>
+        <tbody>
+          {grouped.map((g) => (
+            <Fragment key={g.label}>
+              <tr>
+                <td colSpan={10} className="border border-slate-700 bg-[#1B1652]/10 px-[1.5mm] py-[0.6mm] text-[9px] font-extrabold tracking-wider text-[#1B1652] uppercase">
+                  {g.label}
+                </td>
+              </tr>
+              {g.lines.map((l) => (
+                <tr key={l.subject}>
+                  <td className={`${cell} font-semibold`}>{l.subject}</td>
+                  <td className={`${cell} text-center`}>{f2(l.classMark)}</td>
+                  <td className={`${cell} text-center`}>{f2(l.compoMark)}</td>
+                  <td className={`${cell} text-center font-bold ${l.average < 10 ? "text-[#E31B3A]" : ""}`}>{f2(l.average)}</td>
+                  <td className={`${cell} text-center`}>{l.coefficient}</td>
+                  <td className={`${cell} text-center`}>{f2(l.points)}</td>
+                  <td className={`${cell} text-center text-[8.5px] whitespace-nowrap`}>{l.rank ?? ""}</td>
+                  <td className={`${cell} text-[8.5px]`}>{l.teacher}</td>
+                  <td className={cell}>{l.appreciation}</td>
+                  <td className={cell} />
+                </tr>
+              ))}
+            </Fragment>
+          ))}
+          <tr className="bg-slate-100 font-extrabold">
+            <td className={cell}>TOTAL</td>
+            <td className={cell} colSpan={3} />
+            <td className={`${cell} text-center`}>{r.total_coefficients}</td>
+            <td className={`${cell} text-center`}>{f2(r.total_points)}</td>
+            <td className={cell} colSpan={4} />
+          </tr>
+        </tbody>
+      </table>
+
+      <p className="mt-[1.5mm] text-[10.5px]">
+        Absences : <strong>{(r.absences_unjustified ?? 0) + (r.absences_justified ?? 0)}</strong>
+        {r.absences_justified ? ` (dont ${r.absences_justified} justifiée(s))` : ""} <span className="mx-4" /> Retards : <strong>{r.lates_count ?? 0}</strong>
+      </p>
+
+      {/* Distinctions, sanctions, résultats */}
+      <div className="mt-[2.5mm] grid grid-cols-[1.15fr_1fr] gap-[4mm]">
+        <div className="flex flex-col gap-[2mm] text-[10px]">
+          <div>
+            <p className="font-extrabold uppercase">I- Distinctions spéciales obtenues par l&apos;élève</p>
+            <p className="mt-0.5 flex items-center gap-2">
+              1- Tableau d&apos;honneur <Box on={extras.distinction === "Tableau d'honneur"} />
+            </p>
+            <p className="flex items-center gap-2">
+              2- Tableau d&apos;honneur et félicitations <Box on={extras.distinction === "Tableau d'honneur et félicitations"} />
+            </p>
+          </div>
+          <div>
+            <p className="font-extrabold uppercase">II- Sanctions infligées à l&apos;élève</p>
+            {SANCTIONS.map((s, i) => (
+              <p key={s.key} className="flex items-center gap-2">
+                {i + 1}- {s.label} <Box on={!!extras.sanctions?.[s.key]} />
+              </p>
+            ))}
+          </div>
+        </div>
+        <div className="flex flex-col gap-[1.5mm] rounded border-2 border-[#1B1652] p-[2.5mm] text-[10.5px]">
+          <p className="flex justify-between">
+            Moyenne semestrielle : <strong className="text-[15px] text-[#1B1652]">{f2(r.general_average)}/20</strong>
+          </p>
+          <p className="flex justify-between">
+            Classement semestriel :{" "}
+            <strong>
+              {r.rank_display} sur {r.total_students}
+            </strong>
+          </p>
+          <p className="flex justify-between">
+            Appréciation : <strong className="text-[#E31B3A]">{r.mention}</strong>
+          </p>
+          <p className="border-t border-slate-200 pt-1 text-[9px] text-slate-600">
+            Moyenne de la classe : {f2(r.class_general_average)} · plus forte : {f2(r.class_highest_average)} · plus faible : {f2(r.class_lowest_average)}
+          </p>
+          {r.director_comment && <p className="text-[9.5px] italic">Observation : {r.director_comment}</p>}
+        </div>
+      </div>
+
+      {/* Signature */}
+      <div className="mt-[4mm] grid grid-cols-[auto_1fr_auto] items-end gap-[4mm]">
+        <div className="flex flex-col items-center">
+          {qr ? (
+            // eslint-disable-next-line @next/next/no-img-element -- QR code généré
+            <img src={qr} alt="QR code de vérification" className="size-[19mm]" />
+          ) : (
+            <span className="size-[19mm] border border-dashed border-slate-300" />
+          )}
+          <span className="mt-0.5 text-[7.5px] text-slate-500">Authenticité vérifiable</span>
+        </div>
+        <div />
+        <div className="min-w-[62mm] text-center text-[10.5px]">
+          <p>Fait à Lomé, le {d(r.signed_at ?? r.issue_date) || ".............................."}</p>
+          <p className="mt-1 font-extrabold uppercase">Le Directeur pédagogique</p>
+          {r.published && cs.signatureImage ? (
+            // eslint-disable-next-line @next/next/no-img-element -- signature scannée
+            <img src={cs.signatureImage} alt="Signature" className="mx-auto mt-1 h-[13mm] object-contain" />
+          ) : (
+            <div className="h-[13mm]" />
+          )}
+          <p className="font-bold">{r.signed_by_name ?? ""}</p>
+          {r.published && r.signed_at ? (
+            <p className="text-[8px] text-emerald-700">Validé et signé électroniquement le {new Date(r.signed_at).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}</p>
+          ) : (
+            <p className="text-[8px] text-amber-700">En attente de validation</p>
+          )}
+          {!!r.revision && <p className="text-[8px] text-slate-500">Bulletin rectifié ({r.revision}×)</p>}
+        </div>
+      </div>
+      <p className="mt-[3mm] text-center text-[9.5px] font-bold italic">Il ne sera pas délivré de duplicata</p>
     </article>
   );
 }
