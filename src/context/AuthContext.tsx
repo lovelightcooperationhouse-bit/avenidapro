@@ -30,6 +30,8 @@ interface AuthContextType {
   isLoading: boolean;
   login: (identity: string, password: string) => Promise<{ success: boolean; message?: string; home?: string }>;
   register: (data: { email: string; password: string; firstName: string; lastName: string }) => Promise<{ success: boolean; message?: string }>;
+  /** Redirige vers Google ; le retour passe par /auth/callback. */
+  loginWithGoogle: (suite?: string | null) => Promise<{ success: boolean; message?: string }>;
   logout: () => Promise<void>;
   requestPasswordReset: (email: string) => Promise<{ success: boolean; message: string }>;
   canAccessPath: (path: string) => boolean;
@@ -178,6 +180,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { success: true };
   };
 
+  const loginWithGoogle: AuthContextType["loginWithGoogle"] = async (suite) => {
+    const callback = new URL("/auth/callback", window.location.origin);
+    if (suite) callback.searchParams.set("suite", suite);
+    const { error } = await createClient().auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: callback.toString(), queryParams: { prompt: "select_account" } },
+    });
+    return error ? { success: false, message: "Connexion Google indisponible pour le moment. Réessayez plus tard." } : { success: true };
+  };
+
   const requestPasswordReset: AuthContextType["requestPasswordReset"] = async (email) => {
     const supabase = createClient();
     const target = IDENTITY_SHORTCUTS[email.trim().toLowerCase()] ?? email.trim().toLowerCase();
@@ -204,7 +216,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, isAuthenticated: !!user, isLoading, login, register, logout, requestPasswordReset, canAccessPath, refresh }}
+      value={{ user, isAuthenticated: !!user, isLoading, login, register, loginWithGoogle, logout, requestPasswordReset, canAccessPath, refresh }}
     >
       {children}
     </AuthContext.Provider>

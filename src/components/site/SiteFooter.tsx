@@ -108,7 +108,13 @@ export function SiteFooter() {
       <div className="border-t border-white/10">
         <Container className="flex flex-col items-center justify-between gap-4 py-6 text-xs sm:flex-row">
           <p>© {year} Hôtel École Avenida · Lomé, Togo · {siteConfig.motto}</p>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <Link href="/confidentialite" className="hover:text-white hover:underline">
+              Politique de confidentialité
+            </Link>
+            <Link href="/conditions-utilisation" className="hover:text-white hover:underline">
+              Conditions d&apos;utilisation
+            </Link>
             <Link href="/connexion" className="rounded-full border border-white/15 px-3 py-1.5 hover:border-vif hover:text-white">
               Espace de gestion
             </Link>

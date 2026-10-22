@@ -518,7 +518,17 @@ export function PreinscriptionForm() {
 
             <label className="flex items-start gap-3 text-sm text-slate-700">
               <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-0.5 size-5 accent-[#E30613]" />
-              Je certifie l&apos;exactitude des informations et j&apos;accepte que l&apos;Hôtel École Avenida les utilise pour traiter ma candidature.
+              <span>
+                Je certifie l&apos;exactitude des informations et j&apos;accepte que l&apos;Hôtel École Avenida les utilise pour traiter ma candidature, selon la{" "}
+                <Link href="/confidentialite" target="_blank" className="font-semibold text-vif underline">
+                  politique de confidentialité
+                </Link>{" "}
+                et les{" "}
+                <Link href="/conditions-utilisation" target="_blank" className="font-semibold text-vif underline">
+                  conditions d&apos;utilisation
+                </Link>
+                .
+              </span>
             </label>
           </div>
         )}
