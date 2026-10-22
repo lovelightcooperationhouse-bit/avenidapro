@@ -22,7 +22,7 @@ export default function DashboardLayout({
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      router.replace("/");
+      router.replace("/connexion");
     }
   }, [isLoading, isAuthenticated, router]);
 
@@ -56,7 +56,7 @@ export default function DashboardLayout({
           L'accès au tableau de bord Avenida nécessite une authentification stricte. Redirection vers le portail de connexion...
         </p>
         <Link
-          href="/"
+          href="/connexion"
           className="mt-6 px-6 py-2.5 bg-[#DC2626] hover:bg-[#B91C1C] text-white text-xs font-bold rounded-xl transition-all"
         >
           Retour à la page d'identification

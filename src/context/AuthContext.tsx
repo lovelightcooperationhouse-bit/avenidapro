@@ -564,7 +564,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {
       console.error("Storage clear error:", e);
     }
-    router.push("/");
+    router.push("/connexion");
   };
 
   const canAccessPath = (path: string): boolean => {

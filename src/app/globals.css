@@ -294,3 +294,58 @@ textarea.form-input-avenida {
 }
 
 
+
+/* ─────────────────────────────────────────────────────────────
+   Site public (src/components/site) — animations
+   ───────────────────────────────────────────────────────────── */
+@keyframes site-kenburns {
+  from { transform: scale(1.12) translate3d(1.5%, 1%, 0); }
+  to { transform: scale(1) translate3d(0, 0, 0); }
+}
+@keyframes site-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes site-word {
+  from { opacity: 0; transform: translateY(0.6em); filter: blur(6px); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+@keyframes site-progress {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+@keyframes site-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes site-slide-in {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+@keyframes site-menu-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes site-frame-in {
+  from { opacity: 0; transform: rotate(-14deg) scale(0.9); }
+  to { opacity: 1; transform: rotate(0) scale(1); }
+}
+@keyframes site-marquee {
+  to { transform: translateX(-50%); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .site-kenburns { animation: site-kenburns 9s ease-out both; }
+  .site-kenburns-slow { animation: site-kenburns 18s ease-out both; }
+  .site-rise { animation: site-rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) both; }
+  .site-word { animation: site-word 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
+  .site-fade-in { animation: site-fade-in 0.2s ease-out both; }
+  .site-slide-in { animation: site-slide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
+  .site-menu-in:not([hidden]) { animation: site-menu-in 0.2s ease-out both; }
+  .site-frame-in { transform-origin: 200px 200px; animation: site-frame-in 2.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+  .site-marquee { animation: site-marquee 40s linear infinite; }
+
+  /* Apparition au défilement (composant <Reveal>) */
+  .site-reveal { transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1); }
+  .site-reveal[data-reveal="hidden"] { opacity: 0; transform: translateY(24px); }
+}
