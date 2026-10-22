@@ -4,6 +4,7 @@ import { CheckCircle2, Download, FileText, Inbox, Loader2, Mail, Phone, Search, 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { formations, fees } from "@/content/site";
+import { EmailComposer } from "@/components/email/EmailComposer";
 import { pingNotifications } from "@/lib/notify";
 import { toPassportDataUrl } from "@/lib/pdf";
 import Link from "next/link";
@@ -74,6 +75,42 @@ export default function AdmissionsDashboardPage() {
     setBusy(false);
     setFeedback(error ? "Mise à jour impossible." : message);
     load();
+    // Décision : e-mail pré-rédigé au candidat et à son parent
+    if (!error && patch.status && ["acceptee", "refusee", "pieces_manquantes"].includes(patch.status)) openMail(patch.status);
+  };
+
+  const [mail, setMail] = useState<{ subject: string; message: string } | null>(null);
+  const openMail = (kind?: string) => {
+    if (!selected) return;
+    const hello = `Bonjour ${selected.first_name} ${selected.last_name},
+
+`;
+    const ref = selected.reference ? ` (référence ${selected.reference})` : "";
+    const texts: Record<string, { subject: string; message: string }> = {
+      acceptee: {
+        subject: "Votre candidature est acceptée – Hôtel École Avenida",
+        message: `${hello}Nous avons le plaisir de vous annoncer que votre candidature${ref} en ${selected.program_code} ${selected.specialty} est acceptée.
+
+Pour finaliser votre inscription, présentez-vous au bureau des inscriptions avec les pièces originales et le règlement des frais d'inscription. Vous pouvez suivre votre dossier dans votre espace en ligne.
+
+Bienvenue à l'Hôtel École Avenida !`,
+      },
+      refusee: {
+        subject: "Votre candidature – Hôtel École Avenida",
+        message: `${hello}Après étude de votre dossier${ref}, nous ne pouvons malheureusement pas donner une suite favorable à votre candidature pour cette rentrée.
+
+Nous restons à votre disposition pour vous orienter vers une autre formation ou une prochaine rentrée.`,
+      },
+      pieces_manquantes: {
+        subject: "Pièces manquantes à votre dossier – Hôtel École Avenida",
+        message: `${hello}Votre dossier de pré-inscription${ref} est incomplet. Merci de nous transmettre les pièces suivantes :
+
+- 
+
+Vous pouvez les déposer dans votre espace en ligne ou les apporter au bureau des inscriptions.`,
+      },
+    };
+    setMail(texts[kind ?? ""] ?? { subject: "Votre dossier de pré-inscription – Hôtel École Avenida", message: hello });
   };
 
   /**
@@ -261,6 +298,9 @@ export default function AdmissionsDashboardPage() {
               <button type="button" disabled={busy} onClick={() => update({ staff_notes: notes || null }, "Notes enregistrées.")} className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-200">
                 Enregistrer les notes
               </button>
+              <button type="button" onClick={() => openMail()} className="inline-flex items-center gap-1.5 rounded-xl bg-[#0C356A] px-4 py-2 text-sm font-bold text-white hover:bg-[#072042]">
+                <Mail aria-hidden className="size-4" /> Écrire par e-mail
+              </button>
               {selected.status !== "inscrite" && (<>
               <button type="button" disabled={busy} onClick={() => update({ status: "en_etude" }, "Dossier passé en étude.")} className="rounded-xl bg-amber-100 px-4 py-2 text-sm font-bold text-amber-900 hover:bg-amber-200">
                 En étude
@@ -307,6 +347,17 @@ export default function AdmissionsDashboardPage() {
           </div>
         )}
       </div>
+      {mail && selected && (
+        <EmailComposer
+          to={[selected.email, selected.guardian_email ?? ""]}
+          subject={mail.subject}
+          message={mail.message}
+          contextType="application"
+          contextId={selected.id}
+          link="/espace"
+          onClose={() => setMail(null)}
+        />
+      )}
     </div>
   );
 }

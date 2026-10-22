@@ -36,7 +36,7 @@ export function ContactForm() {
 
   const validate = () => {
     if (form.full_name.trim().length < 2) return "Indiquez votre nom.";
-    if (!form.phone.trim() && !form.email.trim()) return "Indiquez un téléphone ou un e-mail pour vous répondre.";
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email.trim())) return "Indiquez votre adresse e-mail : notre réponse vous sera envoyée par e-mail.";
     if (form.message.trim().length < 2) return "Écrivez votre message.";
     return "";
   };
@@ -126,8 +126,8 @@ export function ContactForm() {
         </label>
       </div>
       <label className="flex flex-col gap-1.5 text-sm font-bold text-avenida-blue-950">
-        E-mail
-        <input value={form.email} onChange={(e) => set("email", e.target.value)} type="email" autoComplete="email" className={field} />
+        E-mail (pour recevoir notre réponse) *
+        <input value={form.email} onChange={(e) => set("email", e.target.value)} type="email" required autoComplete="email" placeholder="vous@exemple.com" className={field} />
       </label>
       <label className="flex flex-col gap-1.5 text-sm font-bold text-avenida-blue-950">
         Message

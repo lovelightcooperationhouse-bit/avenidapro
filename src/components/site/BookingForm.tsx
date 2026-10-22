@@ -23,6 +23,7 @@ export function BookingForm() {
     e.preventDefault();
     if (honeypot) return;
     if (form.full_name.trim().length < 2 || form.phone.replace(/\D/g, "").length < 8) return setError("Indiquez votre nom et un numéro de téléphone valide.");
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email.trim())) return setError("Indiquez votre adresse e-mail : la confirmation vous sera envoyée par e-mail.");
     if (!form.check_in || !form.check_out || form.check_out <= form.check_in) return setError("La date de départ doit être après la date d'arrivée.");
     setError("");
     setSending(true);
@@ -97,8 +98,8 @@ export function BookingForm() {
         </label>
       </div>
       <label className="flex flex-col gap-1.5 text-sm font-bold">
-        E-mail (facultatif)
-        <input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} autoComplete="email" className={field} />
+        E-mail (pour recevoir la confirmation) *
+        <input type="email" required value={form.email} onChange={(e) => set("email", e.target.value)} autoComplete="email" placeholder="vous@exemple.com" className={field} />
       </label>
       <label className="flex flex-col gap-1.5 text-sm font-bold">
         Précisions (facultatif)

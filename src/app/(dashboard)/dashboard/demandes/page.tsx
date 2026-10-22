@@ -2,6 +2,7 @@
 
 import { BedDouble, Inbox, Loader2, Mail, MessageSquareText, Phone } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { EmailComposer } from "@/components/email/EmailComposer";
 import { useAuth } from "@/context/AuthContext";
 import { fmtDateTime } from "@/lib/admissions";
 import { createClient } from "@/lib/supabase/client";
@@ -56,6 +57,8 @@ export default function RequestsPage() {
     await createClient().from(table).update({ status, handled_by: user?.id }).eq("id", id);
     load();
   };
+
+  const [reply, setReply] = useState<{ to: string; subject: string; message: string; type: string; id: string; table?: "contact_requests"; done?: string } | null>(null);
 
   const newContacts = contacts.filter((c) => c.status === "nouveau").length;
   const newBookings = bookings.filter((b) => b.status === "nouvelle").length;
@@ -115,9 +118,27 @@ export default function RequestsPage() {
                     </a>
                   )}
                   {c.email && (
-                    <a href={`mailto:${c.email}`} className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-3 py-1.5 font-semibold text-slate-700">
-                      <Mail aria-hidden className="size-4" /> {c.email}
-                    </a>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setReply({
+                          to: c.email!,
+                          subject: "Réponse à votre message – Hôtel École Avenida",
+                          message: `Bonjour ${c.full_name},
+
+Merci pour votre message.
+
+`,
+                          type: "contact_request",
+                          id: c.id,
+                          table: "contact_requests",
+                          done: "traite",
+                        })
+                      }
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-[#E30613] px-3 py-1.5 font-semibold text-white"
+                    >
+                      <Mail aria-hidden className="size-4" /> Répondre par e-mail
+                    </button>
                   )}
                   <select
                     value={c.status}
@@ -158,9 +179,25 @@ export default function RequestsPage() {
                   <Phone aria-hidden className="size-4" /> {b.phone}
                 </a>
                 {b.email && (
-                  <a href={`mailto:${b.email}`} className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-3 py-1.5 font-semibold text-slate-700">
-                    <Mail aria-hidden className="size-4" /> {b.email}
-                  </a>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setReply({
+                        to: b.email!,
+                        subject: "Votre demande de réservation – Hôtel Avenida",
+                        message: `Bonjour ${b.full_name},
+
+Nous avons bien reçu votre demande de réservation (${b.room_type ?? "chambre"}, ${b.guests} personne(s), du ${day(b.check_in)} au ${day(b.check_out)}).
+
+`,
+                        type: "booking_request",
+                        id: b.id,
+                      })
+                    }
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-[#E30613] px-3 py-1.5 font-semibold text-white"
+                  >
+                    <Mail aria-hidden className="size-4" /> Répondre par e-mail
+                  </button>
                 )}
                 <select
                   value={b.status}
@@ -178,6 +215,17 @@ export default function RequestsPage() {
             </li>
           ))}
         </ul>
+      )}
+      {reply && (
+        <EmailComposer
+          to={[reply.to]}
+          subject={reply.subject}
+          message={reply.message}
+          contextType={reply.type}
+          contextId={reply.id}
+          onClose={() => setReply(null)}
+          onSent={() => reply.table && reply.done && setStatus(reply.table, reply.id, reply.done)}
+        />
       )}
     </div>
   );

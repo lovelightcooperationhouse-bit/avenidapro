@@ -1,9 +1,10 @@
 "use client";
 
-import { CheckCircle2, ClipboardCheck, Download, Eye, FileText, IdCard, Loader2, Printer, Search, ShieldCheck, ThumbsDown, ThumbsUp, UserCheck, XCircle } from "lucide-react";
+import { CheckCircle2, ClipboardCheck, Download, Mail, Eye, FileText, IdCard, Loader2, Printer, Search, ShieldCheck, ThumbsDown, ThumbsUp, UserCheck, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DocumentList } from "@/components/documents/DocumentList";
+import { EmailComposer } from "@/components/email/EmailComposer";
 import { fees, formations } from "@/content/site";
 import { useAuth } from "@/context/AuthContext";
 import { issueCard } from "@/lib/cards";
@@ -172,6 +173,31 @@ function Detail({ app, positions, isDG, onChange }: { app: Row; positions: Posit
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [tab, setTab] = useState<"dossier" | "documents">("dossier");
+  const [mail, setMail] = useState<{ subject: string; message: string } | null>(null);
+  const name = `${String(app.data.first_name ?? "")} ${String(app.data.last_name ?? "")}`.trim();
+  const openMail = (kind?: string, extra = "") => {
+    const hello = `Bonjour ${name},
+
+`;
+    const t: Record<string, { subject: string; message: string }> = {
+      a_completer: { subject: "Votre dossier Avenida est à compléter", message: `${hello}Votre dossier de membre doit être complété :
+
+${extra || "- "}
+
+Connectez-vous à votre espace, rubrique « Mon profil », pour ajouter les informations ou pièces demandées.` },
+      validee: { subject: "Votre dossier Avenida est validé", message: `${hello}Votre dossier est validé et votre espace est activé.${extra ? `
+
+${extra}` : ""}
+
+Bienvenue à l'Hôtel École Avenida !` },
+      refusee: { subject: "Votre demande Avenida", message: `${hello}Après examen, votre demande n'a pas été retenue.${extra ? `
+
+${extra}` : ""}
+
+Nous restons à votre disposition pour toute information.` },
+    };
+    setMail(t[kind ?? ""] ?? { subject: "Votre dossier – Hôtel École Avenida", message: hello });
+  };
 
   const decided = app.status === "validee" || app.status === "refusee";
   const total = f ? f.registration + f.tuition + (program === "CFA" ? fees.suppliesCfa : fees.suppliesDiploma) : 0;
@@ -189,6 +215,7 @@ function Detail({ app, positions, isDG, onChange }: { app: Row; positions: Posit
     if (error) return setMsg({ ok: false, text: error.message });
     pingNotifications();
     setMsg({ ok: true, text: decision === "a_completer" ? "Le membre est invité à compléter son dossier." : decision === "en_examen" ? "Dossier marqué « en examen »." : "Avis transmis au Directeur général." });
+    if (decision === "a_completer") openMail("a_completer", note);
     onChange();
   };
 
@@ -213,6 +240,7 @@ function Detail({ app, positions, isDG, onChange }: { app: Row; positions: Posit
     }
     setBusy(false);
     pingNotifications();
+    openMail(decision, decision === "validee" && res.matricule ? `Votre matricule : ${res.matricule}. ${note}`.trim() : note);
     setMsg({
       ok: true,
       text:
@@ -257,6 +285,9 @@ function Detail({ app, positions, isDG, onChange }: { app: Row; positions: Posit
             {app.submitted_at && <span className="text-xs text-slate-500">Envoyé le {new Date(app.submitted_at).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}</span>}
           </p>
         </div>
+        <button type="button" onClick={() => openMail()} className="inline-flex items-center gap-2 rounded-full bg-[#0C356A] px-4 py-2 text-sm font-bold text-white">
+          <Mail aria-hidden className="size-4" /> E-mail
+        </button>
         <Link href={`/impression/dossier/${app.id}`} target="_blank" className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm font-bold text-[#0C356A] hover:bg-slate-50">
           <Printer aria-hidden className="size-4" /> Formulaire complet
         </Link>
@@ -450,6 +481,9 @@ function Detail({ app, positions, isDG, onChange }: { app: Row; positions: Posit
             )}
           </div>
         )
+      )}
+      {mail && app.profiles?.email && (
+        <EmailComposer to={[app.profiles.email]} subject={mail.subject} message={mail.message} contextType="member_application" contextId={app.id} link="/espace" onClose={() => setMail(null)} />
       )}
     </article>
   );

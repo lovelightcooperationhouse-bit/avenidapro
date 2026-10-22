@@ -2,6 +2,7 @@
 
 import { Download, Eye, FileText, Inbox, Loader2, Trash2, Upload } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { sendEmail } from "@/components/email/EmailComposer";
 import { formatSize, signedUrl } from "@/lib/spaces";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -66,6 +67,8 @@ export function DocumentList({ profileId, viewerId, mode }: { profileId: string;
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [byEmail, setByEmail] = useState(true);
+  const [info, setInfo] = useState("");
 
   const load = useCallback(async () => {
     const { data } = await createClient().from("member_documents").select("*").eq("profile_id", profileId).order("created_at", { ascending: false });
@@ -97,8 +100,35 @@ export function DocumentList({ profileId, viewerId, mode }: { profileId: string;
     if (file.size > 20 * 1024 * 1024) return setError("Fichier trop lourd (20 Mo au maximum).");
     setBusy(true);
     const err = await addMemberDocument({ profileId, file, title, category, direction: mode === "admin" ? "envoye" : "depose", sentBy: viewerId, note });
+    if (err) {
+      setBusy(false);
+      return setError("Envoi impossible : " + err.message);
+    }
+    // Envoi aussi par e-mail au membre (document en pièce jointe s'il fait moins de 3 Mo)
+    setInfo("");
+    if (mode === "admin" && byEmail) {
+      const { data: prof } = await createClient().from("profiles").select("email, first_name").eq("id", profileId).maybeSingle();
+      if (prof?.email) {
+        const docTitle = title.trim() || file.name;
+        const r = await sendEmail({
+          to: [prof.email],
+          subject: `Nouveau document : ${docTitle} – Hôtel École Avenida`,
+          message: `Bonjour ${prof.first_name ?? ""},
+
+L'administration de l'Hôtel École Avenida vous a envoyé un document : « ${docTitle} ».${note.trim() ? `
+
+${note.trim()}` : ""}
+
+${file.size <= 3 * 1024 * 1024 ? "Vous le trouverez en pièce jointe et" : "Vous le trouverez"} dans votre espace, rubrique « Mes documents ».`,
+          files: file.size <= 3 * 1024 * 1024 ? [file] : [],
+          contextType: "member_document",
+          contextId: profileId,
+          link: "/espace/documents",
+        });
+        setInfo(r.ok ? `Document déposé dans l'espace et envoyé par e-mail à ${prof.email}.` : r.status === "non_configure" ? "Document déposé dans l'espace. E-mail non envoyé : service d'envoi (Resend) à configurer." : `Document déposé dans l'espace. E-mail : ${r.error}`);
+      }
+    }
     setBusy(false);
-    if (err) return setError("Envoi impossible : " + err.message);
     setFile(null);
     setTitle("");
     setNote("");
@@ -137,6 +167,13 @@ export function DocumentList({ profileId, viewerId, mode }: { profileId: string;
           </select>
         </div>
         {mode === "admin" && <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Message joint (facultatif)" aria-label="Message" className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm" />}
+        {mode === "admin" && (
+          <label className="inline-flex items-center gap-2 text-sm font-semibold text-slate-700">
+            <input type="checkbox" checked={byEmail} onChange={(e) => setByEmail(e.target.checked)} className="size-4 accent-[#E30613]" />
+            Envoyer aussi par e-mail au membre (document en pièce jointe)
+          </label>
+        )}
+        {info && <p className="text-sm font-semibold text-emerald-700">{info}</p>}
         {error && <p className="text-sm font-semibold text-vif">{error}</p>}
         <button type="submit" disabled={busy} className="inline-flex items-center justify-center gap-2 self-start rounded-full bg-vif px-5 py-2.5 text-sm font-bold text-white hover:bg-vif-fonce disabled:opacity-60">
           {busy ? <Loader2 aria-hidden className="size-4 animate-spin" /> : <Upload aria-hidden className="size-4" />}
