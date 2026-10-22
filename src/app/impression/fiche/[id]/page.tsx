@@ -4,6 +4,7 @@ import { CheckCircle2, Download, Eye, Loader2, Mail, Printer, XCircle } from "lu
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { EnrollmentSheet } from "@/components/cards/EnrollmentSheet";
+import { ArchiveButton } from "@/components/documents/ArchiveButton";
 import { blobToBase64, elementToPdf } from "@/lib/pdf";
 import { createClient } from "@/lib/supabase/client";
 
@@ -104,6 +105,14 @@ export default function PrintEnrollmentPage() {
         <button type="button" onClick={send} disabled={!!busy} className="inline-flex items-center justify-center gap-2 self-start rounded-full bg-[#E30613] px-5 py-2.5 text-sm font-bold text-white disabled:opacity-60">
           {busy === "send" ? <Loader2 aria-hidden className="size-4 animate-spin" /> : <Mail aria-hidden className="size-4" />} Envoyer par e-mail et dans les espaces
         </button>
+        <ArchiveButton
+          kind="fiche"
+          title={`Fiche d'inscription ${name.replace("Fiche-inscription-", "")}`}
+          reference={name.replace("Fiche-inscription-", "")}
+          refType="student_sheet"
+          refId={id}
+          makeBlobs={async () => [{ name: `${name}.pdf`, blob: (await makePdf()).output("blob"), label: "Fiche d'inscription" }]}
+        />
         {msg && (
           <p role="status" className={`flex items-center gap-2 rounded-xl p-3 text-sm font-semibold ${msg.ok ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-900"}`}>
             {msg.ok ? <CheckCircle2 aria-hidden className="size-4" /> : <XCircle aria-hidden className="size-4" />} {msg.text}

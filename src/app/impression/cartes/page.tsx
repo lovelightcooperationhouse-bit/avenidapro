@@ -3,6 +3,7 @@
 import { Printer } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+import { DocumentToolbar } from "@/components/cards/DocumentToolbar";
 import { IdCard, type CardData } from "@/components/cards/IdCard";
 import { customerCardData, employeeCardData, studentCardData, type CardRow, type CustomerRow, type EmployeeRow, type StudentRow } from "@/lib/cards";
 import { createClient } from "@/lib/supabase/client";
@@ -38,6 +39,20 @@ function PrintSheet() {
 
   return (
     <div className="min-h-dvh bg-white p-6 print:p-0">
+      {cards.length > 0 && (
+        <DocumentToolbar
+          elementId="planche-cartes"
+          fileName={`Cartes-${type}-${new Date().toISOString().slice(0, 10)}`}
+          archive={{
+            kind: "carte",
+            title: cards.length === 1 ? `Carte ${cards[0].name}` : `Planche de ${cards.length} cartes (${type === "eleve" ? "élèves" : type === "client" ? "clients" : "personnel"})`,
+            ownerName: cards.length === 1 ? cards[0].name : undefined,
+            reference: cards.length === 1 ? cards[0].matricule : undefined,
+            refType: "card_sheet",
+            refId: cards.map((c) => c.token).sort().join("-").slice(0, 120),
+          }}
+        />
+      )}
       <div className="mb-6 flex items-center justify-between print:hidden">
         <p className="font-bold text-slate-700">
           {cards.length} carte(s) · imprimez en couleur, recto-verso, à 100 % (format carte 9 × 5,5 cm)
@@ -46,7 +61,7 @@ function PrintSheet() {
           <Printer aria-hidden className="size-4" /> Imprimer
         </button>
       </div>
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 print:grid-cols-2 print:gap-[4mm]">
+      <div id="planche-cartes" className="grid grid-cols-1 gap-6 bg-white md:grid-cols-2 print:grid-cols-2 print:gap-[4mm]">
         {cards.map((c) => (
           <div key={c.token} className="break-inside-avoid print:[&_.id-card]:w-[90mm] print:[&_.id-card]:max-w-none">
             <IdCard data={c} className="sm:flex-col print:flex-row print:gap-[2mm]" />

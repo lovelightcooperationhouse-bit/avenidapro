@@ -47,6 +47,7 @@ export function paymentOk(s: Pick<StudentRow, "total_fee" | "paid_fee" | "remain
 
 export const studentCardData = (s: StudentRow, c: CardRow): CardData => ({
   type: "eleve",
+  variant: "eleve",
   token: c.token,
   version: c.version,
   issuedAt: c.issued_at,
@@ -65,6 +66,7 @@ export const loyaltyLevel = (c: Pick<CustomerRow, "total_stays" | "is_vip">) => 
 
 export const customerCardData = (cu: CustomerRow, c: CardRow): CardData => ({
   type: "client",
+  variant: "client",
   token: c.token,
   version: c.version,
   issuedAt: c.issued_at,
@@ -76,8 +78,13 @@ export const customerCardData = (cu: CustomerRow, c: CardRow): CardData => ({
   line2: "Hôtel Avenida · Lomé",
 });
 
+/** Modèle de carte d'un salarié : professeur, personnel de l'hôtel ou personnel de l'école / direction. */
+export const employeeVariant = (e: Pick<EmployeeRow, "role_title" | "position" | "sector" | "department">) =>
+  /professeur|formateur|enseignant|chef de travaux/i.test(`${e.role_title ?? ""} ${e.position ?? ""}`) ? "professeur" : e.sector === "hotel" ? "hotel" : "personnel";
+
 export const employeeCardData = (e: EmployeeRow, c: CardRow): CardData => ({
   type: "personnel",
+  variant: employeeVariant(e),
   token: c.token,
   version: c.version,
   issuedAt: c.issued_at,

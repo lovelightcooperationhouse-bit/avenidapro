@@ -165,6 +165,28 @@ export const adminWorkflows: (Guide & { roles: RoleType[] })[] = [
     ],
   },
   {
+    id: "notes-bulletins",
+    roles: ["directeur_general", "directeur_pedagogique"],
+    title: "Notes et bulletins",
+    intro: "Des notes saisies au bulletin officiel avec QR code.",
+    steps: [
+      { title: "Saisir les notes", text: "« École → Notes & bulletins » : choisissez la classe et le trimestre, la matière, le type d'évaluation et le coefficient, puis la note sur 20 de chaque élève.", href: "/dashboard/notes" },
+      { title: "Calculer les bulletins", text: "Onglet « Bulletins » : moyennes par matière, moyenne générale pondérée, rang, statistiques de la classe, absences et retards du trimestre, mention.", href: "/dashboard/notes" },
+      { title: "Vérifier, publier, archiver", text: "« Voir / imprimer » pour contrôler chaque bulletin (aperçu PDF, téléchargement, archivage), puis « Publier pour les familles » : l'élève et ses parents sont prévenus et le retrouvent dans leur espace. Le QR code du bulletin permet d'en vérifier l'authenticité." },
+    ],
+  },
+  {
+    id: "archives",
+    roles: ["directeur_general", "directeur_pedagogique", "comptable", "ressources_humaines", "responsable_hotel"],
+    title: "Vérifier et archiver les dossiers",
+    intro: "Chaque pièce reçue se consulte, se télécharge, puis s'archive une fois vérifiée.",
+    steps: [
+      { title: "Consulter", text: "Dans les pré-inscriptions, dossiers des membres et permissions, l'icône œil ouvre un aperçu (photo ou PDF) ; la flèche télécharge le document." },
+      { title: "Archiver", text: "« Vérifier et archiver » copie toutes les pièces dans les archives avec les informations du dossier. Même bouton pour les demandes traitées, les fiches d'inscription, les cartes et les bulletins." },
+      { title: "Retrouver", text: "« Accueil → Archives » : recherche par nom, matricule ou référence, filtre par type et par année, aperçu et téléchargement de chaque fichier.", href: "/dashboard/archives" },
+    ],
+  },
+  {
     id: "correspondance",
     roles: ["directeur_general", "directeur_pedagogique"],
     title: "Correspondance et permissions",

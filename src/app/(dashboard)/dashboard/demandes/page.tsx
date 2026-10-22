@@ -2,6 +2,7 @@
 
 import { BedDouble, Inbox, Loader2, Mail, MessageSquareText, Phone } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { ArchiveButton } from "@/components/documents/ArchiveButton";
 import { EmailComposer } from "@/components/email/EmailComposer";
 import { useAuth } from "@/context/AuthContext";
 import { fmtDateTime } from "@/lib/admissions";
@@ -140,6 +141,9 @@ Merci pour votre message.
                       <Mail aria-hidden className="size-4" /> Répondre par e-mail
                     </button>
                   )}
+                  {c.status === "traite" && (
+                    <ArchiveButton kind="demande_contact" title={`Message de ${c.full_name}`} ownerName={c.full_name} refType="contact_request" refId={c.id} data={{ ...c }} />
+                  )}
                   <select
                     value={c.status}
                     onChange={(e) => setStatus("contact_requests", c.id, e.target.value)}
@@ -198,6 +202,9 @@ Nous avons bien reçu votre demande de réservation (${b.room_type ?? "chambre"}
                   >
                     <Mail aria-hidden className="size-4" /> Répondre par e-mail
                   </button>
+                )}
+                {b.status !== "nouvelle" && (
+                  <ArchiveButton kind="reservation" title={`Réservation de ${b.full_name} du ${day(b.check_in)}`} ownerName={b.full_name} refType="booking_request" refId={b.id} data={{ ...b }} />
                 )}
                 <select
                   value={b.status}

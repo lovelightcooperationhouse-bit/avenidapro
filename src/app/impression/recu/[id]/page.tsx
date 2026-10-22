@@ -3,6 +3,8 @@
 import { Download, Printer } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import QRCode from "qrcode";
+import { documentVerifyUrl } from "@/components/cards/ReportCardSheet";
 import { siteConfig } from "@/content/site";
 import { elementToPdf } from "@/lib/pdf";
 import { createClient } from "@/lib/supabase/client";
@@ -23,19 +25,25 @@ type Row = {
   class_name: string | null;
   total_due: number | null;
   remaining_due: number | null;
+  token: string | null;
 };
 
 /** Reçu de paiement d'écolage (format A5, en double exemplaire sur une page A4). */
 export default function ReceiptPage() {
   const { id } = useParams<{ id: string }>();
   const [r, setR] = useState<Row | null>(null);
+  const [qr, setQr] = useState<string | null>(null);
   useEffect(() => {
     createClient()
       .from("fee_payments")
-      .select("receipt_number, amount, payment_method, designation, payment_date, created_at, depositor_name, depositor_phone, cashier_name, student_name, student_matricule, class_name, total_due, remaining_due")
+      .select("receipt_number, amount, payment_method, designation, payment_date, created_at, depositor_name, depositor_phone, cashier_name, student_name, student_matricule, class_name, total_due, remaining_due, token")
       .eq("id", id)
       .maybeSingle()
-      .then(({ data }) => setR(data as Row));
+      .then(({ data }) => {
+        setR(data as Row);
+        // QR de vérification généré par le système (authenticité du reçu)
+        if (data?.token) QRCode.toDataURL(documentVerifyUrl("recu", data.token), { margin: 0, width: 200 }).then(setQr);
+      });
   }, [id]);
 
   if (!r) return <p className="p-10 text-center">Chargement du reçu…</p>;
@@ -92,11 +100,19 @@ export default function ReceiptPage() {
           <p className="text-base font-black text-[#B8000F]">{formatFCFA(r.remaining_due ?? 0)}</p>
         </div>
       </div>
-      <div className="mt-auto flex justify-between pt-4 text-[10px]">
+      <div className="mt-auto flex items-end justify-between gap-3 pt-4 text-[10px]">
         <p>
           Caissier(ère) : <strong>{r.cashier_name}</strong>
+          <br />
+          <span className="text-slate-500">Vérifiez l&apos;authenticité en scannant le QR code.</span>
         </p>
         <p className="w-40 border-t border-slate-400 pt-1 text-center">Cachet et signature</p>
+        {qr ? (
+          // eslint-disable-next-line @next/next/no-img-element -- QR code généré
+          <img src={qr} alt="QR code de vérification du reçu" className="size-[22mm]" />
+        ) : (
+          <span className="size-[22mm] border border-dashed border-slate-300" />
+        )}
       </div>
     </section>
   );

@@ -3,6 +3,8 @@
 import { CheckCircle2, FileText, Inbox, Loader2, XCircle } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { PERMISSION_STATUS, type PermissionRow } from "@/components/espace/AttendanceView";
+import { ArchiveButton } from "@/components/documents/ArchiveButton";
+import { DocumentViewer, type ViewableFile } from "@/components/documents/DocumentViewer";
 import { RollCall } from "@/components/espace/RollCall";
 import { useAuth } from "@/context/AuthContext";
 import { createClient } from "@/lib/supabase/client";
@@ -49,11 +51,8 @@ export default function CorrespondanceAdminPage() {
     load();
   };
 
-  const openJustif = async (row: Row) => {
-    if (!row.justificatif) return;
-    const url = await signedUrl(row.justificatif.path, "justificatifs");
-    if (url) window.open(url, "_blank", "noopener,noreferrer");
-  };
+  const [viewing, setViewing] = useState<ViewableFile | null>(null);
+  const openJustif = (row: Row) => row.justificatif && setViewing({ bucket: "justificatifs", path: row.justificatif.path, name: row.justificatif.name, label: "Justificatif" });
 
   const pending = (rows ?? []).filter((r) => r.status === "en_attente").length;
 
@@ -126,6 +125,18 @@ export default function CorrespondanceAdminPage() {
                     <FileText aria-hidden className="size-4" /> Justificatif : {r.justificatif.name}
                   </button>
                 )}
+                {r.justificatif && r.status !== "en_attente" && (
+                  <ArchiveButton
+                    kind="permission"
+                    title={`Permission ${r.students?.last_name?.toUpperCase() ?? ""} ${r.students?.first_name ?? ""} du ${new Date(r.start_date).toLocaleDateString("fr-FR")}`}
+                    ownerName={`${r.students?.last_name?.toUpperCase() ?? ""} ${r.students?.first_name ?? ""}`}
+                    reference={r.students?.registration_number ?? undefined}
+                    refType="permission_request"
+                    refId={r.id}
+                    files={[{ bucket: "justificatifs", path: r.justificatif.path, name: r.justificatif.name, label: "Justificatif" }]}
+                    data={{ motif: r.reason, du: r.start_date, au: r.end_date, decision: r.status, reponse: r.response }}
+                  />
+                )}
                 {r.status === "en_attente" ? (
                   <>
                     <input
@@ -151,6 +162,7 @@ export default function CorrespondanceAdminPage() {
             ))}
           </ul>
         ))}
+      {viewing && <DocumentViewer file={viewing} onClose={() => setViewing(null)} />}
     </div>
   );
 }

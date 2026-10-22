@@ -1,9 +1,11 @@
 "use client";
 
-import { CheckCircle2, Download, FileText, Inbox, Loader2, Mail, Phone, Search, UserPlus } from "lucide-react";
+import { CheckCircle2, Download, Eye, FileText, Inbox, Loader2, Mail, Phone, Search, UserPlus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { formations, fees } from "@/content/site";
+import { ArchiveButton } from "@/components/documents/ArchiveButton";
+import { DocumentViewer, downloadFile, type ViewableFile } from "@/components/documents/DocumentViewer";
 import { EmailComposer } from "@/components/email/EmailComposer";
 import { pingNotifications } from "@/lib/notify";
 import { toPassportDataUrl } from "@/lib/pdf";
@@ -141,10 +143,8 @@ Vous pouvez les déposer dans votre espace en ligne ou les apporter au bureau de
     load();
   };
 
-  const openDoc = async (doc: ApplicationDocument) => {
-    const { data } = await createClient().storage.from("dossiers").createSignedUrl(doc.file_path, 300);
-    if (data?.signedUrl) window.open(data.signedUrl, "_blank", "noopener,noreferrer");
-  };
+  const [viewing, setViewing] = useState<ViewableFile | null>(null);
+  const asFile = (d: ApplicationDocument): ViewableFile => ({ bucket: "dossiers", path: d.file_path, name: d.file_name, label: DOC_LABELS[d.doc_type] ?? d.doc_type });
 
   const filters: (ApplicationStatus | "toutes")[] = ["toutes", "nouvelle", "en_etude", "pieces_manquantes", "acceptee", "refusee", "inscrite"];
 
@@ -273,13 +273,16 @@ Vous pouvez les déposer dans votre espace en ligne ou les apporter au bureau de
                   {docs
                     .filter((d) => d.application_id === selected.id)
                     .map((d) => (
-                      <li key={d.id}>
-                        <button type="button" onClick={() => openDoc(d)} className="flex w-full items-center justify-between gap-2 rounded-xl border border-slate-200 px-3 py-2 text-left text-sm hover:border-[#0C356A]">
-                          <span className="min-w-0">
-                            <span className="block font-bold text-slate-800">{DOC_LABELS[d.doc_type] ?? d.doc_type}</span>
-                            <span className="block truncate text-xs text-slate-500">{d.file_name}</span>
-                          </span>
-                          <Download aria-hidden className="size-4 shrink-0 text-[#0C356A]" />
+                      <li key={d.id} className="flex items-center gap-1 rounded-xl border border-slate-200 px-3 py-2 text-sm">
+                        <button type="button" onClick={() => setViewing(asFile(d))} className="min-w-0 flex-1 text-left">
+                          <span className="block font-bold text-slate-800 hover:text-[#E30613]">{DOC_LABELS[d.doc_type] ?? d.doc_type}</span>
+                          <span className="block truncate text-xs text-slate-500">{d.file_name}</span>
+                        </button>
+                        <button type="button" onClick={() => setViewing(asFile(d))} aria-label={`Voir ${d.file_name}`} title="Voir" className="rounded-full p-1.5 text-[#0C356A] hover:bg-slate-100 hover:text-[#E30613]">
+                          <Eye aria-hidden className="size-4" />
+                        </button>
+                        <button type="button" onClick={() => downloadFile(asFile(d))} aria-label={`Télécharger ${d.file_name}`} title="Télécharger" className="rounded-full p-1.5 text-[#0C356A] hover:bg-slate-100 hover:text-[#E30613]">
+                          <Download aria-hidden className="size-4" />
                         </button>
                       </li>
                     ))}
@@ -287,6 +290,18 @@ Vous pouvez les déposer dans votre espace en ligne ou les apporter au bureau de
               ) : (
                 <p className="text-sm text-slate-500">Aucune pièce déposée en ligne.</p>
               )}
+              <div className="mt-3">
+                <ArchiveButton
+                  kind="preinscription"
+                  title={`Pré-inscription ${selected.last_name.toUpperCase()} ${selected.first_name}`}
+                  ownerName={`${selected.last_name.toUpperCase()} ${selected.first_name}`}
+                  reference={selected.reference ?? undefined}
+                  refType="application"
+                  refId={selected.id}
+                  files={docs.filter((d) => d.application_id === selected.id).map(asFile)}
+                  data={{ ...selected }}
+                />
+              </div>
             </div>
 
             <label className="flex flex-col gap-1.5 text-sm font-bold text-[#0C356A]">
@@ -358,6 +373,7 @@ Vous pouvez les déposer dans votre espace en ligne ou les apporter au bureau de
           onClose={() => setMail(null)}
         />
       )}
+      {viewing && <DocumentViewer file={viewing} onClose={() => setViewing(null)} />}
     </div>
   );
 }

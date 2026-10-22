@@ -1,4 +1,5 @@
 import {
+  Archive,
   BarChart3,
   LayoutTemplate,
   Menu as MenuIcon,
@@ -69,6 +70,7 @@ export const MODULES: NavModule[] = [
           { label: "Tableau de bord", href: "/dashboard", icon: Home, roles: STAFF, hint: "Vue d'ensemble du jour" },
           { label: "Recherche par matricule", href: "/dashboard/recherche", icon: ScanSearch, roles: MANAGERS, hint: "Dossier complet d'un élève ou salarié" },
           { label: "Pilotage & rapports", href: "/dashboard/pilotage", icon: BarChart3, roles: [DG], hint: "Statistiques jour, semaine, mois" },
+          { label: "Archives", href: "/dashboard/archives", icon: Archive, roles: MANAGERS, hint: "Dossiers vérifiés et conservés" },
           { label: "Guide d'utilisation", href: "/dashboard/guide", icon: LifeBuoy, roles: STAFF, hint: "Qui fait quoi, et comment" },
         ],
       },
@@ -92,7 +94,7 @@ export const MODULES: NavModule[] = [
         title: "Vie scolaire",
         items: [
           { label: "Correspondance & permissions", href: "/dashboard/correspondance", icon: ClipboardCheck, roles: [DG, DP], hint: "Appel, absences, retards, permissions" },
-          { label: "Notes & bulletins", href: "/dashboard/grades", icon: FileSpreadsheet, roles: [DG, DP], hint: "Évaluations et moyennes" },
+          { label: "Notes & bulletins", href: "/dashboard/notes", icon: FileSpreadsheet, roles: [DG, DP], hint: "Saisie des notes, bulletins avec QR" },
           { label: "Filières & classes", href: "/dashboard/programs", icon: Landmark, roles: [DG, DP], hint: "CFA, CAP, BEP, BT, BTS" },
           { label: "Cartes scolaires", href: "/dashboard/cartes", icon: IdCard, roles: [DG, DP, RH], hint: "Émission, QR, impression" },
           { label: "Espace École (en ligne)", href: "/espace/ecole", icon: MonitorPlay, roles: [DG, DP], hint: "Cours, devoirs, visio" },

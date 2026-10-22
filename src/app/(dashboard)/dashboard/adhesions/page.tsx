@@ -3,7 +3,9 @@
 import { CheckCircle2, ClipboardCheck, Download, Mail, Eye, FileText, IdCard, Loader2, Printer, Search, ShieldCheck, ThumbsDown, ThumbsUp, UserCheck, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { ArchiveButton } from "@/components/documents/ArchiveButton";
 import { DocumentList } from "@/components/documents/DocumentList";
+import { DocumentViewer, downloadFile, type ViewableFile } from "@/components/documents/DocumentViewer";
 import { EmailComposer } from "@/components/email/EmailComposer";
 import { fees, formations } from "@/content/site";
 import { useAuth } from "@/context/AuthContext";
@@ -253,10 +255,9 @@ Nous restons à votre disposition pour toute information.` },
     onChange();
   };
 
-  const openDoc = async (d: UploadedDoc, download = false) => {
-    const url = await signedUrl(d.path, "documents");
-    if (url) window.open(download ? `${url}&download=${encodeURIComponent(d.name)}` : url, "_blank", "noopener,noreferrer");
-  };
+  const [viewing, setViewing] = useState<ViewableFile | null>(null);
+  const asFile = (d: UploadedDoc): ViewableFile => ({ bucket: "documents", path: d.path, name: d.name, label: d.label });
+  const openDoc = (d: UploadedDoc, download = false) => (download ? downloadFile(asFile(d)) : setViewing(asFile(d)));
 
   return (
     <article className="flex flex-col gap-5 rounded-3xl border border-slate-200 bg-white p-6">
@@ -356,6 +357,17 @@ Nous restons à votre disposition pour toute information.` },
                 </li>
               ))}
             </ul>
+            <div className="mt-3">
+              <ArchiveButton
+                kind="dossier_membre"
+                title={`Dossier de membre ${String(app.data.last_name ?? "").toUpperCase()} ${String(app.data.first_name ?? "")}`}
+                ownerName={name}
+                refType="member_application"
+                refId={app.id}
+                files={app.documents.map(asFile)}
+                data={{ statut: app.kind, poste: position?.label, ...app.data }}
+              />
+            </div>
           </section>
         </>
       ) : (
@@ -485,6 +497,7 @@ Nous restons à votre disposition pour toute information.` },
       {mail && app.profiles?.email && (
         <EmailComposer to={[app.profiles.email]} subject={mail.subject} message={mail.message} contextType="member_application" contextId={app.id} link="/espace" onClose={() => setMail(null)} />
       )}
+      {viewing && <DocumentViewer file={viewing} onClose={() => setViewing(null)} />}
     </article>
   );
 }
