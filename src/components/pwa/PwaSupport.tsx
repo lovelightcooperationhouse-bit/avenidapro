@@ -111,7 +111,7 @@ export function PwaSupport() {
             <button type="button" onClick={openInChrome} className="mt-2 inline-flex items-center gap-2 rounded-full bg-[#E30613] px-4 py-2 font-bold text-white">
               <Download aria-hidden className="size-4" /> Ouvrir dans Chrome pour installer
             </button>
-            <p className="mt-1.5 text-xs text-slate-500">Puis menu ⋮ de Chrome → « Installer l&apos;application ».</p>
+            <p className="mt-1.5 text-xs text-slate-500">Puis, dans Chrome, touchez les 3 points en haut à droite → « Installer l&apos;application ».</p>
           </>
         ) : mode === "natif" ? (
           <p className="mt-0.5 text-slate-600">Accès direct depuis l&apos;écran d&apos;accueil, en plein écran, avec les appels et discussions.</p>
