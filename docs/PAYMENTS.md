@@ -47,16 +47,12 @@ export interface IPaymentProvider {
 
 ## 3. Fournisseurs Supportés & Prévus
 
-1. **`StripePaymentProvider` (Actif)** :
-   - Cartes bancaires internationales (Visa, Mastercard) via Stripe Checkout.
-   - Conversion ou devise supportée, webhook avec signature `stripe-signature`.
+1. **PayDunya (Actif, seul prestataire en ligne)** — `src/lib/payments.ts` :
+   - Mixx by Yas (T-Money Togo), Moov Money Togo et carte bancaire (dès validation du compte par PayDunya).
+   - Réservations de l'hôtel (`reservation_payments`), frais d'inscription et écolage (`school_payments` → reçu `fee_payments`).
+   - IPN `https://www.hotelecoleavenida.net/api/paiements/paydunya` (hash SHA-512 de la clé principale), puis confirmation de la facture auprès de PayDunya avant tout encaissement.
 2. **`ManualCashPaymentProvider` (Actif)** :
    - Règlements physiques en caisse à l'agence (ex: Lomé) par espèces, chèque ou virement avec émission directe du reçu numéroté Avenida.
-3. **`MobileMoneyProvider` (Extension prête)** :
-   - Connecteurs pour les services locaux :
-     - **T-Money** (Togo)
-     - **Moov Money (Flooz)** (Togo)
-     - **Wave / Orange Money**
 
 ---
 
