@@ -65,7 +65,7 @@ export const ROLE_CONFIG: Record<RoleType, RoleConfig> = {
     department: "Service Financier",
     avatarColor: "from-emerald-600 to-teal-800",
     home: "/dashboard",
-    allowedPaths: ["/dashboard", "/dashboard/guide", "/dashboard/payments", "/dashboard/finances", "/dashboard/salaries", "/dashboard/reports", "/dashboard/inventory", "/dashboard/messages", "/dashboard/alertes", "/dashboard/adhesions", "/dashboard/economat", "/dashboard/recherche"],
+    allowedPaths: ["/dashboard", "/dashboard/guide", "/dashboard/payments", "/dashboard/finances", "/dashboard/salaries", "/dashboard/inventory", "/dashboard/messages", "/dashboard/alertes", "/dashboard/adhesions", "/dashboard/economat", "/dashboard/recherche"],
   },
   ressources_humaines: {
     label: "Ressources Humaines",

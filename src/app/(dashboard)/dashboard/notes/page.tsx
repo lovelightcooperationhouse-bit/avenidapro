@@ -11,6 +11,7 @@ import { useSchoolYear } from "@/context/SchoolYearContext";
 import { GROUPS, MARK_CLASS, MARK_COMPO, SANCTIONS, SEMESTERS, appreciation, maquetteFor, round2, type BulletinExtras, type BulletinStudent, type GradeRow, type MaquetteSubject, type SubjectGroup } from "@/lib/bulletins";
 import { loadClass, recalcClass, saveMarks } from "@/lib/bulletins-sync";
 import { pingNotifications } from "@/lib/notify";
+import { submitToDG } from "@/lib/validations";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -507,6 +508,20 @@ function Bulletins({ cls, semester, year }: { cls: string; semester: number; yea
   /** Étape 4 : envoi décidé par la direction, dans l'espace de l'élève et du tuteur, avec ou sans e-mail. */
   const send = async (byEmail: boolean) => {
     setSending(false);
+    if (user?.role !== "directeur_general") {
+      setBusy(true);
+      const err = await submitToDG({
+        kind: "bulletins_envoi",
+        title: `Envoi de ${toSend.length} bulletin(s) · ${cls} · ${SEMESTERS[semester]} ${year}`,
+        details: `${byEmail ? "Espace de l'élève et du tuteur + e-mail" : "Espace seulement"}. Bulletins validés et signés par la pédagogie.`,
+        payload: { ids: toSend.map((c) => c.id), by_email: byEmail },
+        link: "/dashboard/notes",
+      });
+      setBusy(false);
+      setMsg(err ? { ok: false, text: err.message } : { ok: true, text: "Envoi soumis au Directeur général : il est alerté et l'envoi partira dès sa validation. Vous serez prévenu." });
+      setSelected(new Set());
+      return;
+    }
     setBusy(true);
     const { data, error } = await createClient().rpc("send_report_cards", { ids: toSend.map((c) => c.id), by_email: byEmail });
     setBusy(false);
@@ -544,13 +559,13 @@ function Bulletins({ cls, semester, year }: { cls: string; semester: number; yea
         )}
         {canSign && (
           <button type="button" onClick={() => setSending(true)} disabled={busy || !toSend.length} className="inline-flex items-center gap-2 rounded-full bg-[#E30613] px-5 py-2.5 text-sm font-bold text-white disabled:opacity-40">
-            <Send aria-hidden className="size-4" /> Envoyer ({toSend.length})
+            <Send aria-hidden className="size-4" /> {user?.role === "directeur_general" ? "Envoyer" : "Soumettre l'envoi au DG"} ({toSend.length})
           </button>
         )}
       </div>
       {sending && (
         <div className="flex flex-col gap-3 rounded-2xl border-2 border-[#E30613] bg-red-50/40 p-4">
-          <p className="font-bold text-[#0C356A]">Envoyer {toSend.length} bulletin(s) signé(s) : comment ?</p>
+          <p className="font-bold text-[#0C356A]">{user?.role === "directeur_general" ? "Envoyer" : "Soumettre au DG l'envoi de"} {toSend.length} bulletin(s) signé(s) : comment ?</p>
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={() => send(true)} className="rounded-full bg-[#E30613] px-4 py-2 text-sm font-bold text-white">
               Espace de l&apos;élève et du tuteur + e-mail

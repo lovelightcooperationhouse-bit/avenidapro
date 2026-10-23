@@ -3,6 +3,7 @@
 import { CheckCircle2, Download, Eye, FileText, Inbox, Loader2, Mail, Phone, Search, UserPlus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { submitToDG } from "@/lib/validations";
 import { formations, fees } from "@/content/site";
 import { ArchiveButton } from "@/components/documents/ArchiveButton";
 import { DocumentViewer, downloadFile, type ViewableFile } from "@/components/documents/DocumentViewer";
@@ -121,6 +122,19 @@ Vous pouvez les déposer dans votre espace en ligne ou les apporter au bureau de
    */
   const enroll = async () => {
     if (!selected) return;
+    // Hors DG : l'inscription définitive est soumise au contrôle du Directeur général
+    if (user?.role !== "directeur_general") {
+      setBusy(true);
+      const err = await submitToDG({
+        kind: "inscription",
+        title: `Inscription définitive de ${selected.last_name.toUpperCase()} ${selected.first_name}`,
+        details: `${selected.program_code} · ${selected.specialty} · écolage ${formatFCFA(totalFor(selected.program_code))}`,
+        payload: { app: selected.id },
+        link: "/dashboard/admissions",
+      });
+      setBusy(false);
+      return setFeedback(err ? "Soumission impossible : " + err.message : "Inscription soumise au Directeur général : il est alerté et vous serez prévenu dès sa validation.");
+    }
     setBusy(true);
     const { data, error } = await createClient().rpc("enroll_application", { app: selected.id });
     setBusy(false);
@@ -335,7 +349,7 @@ Vous pouvez les déposer dans votre espace en ligne ou les apporter au bureau de
             {selected.status === "acceptee" && (
               <button type="button" disabled={busy} onClick={enroll} className="flex items-center justify-center gap-2 rounded-xl bg-[#0C356A] px-4 py-3 text-sm font-bold text-white hover:bg-[#072042]">
                 {busy ? <Loader2 aria-hidden className="size-4 animate-spin" /> : <UserPlus aria-hidden className="size-4" />}
-                Valider l&apos;inscription définitive (écolage {formatFCFA(totalFor(selected.program_code))})
+                {user?.role === "directeur_general" ? "Valider l'inscription définitive" : "Soumettre l'inscription définitive au DG"} (écolage {formatFCFA(totalFor(selected.program_code))})
               </button>
             )}
 

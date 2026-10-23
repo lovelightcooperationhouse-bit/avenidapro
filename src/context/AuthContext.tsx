@@ -204,6 +204,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     await createClient().auth.signOut();
+    // Les copies hors connexion (pages, données) ne restent pas sur l'appareil après la déconnexion
+    navigator.serviceWorker?.controller?.postMessage("avenida-clear-data");
     setUser(null);
     router.push("/connexion");
     router.refresh();
@@ -212,8 +214,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const canAccessPath = (path: string): boolean => {
     if (!user) return false;
     if (user.role === "directeur_general") return path.startsWith("/dashboard");
-    // Pages autorisées = pages du menu de son rôle ; « /dashboard » n'ouvre que l'accueil
-    const allowed = new Set([...allowedDashboardPaths(user.role), ...user.allowedPaths]);
+    // Pages autorisées = uniquement celles du menu du rôle attribué par le DG ; « /dashboard » n'ouvre que l'accueil
+    const allowed = new Set(allowedDashboardPaths(user.role));
     return [...allowed].some((a) => path === a || (a !== "/dashboard" && path.startsWith(a + "/")));
   };
 

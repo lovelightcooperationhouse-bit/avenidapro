@@ -19,23 +19,28 @@ import {
   BadgeAlert,
   ArrowRight,
 } from "lucide-react";
-import { MOCK_RESERVATIONS, MOCK_ROOMS } from "@/lib/mock-data";
-import { HotelReservation } from "@/types";
+import { HotelReservation, HotelRoom } from "@/types";
 import { formatFCFA } from "@/lib/utils";
 import { HotelReceiptModal } from "@/components/shared/HotelReceiptModal";
 import {
   getStoredReservations,
   saveAndSyncReservation,
   syncReservationsFromSupabase,
+  syncRoomsFromSupabase,
   AVENIDA_DATA_UPDATED_EVENT,
 } from "@/lib/realtime-store";
 
 export default function ReservationsPage() {
-  const [reservations, setReservations] = useState<HotelReservation[]>(MOCK_RESERVATIONS);
+  const [reservations, setReservations] = useState<HotelReservation[]>([]);
+  const [rooms, setRooms] = useState<HotelRoom[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedReceiptRes, setSelectedReceiptRes] = useState<HotelReservation | null>(null);
+
+  useEffect(() => {
+    syncRoomsFromSupabase().then(setRooms);
+  }, []);
 
   useEffect(() => {
     setReservations(getStoredReservations());
@@ -103,7 +108,7 @@ export default function ReservationsPage() {
   });
 
   const handleRoomChange = (roomNum: string) => {
-    const foundRoom = MOCK_ROOMS.find((r) => r.room_number === roomNum);
+    const foundRoom = rooms.find((r) => r.room_number === roomNum);
     const rate = foundRoom ? foundRoom.price_per_night : 30000;
     const roomType = foundRoom ? foundRoom.room_type : "Chambre Supérieure Avenida";
     const total = newRes.nights_count * rate;
@@ -568,7 +573,7 @@ export default function ReservationsPage() {
                     onChange={(e) => handleRoomChange(e.target.value)}
                     className="form-input-avenida"
                   >
-                    {MOCK_ROOMS.map((r) => (
+                    {rooms.map((r) => (
                       <option key={r.id} value={r.room_number}>
                         Ch. {r.room_number} - {r.room_type} ({formatFCFA(r.price_per_night)})
                       </option>

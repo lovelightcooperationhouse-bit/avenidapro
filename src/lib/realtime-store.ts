@@ -70,6 +70,24 @@ function safeSetStorage(key: string, data: any) {
   }
 }
 
+/**
+ * Les anciennes versions recopiaient des données de démonstration dans le navigateur :
+ * ces copies locales sont effacées une fois, la base de données fait foi.
+ */
+const STORE_VERSION = "2";
+if (typeof window !== "undefined") {
+  try {
+    if (localStorage.getItem("avenida_store_version") !== STORE_VERSION) {
+      Object.keys(localStorage)
+        .filter((k) => k.startsWith("avenida_custom_"))
+        .forEach((k) => localStorage.removeItem(k));
+      localStorage.setItem("avenida_store_version", STORE_VERSION);
+    }
+  } catch {
+    // Stockage indisponible (navigation privée) : rien à nettoyer
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. ÉLÈVES & SCOLARITÉ
 // ─────────────────────────────────────────────────────────────────────────────

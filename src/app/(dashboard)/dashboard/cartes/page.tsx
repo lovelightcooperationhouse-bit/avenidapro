@@ -10,6 +10,7 @@ import { customerCardData, employeeCardData, issueCard, CARD_REVIEW, loyaltyLeve
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { pingNotifications } from "@/lib/notify";
+import { submitToDG } from "@/lib/validations";
 
 const STUDENT_COLS = STUDENT_CARD_COLS;
 const EMPLOYEE_COLS = EMPLOYEE_CARD_COLS;
@@ -117,6 +118,12 @@ function CardsAdmin() {
     const card = cardOf(id);
     if (!card) return;
     const supabase = createClient();
+    if (validate && user?.role !== "directeur_general") {
+      const who = rows.find((r) => r.id === id)?.name ?? "";
+      const err = await submitToDG({ kind: "cartes_validation", title: `Validation de la carte de ${who}`, details: `Carte ${card.card_number ?? ""} vérifiée, prête à être envoyée au titulaire.`, payload: { cards: [card.id] }, link: "/dashboard/cartes" });
+      setMessage(err ? err.message : "Validation soumise au Directeur général : la carte sera envoyée au titulaire dès son accord.");
+      return;
+    }
     let res;
     if (validate) res = await supabase.rpc("validate_card", { card: card.id });
     else {

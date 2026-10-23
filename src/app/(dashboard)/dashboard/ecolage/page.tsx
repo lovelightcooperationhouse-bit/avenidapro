@@ -114,13 +114,20 @@ export default function EcolagePage() {
       </header>
 
       <dl className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-        {[
-          ["Écolage attendu", formatFCFA(totals.total), "text-[#0C356A]"],
-          ["Encaissé", formatFCFA(totals.paid), "text-emerald-700"],
-          ["Reste à encaisser", formatFCFA(Math.max(0, totals.total - totals.paid)), "text-[#B8000F]"],
-          ["Encaissé aujourd'hui", formatFCFA(cashedToday), "text-[#0C356A]"],
-          ["Élèves en retard", String(late), "text-[#B8000F]"],
-        ].map(([l, v, tone]) => (
+        {(
+          [
+            // Totaux d'entrées : réservés au Directeur général
+            ...(user?.role === "directeur_general"
+              ? [
+                  ["Écolage attendu", formatFCFA(totals.total), "text-[#0C356A]"],
+                  ["Encaissé", formatFCFA(totals.paid), "text-emerald-700"],
+                  ["Reste à encaisser", formatFCFA(Math.max(0, totals.total - totals.paid)), "text-[#B8000F]"],
+                  ["Encaissé aujourd'hui", formatFCFA(cashedToday), "text-[#0C356A]"],
+                ]
+              : []),
+            ["Élèves en retard", String(late), "text-[#B8000F]"],
+          ] as string[][]
+        ).map(([l, v, tone]) => (
           <div key={l} className="rounded-2xl border border-slate-200 bg-white p-4">
             <dt className="text-xs font-bold text-slate-500">{l}</dt>
             <dd className={cn("mt-1 text-xl font-black", tone)}>{v}</dd>
@@ -140,7 +147,7 @@ export default function EcolagePage() {
                 <div className="h-full rounded-full bg-emerald-500" style={{ width: `${pct}%` }} />
               </div>
               <p className="mt-1 text-xs text-slate-600">
-                {pct} % · {formatFCFA(o.paid)} / {formatFCFA(o.total)}
+                {pct} %{user?.role === "directeur_general" ? ` · ${formatFCFA(o.paid)} / ${formatFCFA(o.total)}` : ""}
               </p>
             </button>
           );

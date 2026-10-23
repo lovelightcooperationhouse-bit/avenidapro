@@ -25,7 +25,6 @@ import {
   DollarSign,
   ArrowRight,
 } from "lucide-react";
-import { MOCK_RESERVATIONS } from "@/lib/mock-data";
 import { HotelRoom, RoomStatus, HotelReservation } from "@/types";
 import { formatFCFA } from "@/lib/utils";
 import { HotelReceiptModal } from "@/components/shared/HotelReceiptModal";
@@ -243,7 +242,7 @@ export default function HotelRoomsPage() {
         (r) =>
           r.room_number === room.room_number &&
           (r.customer_name === room.current_guest || r.status === "en_cours" || r.status === "payée")
-      ) || MOCK_RESERVATIONS.find((r) => r.room_number === room.room_number);
+      );
 
     if (match) {
       setSelectedReceiptReservation(match);

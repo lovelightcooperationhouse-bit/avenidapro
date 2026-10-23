@@ -71,6 +71,7 @@ export const MODULES: NavModule[] = [
         items: [
           { label: "Tableau de bord", href: "/dashboard", icon: Home, roles: STAFF, hint: "Vue d'ensemble du jour" },
           { label: "Recherche par matricule", href: "/dashboard/recherche", icon: ScanSearch, roles: MANAGERS, hint: "Dossier complet d'un élève ou salarié" },
+          { label: "Validations du DG", href: "/dashboard/validations", icon: ShieldCheck, roles: STAFF, hint: "Actions soumises au contrôle du Directeur général" },
           { label: "Pilotage & rapports", href: "/dashboard/pilotage", icon: BarChart3, roles: [DG], hint: "Statistiques jour, semaine, mois" },
           { label: "Archives", href: "/dashboard/archives", icon: Archive, roles: MANAGERS, hint: "Dossiers vérifiés et conservés" },
           { label: "Guide d'utilisation", href: "/dashboard/guide", icon: LifeBuoy, roles: STAFF, hint: "Qui fait quoi, et comment" },
@@ -123,7 +124,7 @@ export const MODULES: NavModule[] = [
         title: "Gestion",
         items: [
           { label: "Économat & budget", href: "/dashboard/economat", icon: Boxes, roles: [DG, DP, CPT, HOT], hint: "Stock cuisine, budgets" },
-          { label: "Rapports financiers", href: "/dashboard/reports", icon: BarChart3, roles: [DG, CPT], hint: "États et exports" },
+          { label: "Rapports financiers", href: "/dashboard/reports", icon: BarChart3, roles: [DG], hint: "États et exports" },
         ],
       },
     ],

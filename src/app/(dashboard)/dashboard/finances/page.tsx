@@ -23,6 +23,7 @@ import {
 import { MOCK_FINANCES } from "@/lib/mock-data";
 import { FinancialEntry } from "@/types";
 import { formatFCFA } from "@/lib/utils";
+import { useAuth } from "@/context/AuthContext";
 import {
   DocumentViewerModal,
   DEFAULT_DOCUMENT_REQUIREMENTS,
@@ -37,6 +38,8 @@ import {
 } from "@/lib/realtime-store";
 
 export default function FinancesPage() {
+  const { user } = useAuth();
+  const isDG = user?.role === "directeur_general";
   const [entries, setEntries] = useState<FinancialEntry[]>(MOCK_FINANCES);
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState("ALL");
@@ -188,7 +191,13 @@ export default function FinancesPage() {
         </button>
       </div>
 
-      {/* Statistiques Trésorerie */}
+      {/* Statistiques Trésorerie : réservées au Directeur général */}
+      {!isDG && (
+        <p className="rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-900">
+          Vous enregistrez les mouvements de caisse : chacun est signalé instantanément au Directeur général. Les totaux et le solde de trésorerie sont réservés au DG.
+        </p>
+      )}
+      {isDG && (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
           <div className="flex items-center justify-between text-slate-500 text-xs font-bold">
@@ -228,6 +237,7 @@ export default function FinancesPage() {
           <div className="text-[10px] text-slate-500 mt-1">Reçus et pièces de caisse</div>
         </div>
       </div>
+      )}
 
       {/* Barre de Recherche et Filtres */}
       <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">

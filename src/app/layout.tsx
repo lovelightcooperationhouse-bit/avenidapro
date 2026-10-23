@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { IncomingCall } from "@/components/chat/IncomingCall";
+import { OfflineBanner } from "@/components/pwa/OfflineBanner";
 import { PwaSupport } from "@/components/pwa/PwaSupport";
 import { PushPrompt } from "@/components/pwa/PushToggle";
 
@@ -39,6 +40,7 @@ export default function RootLayout({
           {children}
           <IncomingCall />
           <PwaSupport />
+          <OfflineBanner />
           <PushPrompt />
         </AuthProvider>
       </body>

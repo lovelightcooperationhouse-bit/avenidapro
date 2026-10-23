@@ -13,6 +13,7 @@ import { useAuth } from "@/context/AuthContext";
 import { DOC_LABELS } from "@/lib/admissions";
 import { CARD_REVIEW, issueCard, STUDENT_CARD_COLS, studentCardData, type CardRow, type StudentRow } from "@/lib/cards";
 import { pingNotifications } from "@/lib/notify";
+import { submitToDG } from "@/lib/validations";
 import { createClient } from "@/lib/supabase/client";
 import { cn, formatFCFA } from "@/lib/utils";
 
@@ -430,7 +431,17 @@ function Carte({ s }: { s: Student }) {
           <button type="button" disabled={busy} onClick={() => run(() => createClient().rpc("request_card_review", { card: card.id, message }), "Carte envoyée pour vérification : la famille est prévenue.")} className="inline-flex items-center gap-2 rounded-full bg-[#0C356A] px-4 py-2 text-sm font-bold text-white hover:bg-[#E30613]">
             <Send aria-hidden className="size-4" /> Envoyer pour vérification
           </button>
-          <button type="button" disabled={busy} onClick={() => run(() => createClient().rpc("validate_card", { card: card.id }), "Carte validée et envoyée dans l'espace de l'élève et de ses parents.")} className="inline-flex items-center gap-2 rounded-full bg-[#E30613] px-4 py-2 text-sm font-bold text-white">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() =>
+              user?.role === "directeur_general"
+                ? run(() => createClient().rpc("validate_card", { card: card.id }), "Carte validée et envoyée dans l'espace de l'élève et de ses parents.")
+                : run(
+                    async () => ({ error: await submitToDG({ kind: "cartes_validation", title: `Validation de la carte de ${String(s.last_name).toUpperCase()} ${s.first_name}`, details: `Carte ${card.card_number ?? ""} vérifiée.`, payload: { cards: [card.id] }, link: `/dashboard/eleves/${s.id}` }) }),
+                    "Validation soumise au Directeur général : la carte sera envoyée dès son accord.",
+                  )
+            } className="inline-flex items-center gap-2 rounded-full bg-[#E30613] px-4 py-2 text-sm font-bold text-white">
             <CheckCircle2 aria-hidden className="size-4" /> Valider et envoyer
           </button>
           <Link href={`/impression/cartes?type=eleve&ids=${s.id}`} target="_blank" className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold text-[#0C356A] ring-1 ring-slate-200 hover:text-[#E30613]">

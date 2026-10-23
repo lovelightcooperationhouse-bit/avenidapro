@@ -23,6 +23,7 @@ type Stats = {
   bookings: number;
   employees: number;
   customers: number;
+  validations: number;
 };
 
 /** Accueil de la gestion : chiffres clés réels, tâches à traiter et accès aux modules du rôle. */
@@ -45,7 +46,7 @@ export default function DashboardHome() {
       return n ?? 0;
     };
     (async () => {
-      const [students, preinscriptions, dossiers, permissions, absentsToday, bookings, employees, customers, fin, pay] = await Promise.all([
+      const [students, preinscriptions, dossiers, permissions, absentsToday, bookings, employees, customers, fin, pay, validations] = await Promise.all([
         count("students", { eq: { status: "actif" } }),
         count("applications", { in: { status: ["nouvelle", "en_etude", "pieces_manquantes", "acceptee"] } }),
         count("member_applications", { in: { status: ["soumise", "en_examen", "avis_favorable", "avis_defavorable"] } }),
@@ -56,6 +57,8 @@ export default function DashboardHome() {
         count("hotel_customers"),
         supabase.from("students").select("total_fee, paid_fee").eq("status", "actif"),
         supabase.from("fee_payments").select("amount").gte("payment_date", today),
+        // DG : toutes les demandes en attente ; autres rôles : leurs propres demandes (filtrées par la sécurité de la base)
+        count("dg_validations", { eq: { status: "en_attente" } }),
       ]);
       setS({
         students,
@@ -66,6 +69,7 @@ export default function DashboardHome() {
         bookings,
         employees,
         customers,
+        validations,
         expected: (fin.data ?? []).reduce((a, r) => a + Number(r.total_fee ?? 0), 0),
         paid: (fin.data ?? []).reduce((a, r) => a + Number(r.paid_fee ?? 0), 0),
         cashedToday: (pay.data ?? []).reduce((a, r) => a + Number(r.amount ?? 0), 0),
@@ -78,17 +82,20 @@ export default function DashboardHome() {
   const has = (href: string) => modules.some((m) => m.sections.some((sec) => sec.items.some((i) => i.href.split("?")[0] === href)));
   const hour = new Date().getHours();
 
+  const isDG = r === "directeur_general";
   const kpis = [
     { show: has("/dashboard/eleves"), label: "Élèves inscrits", value: s?.students, href: "/dashboard/eleves", tone: "#0C356A" },
-    { show: has("/dashboard/ecolage"), label: "Écolage encaissé", value: s ? formatFCFA(s.paid) : undefined, sub: s ? `sur ${formatFCFA(s.expected)}` : "", href: "/dashboard/ecolage", tone: "#047857" },
-    { show: has("/dashboard/ecolage"), label: "Reste à encaisser", value: s ? formatFCFA(Math.max(0, s.expected - s.paid)) : undefined, href: "/dashboard/ecolage", tone: "#B8000F" },
-    { show: has("/dashboard/ecolage"), label: "Encaissé aujourd'hui", value: s ? formatFCFA(s.cashedToday) : undefined, href: "/dashboard/ecolage", tone: "#047857" },
+    // Statistiques d'entrées et de sorties : réservées au Directeur général
+    { show: isDG, label: "Écolage encaissé", value: s ? formatFCFA(s.paid) : undefined, sub: s ? `sur ${formatFCFA(s.expected)}` : "", href: "/dashboard/ecolage", tone: "#047857" },
+    { show: isDG, label: "Reste à encaisser", value: s ? formatFCFA(Math.max(0, s.expected - s.paid)) : undefined, href: "/dashboard/ecolage", tone: "#B8000F" },
+    { show: isDG, label: "Encaissé aujourd'hui", value: s ? formatFCFA(s.cashedToday) : undefined, href: "/dashboard/ecolage", tone: "#047857" },
     { show: has("/dashboard/correspondance"), label: "Absences et retards du jour", value: s?.absentsToday, href: "/dashboard/correspondance", tone: "#0C356A" },
     { show: has("/dashboard/employees"), label: "Personnel", value: s?.employees, href: "/dashboard/employees", tone: "#0C356A" },
     { show: has("/dashboard/customers"), label: "Clients de l'hôtel", value: s?.customers, href: "/dashboard/customers", tone: "#0C356A" },
   ].filter((k) => k.show);
 
   const todo = [
+    { show: true, n: s?.validations, label: isDG ? "action(s) soumise(s) à votre validation" : "demande(s) en attente de validation du DG", href: "/dashboard/validations" },
     { show: has("/dashboard/admissions"), n: s?.preinscriptions, label: "pré-inscription(s) à traiter", href: "/dashboard/admissions" },
     { show: has("/dashboard/adhesions"), n: s?.dossiers, label: "dossier(s) de membre en attente", href: "/dashboard/adhesions" },
     { show: has("/dashboard/correspondance"), n: s?.permissions, label: "demande(s) de permission", href: "/dashboard/correspondance" },
