@@ -38,6 +38,7 @@ export default function EspaceLayout({ children }: { children: React.ReactNode }
     { href: "/espace", label: "Mon espace", icon: Home, show: role !== "candidat" },
     { href: "/espace/ecole", label: "Espace École", icon: GraduationCap, show: ["eleve", "professeur", "directeur_pedagogique", "directeur_general"].includes(role ?? "") },
     { href: "/espace/hotel", label: "Espace Hôtel", icon: BedDouble, show: ["personnel", "responsable_hotel", "directeur_general"].includes(role ?? "") },
+    { href: "/espace/reservations", label: "Mes réservations", icon: BedDouble, show: role === "client" || role === "candidat" },
     { href: "/espace/correspondance", label: "Correspondance", icon: ClipboardCheck, show: ["eleve", "parent", "professeur"].includes(role ?? "") },
     { href: "/espace/fiche", label: "Fiche d'inscription", icon: FileText, show: ["eleve", "parent"].includes(role ?? "") },
     { href: "/espace/bulletins", label: "Bulletins", icon: FileSpreadsheet, show: ["eleve", "parent"].includes(role ?? "") },

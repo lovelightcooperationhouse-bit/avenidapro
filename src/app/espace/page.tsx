@@ -177,13 +177,18 @@ function ClientView({ email }: { email: string }) {
   return (
     <section className="flex flex-col gap-4 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-900/5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-display text-xl font-extrabold text-avenida-blue">Mes demandes de séjour</h2>
-        <Link href="/hotel#reserver" className="rounded-full bg-vif px-5 py-2.5 text-sm font-bold text-white hover:bg-vif-fonce">
-          Nouvelle demande
-        </Link>
+        <h2 className="font-display text-xl font-extrabold text-avenida-blue">Mon séjour à l&apos;hôtel</h2>
+        <span className="flex flex-wrap gap-2">
+          <Link href="/espace/reservations" className="rounded-full px-5 py-2.5 text-sm font-bold text-avenida-blue ring-1 ring-avenida-blue/30">
+            Mes réservations, reçus et points
+          </Link>
+          <Link href="/hotel#reserver" className="rounded-full bg-vif px-5 py-2.5 text-sm font-bold text-white hover:bg-vif-fonce">
+            Réserver une chambre
+          </Link>
+        </span>
       </div>
       {rows === null ? null : rows.length === 0 ? (
-        <p className="text-sm text-slate-500">Aucune demande pour le moment.</p>
+        <p className="text-sm text-slate-500">Vos anciennes demandes de séjour apparaissent ici ; vos réservations en ligne sont dans « Mes réservations ».</p>
       ) : (
         <ul className="divide-y divide-slate-100">
           {rows.map((b) => (

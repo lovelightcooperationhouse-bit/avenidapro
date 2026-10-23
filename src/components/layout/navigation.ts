@@ -12,6 +12,7 @@ import {
   BellRing,
   Boxes,
   Briefcase,
+  CalendarCheck,
   CalendarClock,
   ClipboardCheck,
   ClipboardList,
@@ -19,6 +20,7 @@ import {
   ConciergeBell,
   FileSpreadsheet,
   Globe,
+  Gift,
   GraduationCap,
   Home,
   IdCard,
@@ -136,18 +138,26 @@ export const MODULES: NavModule[] = [
     accent: "#0C356A",
     sections: [
       {
-        title: "Exploitation",
+        title: "Réservations",
         items: [
+          { label: "Réservations en ligne", href: "/dashboard/reservations-en-ligne", icon: CalendarCheck, roles: [DG, HOT, CPT, PER], hint: "Site : paiements, encaissement, reçus" },
+          { label: "Réservations au comptoir", href: "/dashboard/reservations", icon: ConciergeBell, roles: [DG, HOT, PER], hint: "Arrivées, départs" },
+          { label: "Demandes du site", href: "/dashboard/demandes", icon: Inbox, roles: [DG, DP, HOT, PER], hint: "Anciennes demandes et contacts" },
+        ],
+      },
+      {
+        title: "Chambres",
+        items: [
+          { label: "Chambres en ligne", href: "/dashboard/chambres", icon: Images, roles: [DG, HOT], hint: "Photos, références, prix sur le site" },
           { label: "Chambres & occupation", href: "/dashboard/hotel", icon: BedDouble, roles: [DG, HOT, PER], hint: "Plan des chambres" },
-          { label: "Réservations", href: "/dashboard/reservations", icon: ConciergeBell, roles: [DG, HOT, PER], hint: "Arrivées, départs" },
-          { label: "Demandes du site", href: "/dashboard/demandes", icon: Inbox, roles: [DG, DP, HOT, PER], hint: "Réservations et contacts en ligne" },
           { label: "Stock hôtel", href: "/dashboard/inventory", icon: Boxes, roles: [DG, CPT, PER], hint: "Produits et mouvements" },
         ],
       },
       {
-        title: "Clients",
+        title: "Relation client",
         items: [
           { label: "Clients", href: "/dashboard/customers", icon: Users, roles: [DG, HOT], hint: "Fichier clients" },
+          { label: "Fidélité & parrainage", href: "/dashboard/fidelite", icon: Gift, roles: [DG, HOT], hint: "Points, parrains, règles" },
           { label: "Cartes de fidélité", href: "/dashboard/cartes?type=client", icon: Star, roles: [DG, HOT], hint: "Numéros et niveaux" },
           { label: "Dossiers des clients", href: "/dashboard/adhesions?scope=hotel", icon: ClipboardSignature, roles: [DG, HOT], hint: "Profils clients à examiner" },
           { label: "Espace Hôtel (équipes)", href: "/espace/hotel", icon: MonitorPlay, roles: [DG, HOT, PER], hint: "Consignes par service" },
