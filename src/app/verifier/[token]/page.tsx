@@ -12,7 +12,9 @@ import { cn, formatFCFA } from "@/lib/utils";
 type Result = {
   valid: boolean;
   reason?: string;
-  type?: "eleve" | "personnel";
+  type?: "eleve" | "personnel" | "client";
+  level?: string;
+  points?: number | null;
   name?: string;
   photo?: string | null;
   matricule?: string;
@@ -69,7 +71,7 @@ export default function VerifyPage() {
               <div>
                 <p className="font-display text-xl font-extrabold">{r.valid ? "Carte valide" : "Carte non valide"}</p>
                 <p className="text-sm text-white/85">
-                  {r.type === "eleve" ? "Carte scolaire" : "Carte de travail"} · version {r.version}
+                  {r.type === "eleve" ? "Carte scolaire" : r.type === "client" ? "Carte de fidélité" : "Carte de travail"} · version {r.version}
                 </p>
               </div>
             </div>
@@ -80,8 +82,8 @@ export default function VerifyPage() {
               </div>
               <div className="min-w-0">
                 <h1 className="font-display text-2xl leading-tight font-extrabold text-avenida-blue-950 uppercase">{r.name}</h1>
-                <p className="font-semibold text-vif">{r.type === "eleve" ? r.class : r.position}</p>
-                <p className="text-sm text-slate-500">{r.type === "eleve" ? r.year : r.department}</p>
+                <p className="font-semibold text-vif">{r.type === "eleve" ? r.class : r.type === "client" ? `Membre ${r.level ?? ""}` : r.position}</p>
+                <p className="text-sm text-slate-500">{r.type === "eleve" ? r.year : r.type === "client" ? `${r.points ?? 0} points · Hôtel Avenida` : r.department}</p>
                 <p className="mt-1 font-mono text-lg font-bold tracking-wider">{r.matricule}</p>
               </div>
             </div>

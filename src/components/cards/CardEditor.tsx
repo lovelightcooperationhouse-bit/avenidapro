@@ -72,8 +72,8 @@ const CONFIG: Record<Kind, { table: string; cols: string; photo: boolean; fields
   },
   client: {
     table: "hotel_customers",
-    cols: "id, first_name, last_name, full_name, phone, email, nationality, total_stays, total_spent, is_vip, loyalty_points",
-    photo: false,
+    cols: "id, first_name, last_name, full_name, phone, email, nationality, total_stays, total_spent, is_vip, loyalty_points, photo_url",
+    photo: true,
     fields: [
       { k: "last_name", label: "Nom" },
       { k: "first_name", label: "Prénom(s)" },

@@ -99,7 +99,8 @@ export function IdCard({ data, side = "both", className, settings }: { data: Car
   const isClient = data.type === "client";
   const photoOk = data.photo && !data.photo.includes("default.png");
   const accentText = theme.accent === "#D4A017" ? theme.dark : theme.accent;
-  const validity = data.validUntil ? new Date(data.validUntil).toLocaleDateString("fr-FR") : "Durée du contrat";
+  // Sans date de fin : carte de fidélité permanente (client), sinon liée au contrat (personnel)
+  const validity = data.validUntil ? `jusqu'au ${new Date(data.validUntil).toLocaleDateString("fr-FR")}` : data.type === "client" ? "permanente" : "pendant la durée du contrat";
 
   const isStudent = data.type === "eleve";
   const lineLabel = isStudent ? "Filière & année" : isClient ? "Fidélité" : "Fonction";
@@ -197,7 +198,7 @@ export function IdCard({ data, side = "both", className, settings }: { data: Car
                 {data.matricule}
               </p>
               <p className="text-[2.1cqw] leading-tight font-semibold whitespace-nowrap text-slate-600">
-                {data.cardNumber && !isClient ? `Carte ${data.cardNumber} · ` : ""}valable jusqu&apos;au {validity}
+                {data.cardNumber && !isClient ? `Carte ${data.cardNumber} · ` : ""}valable {validity}
               </p>
             </div>
           </div>
@@ -242,7 +243,7 @@ export function IdCard({ data, side = "both", className, settings }: { data: Car
               <p className="truncate text-[2.8cqw] leading-snug text-white/90">{cs.email || siteConfig.email}</p>
             </div>
             <p className="text-[2.9cqw] font-extrabold whitespace-nowrap">
-              <span style={{ color: brandAccent }}>VALIDITÉ :</span> jusqu&apos;au {validity}
+              <span style={{ color: brandAccent }}>VALIDITÉ :</span> {validity}
             </p>
           </div>
           <div className="flex min-w-0 flex-col gap-[1.4cqw]">

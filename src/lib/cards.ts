@@ -56,7 +56,7 @@ export type EmployeeRow = {
   hire_date?: string | null;
 };
 
-export type CustomerRow = { id: string; first_name: string; last_name: string; full_name: string | null; phone: string | null; email: string | null; nationality: string | null; total_stays: number | null; total_spent: number | null; is_vip: boolean | null; loyalty_points: number | null };
+export type CustomerRow = { id: string; first_name: string; last_name: string; full_name: string | null; phone: string | null; email: string | null; nationality: string | null; total_stays: number | null; total_spent: number | null; is_vip: boolean | null; loyalty_points: number | null; photo_url?: string | null };
 
 export type CardRow = { id: string; holder_type: "eleve" | "personnel" | "client"; student_id: string | null; employee_id: string | null; customer_id?: string | null; card_number?: string | null; token: string; version: number; issued_at: string; valid_until: string | null; revoked: boolean; review_status?: string; review_note?: string | null };
 
@@ -124,13 +124,13 @@ export const customerCardData = (cu: CustomerRow, c: CardRow): CardData => ({
   issuedAt: c.issued_at,
   validUntil: c.valid_until,
   name: cu.full_name ?? `${cu.first_name} ${cu.last_name}`,
-  photo: null,
+  photo: cu.photo_url ?? null,
   matricule: c.card_number ?? "—",
   line1: `Membre ${loyaltyLevel(cu)} · ${cu.loyalty_points ?? 0} points`,
-  line2: "Hôtel Avenida · Lomé",
+  line2: "",
   details: [
     { label: "Téléphone", value: cu.phone ?? "" },
-    { label: "Nationalité", value: cu.nationality ?? "" },
+    { label: "Nationalité", value: cu.nationality ? cu.nationality[0].toUpperCase() + cu.nationality.slice(1) : "" },
   ].filter((d) => d.value),
 });
 

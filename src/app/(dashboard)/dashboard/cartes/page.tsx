@@ -44,7 +44,7 @@ function CardsAdmin() {
       supabase.from("students").select(STUDENT_COLS).eq("is_archived", false).order("last_name"),
       supabase.from("employees").select(EMPLOYEE_COLS).order("last_name"),
       supabase.from("id_cards").select("*"),
-      supabase.from("hotel_customers").select("id, first_name, last_name, full_name, phone, email, nationality, total_stays, total_spent, is_vip, loyalty_points").order("last_name"),
+      supabase.from("hotel_customers").select("id, first_name, last_name, full_name, phone, email, nationality, total_stays, total_spent, is_vip, loyalty_points, photo_url").order("last_name"),
     ]);
     setCustomers((cu ?? []) as CustomerRow[]);
     setStudents((s ?? []) as StudentRow[]);

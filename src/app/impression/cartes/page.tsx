@@ -27,7 +27,7 @@ function PrintSheet() {
         const { data: s } = await supabase.from("students").select(STUDENT_CARD_COLS).in("id", ids);
         setCards((c ?? []).map((card: CardRow) => studentCardData((s ?? []).find((x) => x.id === card.student_id) as StudentRow, card)).filter((x) => x.name));
       } else if (type === "client") {
-        const { data: cu } = await supabase.from("hotel_customers").select("id, first_name, last_name, full_name, phone, email, nationality, total_stays, total_spent, is_vip, loyalty_points").in("id", ids);
+        const { data: cu } = await supabase.from("hotel_customers").select("id, first_name, last_name, full_name, phone, email, nationality, total_stays, total_spent, is_vip, loyalty_points, photo_url").in("id", ids);
         setCards((c ?? []).map((card: CardRow) => customerCardData((cu ?? []).find((x) => x.id === card.customer_id) as CustomerRow, card)).filter((x) => x.name));
       } else {
         const { data: e } = await supabase.from("employees").select(EMPLOYEE_CARD_COLS).in("id", ids);
