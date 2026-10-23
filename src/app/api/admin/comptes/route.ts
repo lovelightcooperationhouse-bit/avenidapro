@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
 
   await admin.from("profiles").update({ role, first_name: first, last_name: last, phone: body.phone?.trim() || null, is_active: true, updated_at: new Date().toISOString() }).eq("id", data.user.id);
   await admin.from("notifications").insert({ profile_id: data.user.id, kind: "info", title: "Bienvenue sur la plateforme Avenida", body: "Complétez votre profil (photo d'identité et informations) puis changez votre mot de passe.", link: "/espace/profil" });
-  return NextResponse.json({ mode: "compte", email, password, message: "Compte créé. Transmettez ces identifiants à la personne : elle devra changer son mot de passe." });
+  return NextResponse.json({ mode: "compte", id: data.user.id, email, password, message: "Compte créé. Transmettez ces identifiants à la personne : elle devra changer son mot de passe." });
 }
 
 /** Mot de passe provisoire lisible (sans caractères ambigus). */

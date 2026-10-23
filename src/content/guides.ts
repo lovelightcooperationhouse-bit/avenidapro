@@ -149,7 +149,7 @@ export const adminWorkflows: (Guide & { roles: RoleType[] })[] = [
     title: "Premiers pas du Directeur général",
     intro: "Configurer la plateforme et répartir les responsabilités.",
     steps: [
-      { title: "1. Créer les comptes des responsables", text: "« Comptes, rôles & postes » → « Créer un compte » : directeur pédagogique, comptable, RH, directeur de l'hôtel. Choisissez le poste, le rôle se remplit seul.", href: "/dashboard/users", cta: "Comptes et rôles" },
+      { title: "1. Créer les comptes des responsables", text: "« Comptes, rôles & postes » → « Créer un compte » : choisissez le membre de l'annuaire (directeur pédagogique, économe, RH, directeur d'exploitation…), son nom, son téléphone et son rôle se remplissent ; ajoutez son e-mail et transmettez-lui les identifiants. Un compte existe déjà ? Dans « Comptes », choisissez le membre et le rôle, cochez « Actif » puis « Enregistrer ».", href: "/dashboard/users", cta: "Comptes et rôles" },
       { title: "2. Vérifier les postes", text: "Onglet « Postes » : ajoutez les postes propres à Avenida (ex. chef de rang) et le rôle donné par défaut.", href: "/dashboard/users" },
       { title: "3. Valider les dossiers", text: "Les nouveaux membres complètent leur profil ; le service concerné donne son avis ; vous validez dans « Dossiers des membres » (onglet « Décision du DG »).", href: "/dashboard/adhesions" },
       { title: "4. Personnaliser le site", text: "Module « Site web » (ou un gestionnaire du site désigné) : publications, menus, pages, sections, coordonnées, réseaux, couleurs et statistiques de visite.", href: "/dashboard/site?tab=statistiques" },

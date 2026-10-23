@@ -460,7 +460,7 @@ function Roles({
       <p className="rounded-2xl bg-sky-50 p-4 text-sm text-sky-900">
         Rôles proposés selon les postes et les matières.{" "}
         {isDG
-          ? "Vous pouvez changer le rôle avant de valider. Avec une adresse e-mail, le compte est créé et le rôle appliqué immédiatement."
+          ? "Vous pouvez changer le rôle avant de valider. Avec une adresse e-mail, le compte est créé et le rôle appliqué immédiatement. La personne a déjà un compte ? Rattachez-la dans « Comptes, rôles & postes »."
           : "Seul le Directeur général valide ces rôles."}
       </p>
       {msg && (
@@ -484,7 +484,7 @@ function Roles({
               <th className="p-3">Pourquoi</th>
               <th className="p-3">Statut</th>
               {isDG && <th className="p-3">Compte (e-mail)</th>}
-              {isDG && <th className="p-3 text-right">Décision</th>}
+              {isDG && <th className="sticky right-0 bg-slate-50 p-3 text-right">Décision</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -559,7 +559,7 @@ function Roles({
                     </td>
                   )}
                   {isDG && (
-                    <td className="p-3">
+                    <td className="sticky right-0 bg-white p-3 shadow-[-10px_0_12px_-10px_rgba(15,23,42,0.25)]">
                       {r.role_status !== "valide" && (
                         <div className="flex justify-end gap-1">
                           <button
