@@ -121,6 +121,11 @@ export default function MyReservationsPage() {
                     <Link href={`/reservation/${r.token}`} className="rounded-full px-3 py-1 text-xs font-bold text-avenida-blue ring-1 ring-avenida-blue/30">
                       Reçu
                     </Link>
+                    {!paid && !cancelled && (
+                      <Link href={`/reservation/${r.token}?payer=choisir`} className="rounded-full bg-vif px-3 py-1 text-xs font-bold text-white hover:bg-vif-fonce">
+                        Payer
+                      </Link>
+                    )}
                   </span>
                 </li>
               );

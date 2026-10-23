@@ -144,6 +144,22 @@ export function BookingReceipt({ token, methods }: { token: string; methods: Rec
     pay(m);
   }, [r, pay]);
 
+  // Bouton « Payer maintenant » placé à côté du bouton « Retour » de l'application installée
+  const [standalone, setStandalone] = useState(false);
+  const [highlight, setHighlight] = useState(false);
+  useEffect(() => {
+    setStandalone(window.matchMedia("(display-mode: standalone)").matches || !!(navigator as unknown as { standalone?: boolean }).standalone);
+  }, []);
+  const goPay = useCallback(() => {
+    document.getElementById("payer")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    setHighlight(true);
+    window.setTimeout(() => setHighlight(false), 2500);
+  }, []);
+  // Arrivée depuis « Mes réservations » → « Payer » : on montre directement les moyens de paiement
+  useEffect(() => {
+    if (r && r.payment_status !== "payé" && r.status !== "annulée" && new URLSearchParams(window.location.search).get("payer") === "choisir") goPay();
+  }, [r, goPay]);
+
   if (r === undefined) return <div className="flex min-h-dvh items-center justify-center"><Loader2 aria-label="Chargement" className="size-8 animate-spin text-avenida-blue" /></div>;
   if (!r) return <p className="mx-auto mt-20 max-w-md rounded-2xl bg-amber-50 p-6 text-center text-amber-900">Réservation introuvable. Vérifiez le lien reçu par e-mail.</p>;
 
@@ -165,9 +181,15 @@ export function BookingReceipt({ token, methods }: { token: string; methods: Rec
         <DocumentToolbar elementId="recu-reservation" fileName={`Reservation-${r.ref}`} />
 
         {!cancelled && !settled && (
-          <section className="rounded-3xl bg-white p-5 shadow-sm print:hidden">
+          <section id="payer" className={cn("scroll-mt-6 rounded-3xl bg-white p-5 shadow-sm transition-shadow print:hidden", highlight && "ring-4 ring-vif/60")}>
             <p className="font-display text-lg font-extrabold text-avenida-blue-950">Reste à payer : {F(r.remaining)}</p>
-            <p className="text-sm text-slate-600">Réglez maintenant en ligne, ou à votre arrivée à la réception. Le reçu se met à jour dès le paiement.</p>
+            <p className="text-sm text-slate-600">
+              {r.payment_choice === "arrivee"
+                ? "Vous avez choisi de payer à l'arrivée. Vous avez changé d'avis ? Payez maintenant en ligne : votre séjour sera soldé et votre chambre confirmée."
+                : "Réglez maintenant en ligne, ou à votre arrivée à la réception."}{" "}
+              Le reçu se met à jour dès le paiement.
+            </p>
+            {!anyOnline && <p className="mt-2 rounded-xl bg-amber-50 p-3 text-sm font-semibold text-amber-900">Le paiement en ligne sera bientôt disponible : en attendant, réglez à la réception.</p>}
             {anyOnline && (
               <div className="mt-3 flex flex-wrap gap-2">
                 {methods.carte && (
@@ -189,6 +211,19 @@ export function BookingReceipt({ token, methods }: { token: string; methods: Rec
             )}
             {error && <p role="alert" className="mt-2 text-sm font-semibold text-vif">{error}</p>}
           </section>
+        )}
+
+        {!cancelled && !settled && (
+          <button
+            type="button"
+            onClick={goPay}
+            className={cn(
+              "fixed bottom-[max(1rem,env(safe-area-inset-bottom))] z-[150] inline-flex items-center gap-1.5 rounded-full bg-vif px-4 py-2.5 text-sm font-bold text-white shadow-xl ring-2 ring-white/80 active:scale-95 print:hidden",
+              standalone ? "left-[8.5rem]" : "left-4",
+            )}
+          >
+            <CreditCard aria-hidden className="size-5" /> Payer maintenant
+          </button>
         )}
 
         <article id="recu-reservation" className="relative flex min-h-[260mm] flex-col bg-white p-[12mm] text-[12px] text-slate-800 shadow-xl print:shadow-none">
