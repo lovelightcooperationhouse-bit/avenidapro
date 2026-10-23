@@ -339,7 +339,13 @@ export async function verifyPayment(identifier: string): Promise<{ ok: boolean; 
   const { data: applied, error } = await admin.rpc("apply_online_payment", { ident: identifier, pref: ref, details });
   if (error) return { ok: false, token, error: error.message };
   const fresh = !(applied as { already?: boolean } | null)?.already;
-  if (fresh && token) await emailPaid(admin, token);
+  if (fresh && token) {
+    await emailPaid(admin, token);
+    // Alertes « Paiement reçu » envoyées tout de suite (e-mail, téléphone) au DG et à l'hôtel
+    const secret = process.env.CRON_SECRET;
+    const site = process.env.NEXT_PUBLIC_APP_URL || "https://www.hotelecoleavenida.net";
+    if (secret) await fetch(`${site}/api/notifications/envoyer`, { method: "POST", headers: { Authorization: `Bearer ${secret}` } }).catch(() => null);
+  }
   return { ok: true, token, fresh };
 }
 
