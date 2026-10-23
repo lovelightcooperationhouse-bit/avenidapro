@@ -2,17 +2,54 @@ import { createClient as createAdmin, type SupabaseClient } from "@supabase/supa
 
 /**
  * Paiement en ligne des réservations de l'hôtel.
- *   Carte bancaire : Stripe Checkout (STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET)
- *   Mixx by Yas (T-Money) et Moov Money (Flooz) : PayGate Global (PAYGATE_AUTH_TOKEN)
+ *   Prestataire principal : CinetPay, API v1 (CINETPAY_API_KEY, CINETPAY_API_PASSWORD) — Mixx by Yas (TMONEY_TG), Moov Money (MOOV_TG),
+ *   et la carte bancaire si CinetPay l'a activée sur le compte (CINETPAY_CARTE=oui)
+ *   À défaut : Stripe pour la carte (STRIPE_SECRET_KEY), PayGate Global pour Yas et Moov (PAYGATE_AUTH_TOKEN)
  * Un paiement n'est jamais validé sur la seule parole du navigateur : le serveur interroge le prestataire
- * (statut de la session Stripe, statut PayGate) avant d'enregistrer l'encaissement.
+ * (vérification de la transaction CinetPay, session Stripe, statut PayGate) avant d'enregistrer l'encaissement.
  */
 export type OnlineMethod = "carte" | "yas" | "moov";
 
+const cinetpay = () => !!process.env.CINETPAY_API_KEY && !!process.env.CINETPAY_API_PASSWORD;
+// Clé sk_live_… : production ; clé sk_test_… : environnement de test (bac à sable)
+const cinetpayBase = () => (process.env.CINETPAY_API_KEY?.startsWith("sk_live_") ? "https://api.cinetpay.co" : "https://api.cinetpay.net");
+let cinetpayToken: { value: string; until: number } | null = null;
+
+/** Jeton d'accès CinetPay (valable 24 h, gardé 23 h en mémoire). */
+async function cinetpayAuth(force = false): Promise<string | null> {
+  if (!force && cinetpayToken && cinetpayToken.until > Date.now()) return cinetpayToken.value;
+  const res = await fetch(`${cinetpayBase()}/v1/oauth/login`, {
+    method: "POST",
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
+    body: JSON.stringify({ api_key: process.env.CINETPAY_API_KEY, api_password: process.env.CINETPAY_API_PASSWORD }),
+  }).catch(() => null);
+  const j = res ? ((await res.json().catch(() => ({}))) as { access_token?: string }) : {};
+  if (!j.access_token) return null;
+  cinetpayToken = { value: j.access_token, until: Date.now() + 23 * 3600_000 };
+  return j.access_token;
+}
+
+/** Appel à l'API CinetPay avec renouvellement automatique du jeton expiré. */
+async function cinetpayCall(method: "GET" | "POST", path: string, body?: unknown): Promise<Record<string, unknown>> {
+  for (const force of [false, true]) {
+    const token = await cinetpayAuth(force);
+    if (!token) return { status: "INVALID_CREDENTIALS", description: "identifiants CinetPay refusés" };
+    const res = await fetch(`${cinetpayBase()}${path}`, {
+      method,
+      headers: { Accept: "application/json", "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: body ? JSON.stringify(body) : undefined,
+    }).catch(() => null);
+    const j = res ? ((await res.json().catch(() => ({}))) as Record<string, unknown>) : { status: "NETWORK", description: "CinetPay ne répond pas" };
+    if (j.code === 1003 || j.status === "EXPIRED_TOKEN" || j.status === "INVALID_TOKEN") continue;
+    return j;
+  }
+  return { status: "INVALID_TOKEN", description: "jeton CinetPay refusé" };
+}
+
 export const onlineMethods = (): Record<OnlineMethod, boolean> => ({
-  carte: !!process.env.STRIPE_SECRET_KEY,
-  yas: !!process.env.PAYGATE_AUTH_TOKEN,
-  moov: !!process.env.PAYGATE_AUTH_TOKEN,
+  carte: (cinetpay() && /^(oui|1|true)$/i.test(process.env.CINETPAY_CARTE ?? "")) || !!process.env.STRIPE_SECRET_KEY,
+  yas: cinetpay() || !!process.env.PAYGATE_AUTH_TOKEN,
+  moov: cinetpay() || !!process.env.PAYGATE_AUTH_TOKEN,
 });
 
 export function adminClient(): SupabaseClient | null {
@@ -21,7 +58,7 @@ export function adminClient(): SupabaseClient | null {
   return url && key ? createAdmin(url, key, { auth: { persistSession: false } }) : null;
 }
 
-type Reservation = { id: string; booking_ref: string; token: string; room_type: string | null; room_number: string | null; customer_email: string | null; customer_phone: string | null; total_price: number; deposit_paid: number | null; status: string; hold_until: string | null; room_uuid: string | null; check_in: string; check_out: string };
+type Reservation = { id: string; booking_ref: string; token: string; customer_name: string; room_type: string | null; room_number: string | null; customer_email: string | null; customer_phone: string | null; total_price: number; deposit_paid: number | null; status: string; hold_until: string | null; room_uuid: string | null; check_in: string; check_out: string };
 
 /** Démarre un paiement en ligne et renvoie l'adresse de la page de paiement du prestataire. */
 export async function startPayment(token: string, method: OnlineMethod, origin: string): Promise<{ url: string } | { error: string }> {
@@ -29,7 +66,7 @@ export async function startPayment(token: string, method: OnlineMethod, origin: 
   if (!admin) return { error: "Paiement en ligne indisponible (configuration du serveur)." };
   if (!onlineMethods()[method]) return { error: "Ce moyen de paiement n'est pas encore activé. Choisissez le paiement à l'arrivée ou un autre moyen." };
 
-  const { data: v } = await admin.from("reservations").select("id, booking_ref, token, room_type, room_number, customer_email, customer_phone, total_price, deposit_paid, status, hold_until, room_uuid, check_in, check_out").eq("token", token).maybeSingle<Reservation>();
+  const { data: v } = await admin.from("reservations").select("id, booking_ref, token, customer_name, room_type, room_number, customer_email, customer_phone, total_price, deposit_paid, status, hold_until, room_uuid, check_in, check_out").eq("token", token).maybeSingle<Reservation>();
   if (!v) return { error: "Réservation introuvable." };
   if (v.status === "annulée") return { error: "Cette réservation est annulée." };
   const due = Number(v.total_price) - Number(v.deposit_paid ?? 0);
@@ -44,12 +81,49 @@ export async function startPayment(token: string, method: OnlineMethod, origin: 
   const hold = new Date(Date.now() + Number((conf as { holdMinutes?: number } | null)?.holdMinutes ?? 30) * 60_000).toISOString();
   if (v.status !== "confirmée" && v.status !== "réservée") await admin.from("reservations").update({ status: "paiement_en_cours", hold_until: hold }).eq("id", v.id);
 
-  const identifier = `${v.booking_ref}-${Date.now().toString(36).toUpperCase()}`;
-  const provider = method === "carte" ? "stripe" : "paygate";
-  const { error: insErr } = await admin.from("reservation_payments").insert({ reservation_id: v.id, provider, method, amount: due, identifier, status: "en_cours" });
+  // Identifiant unique par tentative (30 caractères au plus, sans caractères spéciaux)
+  const identifier = `${v.booking_ref.replace(/[^A-Z0-9]/gi, "")}T${Date.now().toString(36).toUpperCase()}`;
+  const provider = cinetpay() && (method !== "carte" || !process.env.STRIPE_SECRET_KEY) ? "cinetpay" : method === "carte" ? "stripe" : "paygate";
+  const amount = due;
+  if (provider === "cinetpay" && (amount < 100 || amount > 2_500_000)) return { error: "Montant hors des limites du paiement en ligne (100 à 2 500 000 F) : réglez à la réception." };
+  const { error: insErr } = await admin.from("reservation_payments").insert({ reservation_id: v.id, provider, method, amount, identifier, status: "en_cours" });
   if (insErr) return { error: insErr.message };
   const back = `${origin}/api/reservations/retour?id=${encodeURIComponent(identifier)}`;
   const label = `Réservation ${v.booking_ref} · ${v.room_type ?? "Chambre"} ${v.room_number ?? ""}`.trim();
+
+  if (provider === "cinetpay") {
+    const words = (v.customer_name || "Client Avenida").trim().split(/\s+/);
+    const pad = (x: string) => (x.length >= 2 ? x : `${x}.`);
+    const phone = (v.customer_phone ?? "").replace(/\D/g, "").replace(/^228/, "");
+    const j = await cinetpayCall("POST", "/v1/payment", {
+      currency: "XOF",
+      merchant_transaction_id: identifier,
+      amount,
+      lang: "fr",
+      designation: label.slice(0, 255),
+      client_email: v.customer_email || "reservation@hotelecoleavenida.net",
+      client_first_name: pad(words.length > 1 ? words.slice(0, -1).join(" ") : words[0]),
+      client_last_name: pad(words[words.length - 1]),
+      success_url: back,
+      failed_url: back,
+      notify_url: `${origin}/api/paiements/cinetpay`,
+      channel: "PUSH",
+      // Mobile Money : le client arrive directement sur l'opérateur choisi ; carte : page de paiement CinetPay
+      ...(method === "yas" ? { payment_method: "TMONEY_TG" } : method === "moov" ? { payment_method: "MOOV_TG" } : {}),
+      ...(phone.length === 8 ? { client_phone_number: `+228${phone}` } : {}),
+    });
+    const url = j.payment_url as string | undefined;
+    if (!url) {
+      await admin.from("reservation_payments").update({ status: "echoue", raw: j }).eq("identifier", identifier);
+      return { error: `Paiement en ligne indisponible : ${String(j.description ?? j.status ?? "CinetPay ne répond pas")}` };
+    }
+    // Le jeton de notification permet de reconnaître les vraies notifications de CinetPay
+    await admin
+      .from("reservation_payments")
+      .update({ provider_ref: (j.transaction_id as string) ?? null, raw: { notify_token: j.notify_token ?? null, payment_token: j.payment_token ?? null } })
+      .eq("identifier", identifier);
+    return { url };
+  }
 
   if (provider === "stripe") {
     const form = new URLSearchParams({
@@ -99,7 +173,15 @@ export async function verifyPayment(identifier: string): Promise<{ ok: boolean; 
   let paid = false;
   let ref: string | null = null;
   let details: unknown = null;
-  if (pay.provider === "stripe" && pay.provider_ref) {
+  if (pay.provider === "cinetpay") {
+    const st = await cinetpayCall("GET", `/v1/payment/${encodeURIComponent(identifier)}`);
+    const status = String(st.status ?? "");
+    paid = status === "SUCCESS" && (st.merchant_transaction_id === undefined || st.merchant_transaction_id === identifier);
+    ref = (st.transaction_id as string) ?? null;
+    details = st;
+    if (status === "FAILED" || status === "EXPIRED") await admin.from("reservation_payments").update({ status: "echoue", raw: st }).eq("id", pay.id);
+    if (!paid) return { ok: false, token, pending: status === "PENDING" || status === "INITIATED" };
+  } else if (pay.provider === "stripe" && pay.provider_ref) {
     const res = await fetch(`https://api.stripe.com/v1/checkout/sessions/${pay.provider_ref}`, { headers: { Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}` } });
     const s = (await res.json()) as { payment_status?: string; amount_total?: number; payment_intent?: string };
     paid = res.ok && s.payment_status === "paid" && Number(s.amount_total) >= Number(pay.amount);

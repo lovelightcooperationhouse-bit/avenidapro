@@ -193,6 +193,11 @@ begin
   on conflict (prefix) do update set last_value = matricule_counters.last_value + 1
   returning last_value into n;
   v_ref := pref || '-' || lpad(n::text, 4, '0');
+  -- Numéro déjà pris (compteur remis à zéro, saisie au comptoir…) : on passe au suivant
+  while exists (select 1 from public.reservations x where x.booking_ref = v_ref) loop
+    update public.matricule_counters set last_value = last_value + 1 where prefix = pref returning last_value into n;
+    v_ref := pref || '-' || lpad(n::text, 4, '0');
+  end loop;
 
   insert into public.reservations (booking_ref, customer_id, customer_uuid, profile_id, customer_name, customer_phone, customer_email, customer_nationality,
                                    room_id, room_uuid, room_number, room_type, check_in, check_out, check_in_date, check_out_date, nights_count, guests,
