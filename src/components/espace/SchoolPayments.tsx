@@ -3,13 +3,13 @@
 import { CheckCircle2, Clock, CreditCard, GraduationCap, Loader2, Receipt, Smartphone, Wallet, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { feeSchedule } from "@/components/cards/SituationSheet";
+import { feeParts, feeSchedule } from "@/components/cards/SituationSheet";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 type Method = "carte" | "yas" | "moov";
 type Online = { identifier: string; date: string; amount: number; designation: string; method: Method; status: "en_cours" | "reussi" | "echoue"; receipt?: string | null };
-type StudentDue = { id: string; name: string; matricule: string | null; class: string | null; year: string | null; program: string | null; total: number; paid: number; remaining: number; online: Online[] };
+type StudentDue = { id: string; name: string; matricule: string | null; class: string | null; year: string | null; program: string | null; total: number; paid: number; remaining: number; fees?: { registration?: number; supplies?: number }; online: Online[] };
 type ApplicationDue = { id: string; reference: string | null; name: string; program: string; specialty: string | null; fees: { registration?: number; supplies?: number }; paid: number; online: Online[] };
 type Mine = { students: StudentDue[]; applications: ApplicationDue[] };
 
@@ -42,11 +42,20 @@ export function SchoolPayments({ methods }: { methods: Record<Method, boolean> }
     else if (state === "en_cours") setNotice({ tone: "wait", text: "Paiement en cours de confirmation par l'opérateur. Cette page se met à jour automatiquement." });
     else if (state === "echec") setNotice({ tone: "ko", text: "Le paiement n'a pas abouti. Vous pouvez réessayer ou régler à la caisse de l'école." });
     else if (state === "annule") setNotice({ tone: "ko", text: "Paiement interrompu : aucun montant n'a été prélevé." });
+    // Mise à jour en temps réel dès qu'un paiement arrive (en ligne ou à la caisse), quel que soit le payeur
+    const supabase = createClient();
+    const channel = supabase
+      .channel("mes-paiements-ecolage")
+      .on("postgres_changes", { event: "*", schema: "public", table: "school_payments" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "fee_payments" }, () => load())
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "students" }, () => load())
+      .subscribe();
     // Paiement mobile parfois confirmé avec quelques secondes de retard
-    if (state === "en_cours") {
-      const t = window.setInterval(load, 8000);
-      return () => window.clearInterval(t);
-    }
+    const t = state === "en_cours" ? window.setInterval(load, 8000) : 0;
+    return () => {
+      if (t) window.clearInterval(t);
+      supabase.removeChannel(channel);
+    };
   }, [load]);
 
   const anyOnline = methods.carte || methods.yas || methods.moov;
@@ -150,21 +159,61 @@ function History({ items }: { items: Online[] }) {
   );
 }
 
+type Option = { key: string; label: string; hint?: string; amount: number; designation: string };
+
+/** Formules de paiement proposées par l'école, rubrique par rubrique, puis le montant libre. */
+function paymentOptions(s: StudentDue) {
+  const parts = feeParts({ program_code: s.program, total_fee: s.total, paid_fee: s.paid }, { registration: s.fees?.registration, supplies: s.fees?.supplies });
+  const [reg, sup, tui] = parts.rubrics;
+  const options: Option[] = [];
+  if (reg.remaining > 0) options.push({ key: "inscription", label: "Frais d'inscription", amount: reg.remaining, designation: "Frais d'inscription" });
+  if (sup.remaining > 0)
+    options.push({
+      key: "fournitures",
+      label: "Frais de fournitures",
+      hint: reg.remaining > 0 ? `avec le reste des frais d'inscription (${F(reg.remaining)})` : undefined,
+      amount: reg.remaining + sup.remaining,
+      designation: reg.remaining > 0 ? "Frais d'inscription et de fournitures" : "Frais de fournitures",
+    });
+  if (tui.remaining > 0 && tui.amount > 0) {
+    const before = reg.remaining + sup.remaining;
+    const hint = before > 0 ? `avec les frais d'inscription et de fournitures restants (${F(before)})` : undefined;
+    // Mensualités (8) et trimestres (3) : prochaine part de la scolarité non encore réglée
+    const plan = (count: number, name: string) => {
+      const part = Math.ceil(tui.amount / count);
+      const k = Math.min(count, Math.floor(tui.paid / part) + 1);
+      return { k, amount: Math.min(tui.remaining, k * part - tui.paid) + before, name };
+    };
+    const m = plan(8, "mensualité");
+    const t = plan(3, "trimestre");
+    options.push({ key: "mensuel", label: `Mensualité ${m.k}/8`, hint: hint ?? "paiement en 8 tranches mensuelles", amount: m.amount, designation: `Scolarité · mensualité ${m.k}/8` });
+    options.push({ key: "trimestriel", label: `Trimestre ${t.k}/3`, hint: hint ?? "paiement en 3 tranches trimestrielles", amount: t.amount, designation: `Scolarité · trimestre ${t.k}/3` });
+    options.push({ key: "annuel", label: "Scolarité de toute l'année", hint, amount: tui.remaining + before, designation: "Scolarité · année complète" });
+  }
+  // Retard sur l'échéancier : montant pour se remettre à jour
+  const lines = feeSchedule({ program_code: s.program, total_fee: s.total, paid_fee: s.paid, academic_year: s.year });
+  const dueNow = lines.filter((l) => l.date <= new Date()).reduce((a, l) => Math.max(a, l.cumul), 0);
+  const late = Math.min(s.remaining, dueNow - s.paid);
+  if (late > 0 && !options.some((o) => o.amount === late)) options.unshift({ key: "retard", label: "Me remettre à jour", hint: "montant en retard sur l'échéancier", amount: late, designation: "Rattrapage de l'échéancier" });
+  if (!options.some((o) => o.amount === s.remaining)) options.push({ key: "tout", label: "Tout solder", hint: "reste total de l'année", amount: s.remaining, designation: "Solde de l'écolage" });
+  return { parts, options, late: late > 0 };
+}
+
 function StudentCard({ s, methods }: { s: StudentDue; methods: Record<Method, boolean> }) {
   const { busy, error, pay } = usePay();
-  // Prochaine échéance : ce qu'il faut avoir payé jusqu'à la prochaine tranche non réglée
-  const lines = feeSchedule({ program_code: s.program, total_fee: s.total, paid_fee: s.paid, academic_year: s.year });
-  const next = lines.find((l) => !l.settled);
-  const nextDue = next ? Math.min(s.remaining, Math.max(0, next.cumul - s.paid)) : 0;
-  const late = lines.filter((l) => l.late).length;
-  const [choice, setChoice] = useState<"echeance" | "tout" | "autre">(nextDue > 0 && nextDue < s.remaining ? "echeance" : "tout");
+  const { parts, options, late } = paymentOptions(s);
+  const [picked, setPicked] = useState(options[0]?.key ?? "autre");
   const [custom, setCustom] = useState("");
-  const amount = choice === "echeance" ? nextDue : choice === "tout" ? s.remaining : Math.floor(Number(custom) || 0);
-  const designation = choice === "echeance" && next ? next.label : choice === "tout" ? "Solde de l'écolage" : "Écolage (acompte)";
+  // Après un paiement, les formules changent : on revient sur la première si celle choisie a disparu
+  const choice = picked === "autre" || options.some((o) => o.key === picked) ? picked : (options[0]?.key ?? "autre");
+  const setChoice = setPicked;
+  const selected = options.find((o) => o.key === choice);
+  const amount = selected ? selected.amount : Math.floor(Number(custom) || 0);
+  const designation = selected ? selected.designation : "Écolage · montant libre";
   const valid = amount >= 500 && amount <= s.remaining;
 
   return (
-    <section className="flex flex-col gap-4 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-900/5">
+    <section className="flex flex-col gap-5 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-900/5">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-bold tracking-widest text-slate-500 uppercase">
@@ -175,51 +224,74 @@ function StudentCard({ s, methods }: { s: StudentDue; methods: Record<Method, bo
           </h2>
           <p className="text-sm text-slate-600">{s.class ?? ""}</p>
         </div>
-        <Link href="/espace/situation" className="rounded-full px-4 py-2 text-xs font-bold text-avenida-blue ring-1 ring-avenida-blue/30">
-          Fiche de situation
-        </Link>
+        <span className={cn("rounded-full px-3 py-1.5 text-xs font-bold", s.remaining <= 0 ? "bg-emerald-100 text-emerald-800" : late ? "bg-rose-100 text-rose-800" : "bg-amber-100 text-amber-900")}>
+          {s.remaining <= 0 ? "En règle · écolage soldé" : late ? "En retard sur l'échéancier" : "Non soldé"}
+        </span>
       </header>
 
-      <dl className="grid grid-cols-3 gap-2 text-center">
-        {[
-          ["Total de l'année", F(s.total), "text-avenida-blue-950"],
-          ["Déjà payé", F(s.paid), "text-emerald-700"],
-          ["Reste à payer", F(s.remaining), s.remaining > 0 ? "text-vif" : "text-emerald-700"],
-        ].map(([k, v, c]) => (
-          <div key={k} className="rounded-2xl bg-slate-50 p-3">
-            <dt className="text-[11px] font-bold text-slate-500 uppercase">{k}</dt>
-            <dd className={cn("mt-1 font-display text-base font-extrabold sm:text-lg", c)}>{v}</dd>
-          </div>
-        ))}
-      </dl>
+      {/* Rubriques : chaque paiement est imputé sur l'inscription, puis les fournitures, puis la scolarité */}
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[30rem] text-sm">
+          <thead>
+            <tr className="text-left text-[11px] tracking-wide text-slate-500 uppercase">
+              <th className="py-2">Rubrique</th>
+              <th className="py-2 text-right">Montant</th>
+              <th className="py-2 text-right">Payé</th>
+              <th className="py-2 text-right">Reste</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {parts.rubrics.map((r) => (
+              <tr key={r.key}>
+                <td className="py-2 font-semibold text-avenida-blue-950">
+                  {r.label}
+                  {r.amount > 0 && r.remaining <= 0 && <CheckCircle2 aria-label="réglé" className="ml-1.5 inline size-4 text-emerald-600" />}
+                </td>
+                <td className="py-2 text-right">{F(r.amount)}</td>
+                <td className="py-2 text-right text-emerald-700">{F(r.paid)}</td>
+                <td className={cn("py-2 text-right font-bold", r.remaining > 0 ? "text-vif" : "text-emerald-700")}>{F(r.remaining)}</td>
+              </tr>
+            ))}
+            <tr className="bg-slate-50 font-extrabold">
+              <td className="py-2 pl-1">Total de l&apos;année</td>
+              <td className="py-2 text-right">{F(s.total)}</td>
+              <td className="py-2 text-right text-emerald-700">{F(s.paid)}</td>
+              <td className={cn("py-2 pr-1 text-right", s.remaining > 0 ? "text-vif" : "text-emerald-700")}>{F(s.remaining)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
       {s.remaining <= 0 ? (
-        <p className="rounded-2xl bg-emerald-50 p-4 text-sm font-semibold text-emerald-800">Écolage entièrement payé : l&apos;élève est en règle.</p>
+        <p className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-emerald-50 p-4 text-sm font-semibold text-emerald-800">
+          Écolage entièrement payé : l&apos;élève est en règle et sa carte scolaire est valide.
+          <Link href="/espace/carte" className="rounded-full bg-emerald-700 px-4 py-2 text-white">
+            Voir la carte scolaire
+          </Link>
+        </p>
       ) : (
         <>
-          {late > 0 && <p className="rounded-2xl bg-rose-50 p-3 text-sm font-semibold text-rose-800">En retard sur l&apos;échéancier : réglez la prochaine échéance pour vous remettre à jour.</p>}
           <fieldset className="flex flex-col gap-2">
-            <legend className="mb-1 text-sm font-bold text-avenida-blue-950">Montant à payer</legend>
-            {nextDue > 0 && nextDue < s.remaining && (
-              <label className={cn("flex cursor-pointer items-center justify-between gap-3 rounded-2xl p-3 ring-1", choice === "echeance" ? "bg-avenida-blue-50 ring-avenida-blue" : "ring-slate-200")}>
+            <legend className="mb-1 text-sm font-bold text-avenida-blue-950">Que voulez-vous payer ?</legend>
+            {options.map((o) => (
+              <label key={o.key} className={cn("flex cursor-pointer items-center justify-between gap-3 rounded-2xl p-3 ring-1", choice === o.key ? "bg-avenida-blue-50 ring-avenida-blue" : "ring-slate-200")}>
                 <span className="flex items-center gap-2 text-sm">
-                  <input type="radio" name={`m-${s.id}`} checked={choice === "echeance"} onChange={() => setChoice("echeance")} />
-                  Prochaine échéance{next ? ` · ${next.label}` : ""}
+                  <input type="radio" name={`m-${s.id}`} checked={choice === o.key} onChange={() => setChoice(o.key)} />
+                  <span>
+                    <span className="font-semibold">{o.label}</span>
+                    {o.hint && <span className="block text-xs text-slate-500">{o.hint}</span>}
+                  </span>
                 </span>
-                <strong className="text-sm">{F(nextDue)}</strong>
+                <strong className="shrink-0 text-sm">{F(o.amount)}</strong>
               </label>
-            )}
-            <label className={cn("flex cursor-pointer items-center justify-between gap-3 rounded-2xl p-3 ring-1", choice === "tout" ? "bg-avenida-blue-50 ring-avenida-blue" : "ring-slate-200")}>
-              <span className="flex items-center gap-2 text-sm">
-                <input type="radio" name={`m-${s.id}`} checked={choice === "tout"} onChange={() => setChoice("tout")} />
-                Tout le reste de l&apos;année
-              </span>
-              <strong className="text-sm">{F(s.remaining)}</strong>
-            </label>
+            ))}
             <label className={cn("flex cursor-pointer flex-wrap items-center justify-between gap-3 rounded-2xl p-3 ring-1", choice === "autre" ? "bg-avenida-blue-50 ring-avenida-blue" : "ring-slate-200")}>
               <span className="flex items-center gap-2 text-sm">
                 <input type="radio" name={`m-${s.id}`} checked={choice === "autre"} onChange={() => setChoice("autre")} />
-                Autre montant
+                <span>
+                  <span className="font-semibold">Autre montant</span>
+                  <span className="block text-xs text-slate-500">le montant que vous décidez de payer (500 F minimum)</span>
+                </span>
               </span>
               <input
                 type="number"
@@ -237,6 +309,7 @@ function StudentCard({ s, methods }: { s: StudentDue; methods: Record<Method, bo
             </label>
             {choice === "autre" && custom && !valid && <p className="text-xs font-semibold text-vif">Entre 500 F et {F(s.remaining)}.</p>}
           </fieldset>
+          <p className="text-xs text-slate-500">L&apos;élève comme ses parents ou tuteurs peuvent payer : le nom de la personne qui paie, la date et l&apos;heure figurent sur le reçu.</p>
           <MethodButtons methods={methods} busy={busy} disabled={!valid} onPay={(m) => pay(m, { student_id: s.id, amount, designation })} />
           {error && (
             <p role="alert" className="text-sm font-semibold text-vif">
@@ -245,6 +318,9 @@ function StudentCard({ s, methods }: { s: StudentDue; methods: Record<Method, bo
           )}
         </>
       )}
+      <Link href="/espace/situation" className="self-start text-sm font-bold text-avenida-blue underline-offset-4 hover:underline">
+        Fiche de situation financière et historique complet →
+      </Link>
       <History items={s.online} />
     </section>
   );

@@ -75,6 +75,16 @@ export default function EcolagePage() {
 
   useEffect(() => {
     load();
+    // Paiements en ligne des familles et encaissements à la caisse : tableau à jour en temps réel
+    const supabase = createClient();
+    const channel = supabase
+      .channel("ecolage-caisse")
+      .on("postgres_changes", { event: "*", schema: "public", table: "fee_payments" }, () => load())
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "students" }, () => load())
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [load]);
 
   const list = useMemo(() => {

@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertTriangle, CheckCircle2, IdCard as IdCardIcon, Loader2, Printer } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { IdCard, type CardData } from "@/components/cards/IdCard";
 import { useAuth } from "@/context/AuthContext";
@@ -11,7 +12,7 @@ import { createClient } from "@/lib/supabase/client";
 const STUDENT_COLS = STUDENT_CARD_COLS;
 
 type Review = { id: string; status: string; note: string | null };
-type Entry = { data: CardData; review: Review };
+type Entry = { data: CardData; review: Review; remaining?: number; name?: string };
 const review = (c: CardRow): Review => {
   const r = c as CardRow & { id: string; review_status?: string; review_note?: string | null };
   return { id: r.id, status: r.review_status ?? "envoyee", note: r.review_note ?? null };
@@ -37,7 +38,8 @@ export default function MyCardPage() {
         const [{ data: c }, { data: s }] = await Promise.all([supabase.from("id_cards").select("*").in("student_id", studentIds).eq("revoked", false), supabase.from("students").select(STUDENT_COLS).in("id", studentIds)]);
         (c ?? []).forEach((card: CardRow) => {
           const st = (s ?? []).find((x) => x.id === card.student_id) as StudentRow | undefined;
-          if (st) result.push({ data: studentCardData(st, card), review: review(card) });
+          // Carte scolaire valide seulement quand l'écolage est soldé
+          if (st) result.push({ data: studentCardData(st, card), review: review(card), remaining: Number(st.remaining_fee ?? 0), name: `${st.first_name} ${st.last_name}` });
         });
       }
       if (!["eleve", "parent", "candidat"].includes(user.role)) {
@@ -53,7 +55,20 @@ export default function MyCardPage() {
       setCards(result);
     })();
   }, [user]);
-  useEffect(load, [load]);
+  useEffect(() => {
+    load();
+    // La carte devient disponible dès que le dernier paiement solde l'écolage
+    const supabase = createClient();
+    const channel = supabase
+      .channel("ma-carte")
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "students" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "id_cards" }, () => load())
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [load]);
+  const unpaid = (c: Entry) => (c.remaining ?? 0) > 0;
 
   if (!user) return null;
   const student = user.role === "eleve" || user.role === "parent";
@@ -67,7 +82,7 @@ export default function MyCardPage() {
             Le QR code renvoie vers la situation à jour : validité, scolarité{student ? ", présence du jour et assiduité" : " et poste occupé"}. Présentez-la à l&apos;entrée.
           </p>
         </div>
-        {cards && cards.length > 0 && (
+        {cards && cards.some((c) => !unpaid(c)) && (
           <button type="button" onClick={() => window.print()} className="inline-flex items-center gap-2 rounded-full bg-vif px-5 py-2.5 text-sm font-bold text-white hover:bg-vif-fonce">
             <Printer aria-hidden className="size-4" /> Imprimer
           </button>
@@ -86,7 +101,33 @@ export default function MyCardPage() {
         <ul className="flex flex-col gap-8">
           {cards.map((c) => (
             <li key={c.data.token} className="flex flex-col gap-4">
-              {c.review.status === "brouillon" ? (
+              {unpaid(c) ? (
+                <>
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-3xl bg-amber-50 p-5 text-amber-900 ring-1 ring-amber-200 print:hidden">
+                    <p className="text-sm">
+                      <strong>Carte scolaire de {c.name} pas encore valide.</strong> Elle sera valide et disponible ici le jour où l&apos;écolage sera entièrement payé : reste{" "}
+                      <strong>{new Intl.NumberFormat("fr-FR").format(c.remaining ?? 0)} F CFA</strong>.
+                    </p>
+                    <Link href="/espace/paiements" className="rounded-full bg-vif px-4 py-2 text-sm font-bold text-white hover:bg-vif-fonce">
+                      Payer en ligne
+                    </Link>
+                  </div>
+                  {c.review.status !== "envoyee" && c.review.status !== "brouillon" && <ReviewPanel review={c.review} onDone={load} />}
+                  {c.review.status !== "brouillon" && (
+                    <div className="pointer-events-none relative select-none print:hidden" aria-label="Aperçu non valide de la carte">
+                      <div className="opacity-40 blur-[1px]">
+                        <IdCard data={c.data} />
+                      </div>
+                      <span className="absolute inset-0 flex items-center justify-center">
+                        <span className="-rotate-12 rounded-xl border-4 border-vif bg-white/90 px-6 py-3 text-center font-display text-xl font-extrabold text-vif sm:text-3xl">
+                          APERÇU · NON VALIDE
+                          <span className="block text-xs font-bold sm:text-sm">écolage non soldé</span>
+                        </span>
+                      </span>
+                    </div>
+                  )}
+                </>
+              ) : c.review.status === "brouillon" ? (
                 <p className="rounded-3xl bg-amber-50 p-6 text-amber-900 ring-1 ring-amber-200">Votre carte est en préparation par l&apos;administration. Vous serez invité·e à la vérifier avant sa validation.</p>
               ) : (
                 <>

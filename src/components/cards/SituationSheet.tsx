@@ -33,16 +33,40 @@ export function situationStatus(s: { total_fee?: unknown; paid_fee?: unknown; re
 }
 
 /**
+ * Rubriques de l'écolage : frais d'inscription, frais de fournitures, puis scolarité de l'année.
+ * Les paiements sont imputés dans cet ordre (inscription d'abord, puis fournitures, puis scolarité).
+ */
+export function feeParts(s: { program_code?: unknown; total_fee?: unknown; paid_fee?: unknown }, known?: { registration?: number; supplies?: number }) {
+  const f = formations.find((x) => x.code === s.program_code);
+  const total = Number(s.total_fee ?? 0);
+  const paid = Number(s.paid_fee ?? 0);
+  const registration = Math.min(total, known?.registration ?? f?.registration ?? 0);
+  const supplies = Math.min(Math.max(0, total - registration), known?.supplies ?? (s.program_code === "CFA" ? fees.suppliesCfa : fees.suppliesDiploma));
+  const tuition = Math.max(0, total - registration - supplies);
+  const regPaid = Math.min(paid, registration);
+  const supPaid = Math.min(Math.max(0, paid - registration), supplies);
+  const tuiPaid = Math.min(Math.max(0, paid - registration - supplies), tuition);
+  return {
+    total,
+    paid,
+    registration,
+    supplies,
+    tuition,
+    rubrics: [
+      { key: "inscription", label: "Frais d'inscription", amount: registration, paid: regPaid, remaining: registration - regPaid },
+      { key: "fournitures", label: "Frais de fournitures", amount: supplies, paid: supPaid, remaining: supplies - supPaid },
+      { key: "scolarite", label: "Scolarité de l'année", amount: tuition, paid: tuiPaid, remaining: tuition - tuiPaid },
+    ],
+  };
+}
+
+/**
  * Échéancier de l'écolage : inscription et fournitures à l'inscription, puis la scolarité en 8 tranches mensuelles ;
  * chaque ligne indique le cumul dû, si elle est réglée et si elle est en retard.
  */
 export function feeSchedule(s: { program_code?: unknown; total_fee?: unknown; paid_fee?: unknown; academic_year?: unknown }, now = new Date()) {
-  const f = formations.find((x) => x.code === s.program_code);
-  const supplies = s.program_code === "CFA" ? fees.suppliesCfa : fees.suppliesDiploma;
-  const total = Number(s.total_fee ?? 0);
-  const paid = Number(s.paid_fee ?? 0);
-  const registration = (f?.registration ?? 0) + supplies;
-  const tuition = Math.max(0, total - registration);
+  const { total, paid, registration: reg, supplies, tuition } = feeParts(s);
+  const registration = reg + supplies;
   const startYear = parseInt(String(s.academic_year ?? "").slice(0, 4), 10) || now.getFullYear();
   const schedule = [
     { label: "Inscription et fournitures", date: new Date(startYear, 9, 1), amount: Math.min(registration, total) },
@@ -63,13 +87,14 @@ export function SituationSheet({ studentId }: { studentId: string }) {
   const [s, setS] = useState<Student | null | undefined>(undefined);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [qr, setQr] = useState<string | null>(null);
-  const [now] = useState(() => new Date());
+  const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
     const supabase = createClient();
-    (async () => {
+    const load = async () => {
       const { data } = await supabase.from("students").select("*").eq("id", studentId).maybeSingle();
       setS((data as Student) ?? null);
+      setNow(new Date());
       if (!data) return;
       const keys = [data.id, data.registration_number, data.student_number].filter(Boolean);
       const { data: p } = await supabase
@@ -77,10 +102,20 @@ export function SituationSheet({ studentId }: { studentId: string }) {
         .select("id, receipt_number, amount, payment_method, designation, payment_date, created_at, depositor_name, cashier_name")
         .in("student_id", keys)
         .in("status", ["validé", "valide", "confirmé"])
-        .order("payment_date", { ascending: true });
+        .order("created_at", { ascending: true });
       setPayments((p ?? []) as Payment[]);
       if (data.situation_token) QRCode.toDataURL(documentVerifyUrl("situation", String(data.situation_token)), { margin: 0, width: 220 }).then(setQr);
-    })();
+    };
+    load();
+    // Fiche à jour en temps réel : chaque nouveau paiement (élève, parent, caisse) est déduit aussitôt
+    const channel = supabase
+      .channel(`situation-${studentId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "fee_payments" }, () => load())
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "students", filter: `id=eq.${studentId}` }, () => load())
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [studentId]);
 
   if (s === undefined) return <div className="h-96 animate-pulse rounded-3xl bg-white" />;
@@ -228,9 +263,12 @@ export function SituationSheet({ studentId }: { studentId: string }) {
             <tbody className="divide-y divide-slate-100">
               {history.map((p) => (
                 <tr key={p.id}>
-                  <td className="py-[2px]">{dt(p.payment_date ?? p.created_at)}</td>
+                  <td className="py-[2px]">{dt(p.created_at)}</td>
                   <td className="font-mono">{p.receipt_number}</td>
-                  <td>{p.designation}</td>
+                  <td>
+                    {p.designation}
+                    {p.depositor_name ? <span className="text-slate-500"> · versé par {p.depositor_name}</span> : null}
+                  </td>
                   <td>{p.payment_method}</td>
                   <td className="text-right font-bold text-emerald-700">{formatFCFA(Number(p.amount))}</td>
                   <td className="text-right font-semibold">{formatFCFA(p.after)}</td>
