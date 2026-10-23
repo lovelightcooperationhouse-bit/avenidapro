@@ -20,6 +20,7 @@ type Profile = {
   student_id: string | null;
   employee_id: string | null;
   avatar_url: string | null;
+  notify_email: string | null;
   created_at: string;
 };
 
@@ -48,7 +49,7 @@ export default function UsersPage() {
   const load = useCallback(async () => {
     const supabase = createClient();
     const [{ data }, { data: p }, { data: m }] = await Promise.all([
-      supabase.from("profiles").select("id, email, first_name, last_name, phone, role, is_active, student_id, employee_id, avatar_url, created_at").order("created_at", { ascending: false }),
+      supabase.from("profiles").select("id, email, first_name, last_name, phone, role, is_active, student_id, employee_id, avatar_url, notify_email, created_at").order("created_at", { ascending: false }),
       supabase.from("positions").select("*").order("sort"),
       supabase.from("staff_directory").select("id, full_name, function_title, subjects, phones, proposed_role, profile_id").order("position"),
     ]);
@@ -224,6 +225,7 @@ export default function UsersPage() {
                         </label>
                       )}
                     </div>
+                    <AlertEmail profile={p} onSaved={(t) => setMsg(t)} />
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <label className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-slate-50 px-3 py-2 text-sm font-bold">
                         <input type="checkbox" checked={e.active} onChange={(ev) => set({ active: ev.target.checked })} className="size-5 accent-[#0C356A]" />
@@ -260,6 +262,33 @@ export default function UsersPage() {
       {tab === "roles" && <RolesPermissions profiles={profiles ?? []} positions={positions} onChanged={load} />}
 
       {tab === "postes" && <PositionsEditor positions={positions} onSaved={load} />}
+    </div>
+  );
+}
+
+/** E-mail où la personne reçoit ses alertes (si l'adresse de connexion n'a pas de vraie boîte). */
+function AlertEmail({ profile, onSaved }: { profile: Profile; onSaved: (m: { ok: boolean; text: string }) => void }) {
+  const [mail, setMail] = useState(profile.notify_email ?? "");
+  const [busy, setBusy] = useState(false);
+  const dirty = mail.trim().toLowerCase() !== (profile.notify_email ?? "");
+  const save = async () => {
+    setBusy(true);
+    const { error } = await createClient().rpc("set_notify_email", { target: profile.id, mail });
+    setBusy(false);
+    if (!error) profile.notify_email = mail.trim().toLowerCase() || null;
+    onSaved(error ? { ok: false, text: error.message } : { ok: true, text: mail.trim() ? `Alertes de ${profile.email} envoyées à ${mail.trim()}.` : `Alertes de ${profile.email} envoyées à son adresse de connexion.` });
+  };
+  return (
+    <div className="flex flex-wrap items-end gap-2">
+      <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs font-bold text-slate-600">
+        E-mail des alertes {profile.notify_email ? "" : "(vide = adresse de connexion)"}
+        <input type="email" value={mail} onChange={(e) => setMail(e.target.value)} placeholder={profile.email ?? "adresse@gmail.com"} className={input} />
+      </label>
+      {dirty && (
+        <button type="button" disabled={busy} onClick={save} className="rounded-full bg-[#0C356A] px-4 py-2 text-xs font-bold text-white disabled:opacity-60">
+          {busy ? "…" : "Enregistrer l'e-mail"}
+        </button>
+      )}
     </div>
   );
 }

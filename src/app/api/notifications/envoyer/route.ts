@@ -1,6 +1,7 @@
 import { createClient as createAdmin } from "@supabase/supabase-js";
 import { NextResponse, type NextRequest } from "next/server";
 import { pushReady, sendPush } from "@/lib/push-server";
+import { roleConfig } from "@/lib/roles";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -52,10 +53,12 @@ async function dispatch() {
   }
 
   if (resendKey) {
-    const { data } = await admin.from("notifications").select("id, title, body, link, profiles(email, first_name)").eq("email_status", "pending").order("created_at").limit(50);
+    const { data } = await admin.from("notifications").select("id, title, body, link, profiles(email, notify_email, first_name, role)").eq("email_status", "pending").order("created_at").limit(50);
     for (const n of data ?? []) {
-      const p = n.profiles as unknown as { email: string | null; first_name: string | null } | null;
-      if (!p?.email || p.email.endsWith("@ecole-avenida.tg")) {
+      const p = n.profiles as unknown as { email: string | null; notify_email: string | null; first_name: string | null; role: string | null } | null;
+      // E-mail des alertes choisi pour le compte, sinon l'adresse de connexion
+      const to = p?.notify_email || p?.email;
+      if (!to || to.endsWith("@ecole-avenida.tg")) {
         // Adresses internes de démonstration : pas d'envoi réel
         await admin.from("notifications").update({ email_status: "skipped" }).eq("id", n.id);
         continue;
@@ -65,9 +68,10 @@ async function dispatch() {
         headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           from: process.env.NOTIFY_FROM_EMAIL || "Hôtel École Avenida <onboarding@resend.dev>",
-          to: [p.email],
-          subject: n.title,
-          html: emailHtml(p.first_name, n.title, n.body, n.link ? `${site}${n.link}` : site),
+          to: [to],
+          // Boîte partagée entre plusieurs comptes : le rôle destinataire figure dans l'objet
+          subject: p?.notify_email && p.notify_email !== p.email ? `[${roleConfig(p.role).label}] ${n.title}` : n.title,
+          html: emailHtml(p!.first_name, n.title, n.body, n.link ? `${site}${n.link}` : site),
         }),
       });
       await admin.from("notifications").update({ email_status: res.ok ? "sent" : "failed" }).eq("id", n.id);
