@@ -111,6 +111,7 @@ export const commonGuides: Guide[] = [
     intro: "Avenida s'installe comme une application, sans passer par un magasin d'applications.",
     steps: [
       { title: "Android (Chrome)", text: "Ouvrez le site, touchez « Installer » dans le bandeau, ou menu ⋮ → « Installer l'application »." },
+      { title: "Téléphone Samsung", text: "Installez depuis Google Chrome, pas depuis Samsung Internet (son application est bloquée par Google Play Protect). Si « Avenida » a été bloquée : touchez OK, désinstallez-la (Paramètres → Applications → Avenida), puis ouvrez le site dans Chrome → menu ⋮ → « Installer l'application »." },
       { title: "iPhone et iPad (Safari)", text: "Touchez le bouton Partager (carré avec une flèche) → « Sur l'écran d'accueil » → « Ajouter »." },
       { title: "Ordinateur (Chrome, Edge)", text: "Icône d'installation à droite de la barre d'adresse, ou menu → « Installer Avenida »." },
     ],

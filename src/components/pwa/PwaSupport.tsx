@@ -7,8 +7,27 @@ type InstallEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{
 
 const KEY = "avenida-installation-masquee";
 
+/**
+ * Samsung Internet installe l'application sous forme d'APK qu'il fabrique lui-même, ciblant une ancienne version
+ * d'Android : Google Play Protect la bloque (« Appli non sécurisée bloquée »). Sur Android, l'installation se fait
+ * donc depuis Google Chrome, dont l'application est signée par Google et acceptée sur toutes les versions.
+ */
+export const isSamsungInternet = () => typeof navigator !== "undefined" && /SamsungBrowser/i.test(navigator.userAgent);
+
+/** Rouvre la page actuelle dans Google Chrome (Android). */
+export function openInChrome() {
+  const { host, pathname, search } = window.location;
+  // Chrome absent : page de Chrome sur le Play Store
+  const fallback = encodeURIComponent("https://play.google.com/store/apps/details?id=com.android.chrome");
+  window.location.href = `intent://${host}${pathname}${search}#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${fallback};end`;
+}
+
 /** Ouvre la fenêtre d'installation (Android, ordinateur) ; renvoie false si le navigateur ne la propose pas. */
 export async function promptInstall() {
+  if (isSamsungInternet()) {
+    openInChrome();
+    return true;
+  }
   const e = (window as unknown as { __avenidaInstall?: InstallEvent }).__avenidaInstall;
   if (!e) return false;
   await e.prompt();
@@ -20,7 +39,7 @@ export async function promptInstall() {
  * (bouton natif sur Android / Chrome / Edge, mode d'emploi « Sur l'écran d'accueil » sur iPhone et iPad).
  */
 export function PwaSupport() {
-  const [mode, setMode] = useState<null | "natif" | "ios">(null);
+  const [mode, setMode] = useState<null | "natif" | "ios" | "samsung">(null);
   const [event, setEvent] = useState<InstallEvent | null>(null);
 
   useEffect(() => {
@@ -33,6 +52,17 @@ export function PwaSupport() {
       /* stockage indisponible */
     }
     if (standalone) return;
+
+    // Samsung Internet : on propose d'installer depuis Chrome plutôt que l'APK bloqué par Play Protect
+    if (isSamsungInternet()) {
+      const t = !hidden ? window.setTimeout(() => setMode("samsung"), 3000) : undefined;
+      const block = (e: Event) => e.preventDefault();
+      window.addEventListener("beforeinstallprompt", block);
+      return () => {
+        window.clearTimeout(t);
+        window.removeEventListener("beforeinstallprompt", block);
+      };
+    }
 
     const onPrompt = (e: Event) => {
       e.preventDefault();
@@ -72,7 +102,18 @@ export function PwaSupport() {
       <img src="/icons/icon-192.png" alt="" className="size-12 rounded-xl ring-1 ring-slate-200" />
       <div className="min-w-0 flex-1 text-sm">
         <p className="font-bold text-[#0C356A]">Installer l&apos;application Avenida</p>
-        {mode === "natif" ? (
+        {mode === "samsung" ? (
+          <>
+            <p className="mt-0.5 text-slate-600">
+              Pour une installation sûre, acceptée sur tous les téléphones Android, installez l&apos;application depuis <strong>Google Chrome</strong>.
+              N&apos;utilisez pas l&apos;icône d&apos;installation de Samsung Internet : Google la bloque.
+            </p>
+            <button type="button" onClick={openInChrome} className="mt-2 inline-flex items-center gap-2 rounded-full bg-[#E30613] px-4 py-2 font-bold text-white">
+              <Download aria-hidden className="size-4" /> Ouvrir dans Chrome pour installer
+            </button>
+            <p className="mt-1.5 text-xs text-slate-500">Puis menu ⋮ de Chrome → « Installer l&apos;application ».</p>
+          </>
+        ) : mode === "natif" ? (
           <p className="mt-0.5 text-slate-600">Accès direct depuis l&apos;écran d&apos;accueil, en plein écran, avec les appels et discussions.</p>
         ) : (
           <p className="mt-0.5 text-slate-600">

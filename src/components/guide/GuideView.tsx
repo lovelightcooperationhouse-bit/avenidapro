@@ -3,7 +3,7 @@
 import { ArrowRight, ChevronDown, Download } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { promptInstall } from "@/components/pwa/PwaSupport";
+import { promptInstall, isSamsungInternet } from "@/components/pwa/PwaSupport";
 import type { Guide } from "@/content/guides";
 import { cn } from "@/lib/utils";
 
@@ -45,7 +45,8 @@ export function GuideCard({ guide, open: initial = false }: { guide: Guide; open
 export function InstallButton() {
   const [can, setCan] = useState(false);
   useEffect(() => {
-    const check = () => setCan(!!(window as unknown as { __avenidaInstall?: unknown }).__avenidaInstall);
+    // Samsung Internet : installation proposée via Chrome (voir PwaSupport)
+    const check = () => setCan(isSamsungInternet() || !!(window as unknown as { __avenidaInstall?: unknown }).__avenidaInstall);
     check();
     window.addEventListener("avenida-installable", check);
     return () => window.removeEventListener("avenida-installable", check);
@@ -53,7 +54,7 @@ export function InstallButton() {
   if (!can) return null;
   return (
     <button type="button" onClick={() => promptInstall()} className="inline-flex items-center gap-2 rounded-full bg-vif px-5 py-2.5 text-sm font-bold text-white hover:bg-vif-fonce">
-      <Download aria-hidden className="size-4" /> Installer l&apos;application
+      <Download aria-hidden className="size-4" /> {isSamsungInternet() ? "Installer l'application (via Chrome)" : "Installer l'application"}
     </button>
   );
 }
