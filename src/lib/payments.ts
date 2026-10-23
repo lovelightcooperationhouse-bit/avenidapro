@@ -51,13 +51,40 @@ async function cinetpayCall(method: "GET" | "POST", path: string, body?: unknown
   return { status: "INVALID_TOKEN", description: "jeton CinetPay refusé" };
 }
 
-const paydunya = () => !!process.env.PAYDUNYA_MASTER_KEY && !!process.env.PAYDUNYA_PRIVATE_KEY && !!process.env.PAYDUNYA_TOKEN;
-const paydunyaBase = () => `https://app.paydunya.com/${/^(oui|1|true)$/i.test(process.env.PAYDUNYA_SANDBOX ?? "") ? "sandbox-api" : "api"}/v1/checkout-invoice`;
+// Clés lues sans espaces ni retours à la ligne (copier-coller dans Vercel)
+const env = (k: string) => (process.env[k] ?? "").trim().replace(/^["']|["']$/g, "");
+const paydunya = () => !!env("PAYDUNYA_MASTER_KEY") && !!env("PAYDUNYA_PRIVATE_KEY") && !!env("PAYDUNYA_TOKEN");
+const paydunyaSandbox = () => /^(oui|1|true)$/i.test(env("PAYDUNYA_SANDBOX"));
+const paydunyaBase = () => `https://app.paydunya.com/${paydunyaSandbox() ? "sandbox-api" : "api"}/v1/checkout-invoice`;
+
+/** Diagnostic des clés PayDunya pour le DG : format seulement (jamais la valeur), et réponse de PayDunya en test et en production. */
+export async function paydunyaDiagnostic() {
+  const shape = (k: string) => {
+    const raw = process.env[k] ?? "";
+    const v = env(k);
+    return { presente: !!raw, longueur: v.length, espaces_retires: raw.length - v.length, type: /^live_/.test(v) ? "production (live_…)" : /^test_/.test(v) ? "test (test_…)" : "sans préfixe live_/test_" };
+  };
+  const probe = async (mode: "api" | "sandbox-api") => {
+    const r = await fetch(`https://app.paydunya.com/${mode}/v1/checkout-invoice/create`, {
+      method: "POST",
+      headers: paydunyaHeaders(),
+      body: JSON.stringify({ invoice: { total_amount: 200, description: "Diagnostic Avenida (non payé)" }, store: { name: "Hôtel École Avenida" } }),
+    }).catch(() => null);
+    const j = r ? ((await r.json().catch(() => ({}))) as { response_code?: string; response_text?: string }) : {};
+    return { code: j.response_code ?? "aucune réponse", message: j.response_code === "00" ? "clés acceptées" : (j.response_text ?? "") };
+  };
+  return {
+    mode_utilise: paydunyaSandbox() ? "test (PAYDUNYA_SANDBOX=oui)" : "production",
+    cles: { PAYDUNYA_MASTER_KEY: shape("PAYDUNYA_MASTER_KEY"), PAYDUNYA_PRIVATE_KEY: shape("PAYDUNYA_PRIVATE_KEY"), PAYDUNYA_TOKEN: shape("PAYDUNYA_TOKEN"), PAYDUNYA_SANDBOX: { presente: !!process.env.PAYDUNYA_SANDBOX, valeur: env("PAYDUNYA_SANDBOX") } },
+    reponse_paydunya_production: await probe("api"),
+    reponse_paydunya_test: await probe("sandbox-api"),
+  };
+}
 const paydunyaHeaders = () => ({
   "Content-Type": "application/json",
-  "PAYDUNYA-MASTER-KEY": process.env.PAYDUNYA_MASTER_KEY!,
-  "PAYDUNYA-PRIVATE-KEY": process.env.PAYDUNYA_PRIVATE_KEY!,
-  "PAYDUNYA-TOKEN": process.env.PAYDUNYA_TOKEN!,
+  "PAYDUNYA-MASTER-KEY": env("PAYDUNYA_MASTER_KEY"),
+  "PAYDUNYA-PRIVATE-KEY": env("PAYDUNYA_PRIVATE_KEY"),
+  "PAYDUNYA-TOKEN": env("PAYDUNYA_TOKEN"),
 });
 
 const kkiapay = () => !!process.env.KKIAPAY_PUBLIC_KEY && !!process.env.KKIAPAY_PRIVATE_KEY && !!process.env.KKIAPAY_SECRET_KEY;
@@ -71,6 +98,8 @@ export const onlineMethods = (): Record<OnlineMethod, boolean> => ({
   yas: paydunya() || kkiapay() || cinetpay() || !!process.env.PAYGATE_AUTH_TOKEN,
   moov: paydunya() || kkiapay() || cinetpay() || !!process.env.PAYGATE_AUTH_TOKEN,
 });
+
+export const paydunyaMasterKey = () => env("PAYDUNYA_MASTER_KEY");
 
 export function adminClient(): SupabaseClient | null {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

@@ -1,6 +1,6 @@
 import { createHash, timingSafeEqual } from "crypto";
 import { NextResponse, type NextRequest } from "next/server";
-import { adminClient, verifyPayment } from "@/lib/payments";
+import { adminClient, paydunyaMasterKey, verifyPayment } from "@/lib/payments";
 
 /**
  * Endpoint IPN PayDunya (notification instantanée de paiement) :
@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
   const form = new URLSearchParams(await request.text());
   const hash = form.get("data[hash]") ?? "";
   const invoiceToken = form.get("data[invoice][token]") ?? form.get("data[token]") ?? "";
-  const master = process.env.PAYDUNYA_MASTER_KEY;
+  const master = paydunyaMasterKey();
   if (!master) return NextResponse.json({ ok: true });
 
   const expected = createHash("sha512").update(master).digest("hex");
