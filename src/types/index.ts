@@ -153,7 +153,7 @@ export interface PaymentReceipt {
   depositor_id_card: string;
   depositor_phone: string;
   depositor_role: string;
-  payment_method: "Espèces" | "Stripe" | "Mobile Money" | "Virement";
+  payment_method: "Espèces" | "Carte Bancaire" | "Mobile Money" | "Virement";
   site: string;
   date: string;
   cashier_name: string;
@@ -327,7 +327,7 @@ export interface HotelReservation {
   deposit_paid: number;
   payment_status: "réglé" | "acompte" | "en_attente";
   status: "réservée" | "payée" | "confirmée" | "en_cours" | "terminée" | "annulée";
-  payment_method?: "Espèces" | "Stripe" | "Mobile Money" | "Virement" | "Carte Bancaire";
+  payment_method?: "Espèces" | "Carte Bancaire" | "Mobile Money" | "Virement";
   cashier_name?: string;
   notes?: string;
 }

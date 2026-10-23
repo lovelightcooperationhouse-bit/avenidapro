@@ -9,6 +9,7 @@ import { siteConfig } from "@/content/site";
 export const metadata: Metadata = {
   title: "Conditions d'utilisation",
   description: "Règles d'utilisation du site et des espaces en ligne de l'Hôtel École Avenida : comptes, Espace École, Espace Hôtel, pré-inscription et réservations.",
+  alternates: { canonical: "/conditions-utilisation" },
 };
 
 const sections: LegalSection[] = [

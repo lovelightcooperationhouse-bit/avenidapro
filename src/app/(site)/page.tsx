@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { getSiteImages } from "@/lib/site-images";
 import {
   ArrowRight,
@@ -27,6 +28,7 @@ import { CmsSections } from "@/components/site/CmsBlocks";
 import { getSettings } from "@/lib/cms";
 
 export const revalidate = 60;
+export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 export default async function HomePage() {
   const { images, imageMap } = await getSiteImages();

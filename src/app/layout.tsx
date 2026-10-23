@@ -6,11 +6,30 @@ import { BackButton } from "@/components/pwa/BackButton";
 import { OfflineBanner } from "@/components/pwa/OfflineBanner";
 import { PwaSupport } from "@/components/pwa/PwaSupport";
 import { PushPrompt } from "@/components/pwa/PushToggle";
+import { SEO_KEYWORDS, SITE_URL } from "@/lib/seo";
 
 export const metadata: Metadata = {
-  title: "Avenida Management — Plateforme Intégrée Hôtel École Avenida",
+  metadataBase: new URL(SITE_URL),
+  title: "Hôtel École Avenida — Hôtel Avenida et École Avenida à Lomé (Togo)",
   description:
-    "Logiciel SaaS de gestion intégrée pour l'Hôtel École Avenida : administration scolaire, gestion des élèves, carnet numérique, scolarité, gestion hôtelière et RH.",
+    "Site officiel de l'Hôtel École Avenida à Lomé (Togo) : l'École Avenida, école hôtelière (CFA, CAP, BEP, BT, BTS), et l'Hôtel Avenida, chambres et réservation en ligne.",
+  keywords: SEO_KEYWORDS,
+  authors: [{ name: "Hôtel École Avenida" }],
+  creator: "Hôtel École Avenida",
+  publisher: "Hôtel École Avenida",
+  openGraph: {
+    type: "website",
+    locale: "fr_FR",
+    siteName: "Hôtel École Avenida",
+    url: SITE_URL,
+    images: [{ url: "/site/reel/facade-ecole.webp", width: 1600, height: 900, alt: "Hôtel École Avenida, Lomé" }],
+  },
+  twitter: { card: "summary_large_image" },
+  // Codes de validation Google Search Console et Bing Webmaster Tools (variables Vercel)
+  verification: {
+    ...(process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION ? { google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION } : {}),
+    ...(process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION ? { other: { "msvalidate.01": process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION } } : {}),
+  },
   applicationName: "Avenida",
   // Installation comme application sur iPhone / iPad
   appleWebApp: { capable: true, title: "Avenida", statusBarStyle: "black-translucent" },

@@ -10,7 +10,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const fixed = ["", "/ecole", "/hotel", "/admissions", "/preinscription", "/actualites", "/a-propos", "/contact", "/confidentialite", "/conditions-utilisation"];
   const [pages, posts] = await Promise.all([getPages(), getPosts(200)]);
   return [
-    ...fixed.map((p) => ({ url: `${SITE}${p}`, changeFrequency: "weekly" as const, priority: p === "" ? 1 : 0.7 })),
+    ...fixed.map((p) => ({ url: `${SITE}${p}`, lastModified: new Date(), changeFrequency: "weekly" as const, priority: p === "" ? 1 : p === "/hotel" || p === "/ecole" ? 0.9 : 0.7 })),
     ...pages.map((p) => ({ url: `${SITE}/pages/${p.slug}`, changeFrequency: "monthly" as const, priority: 0.5 })),
     ...posts.map((p) => ({ url: `${SITE}/actualites/${p.slug}`, lastModified: p.published_at, changeFrequency: "monthly" as const, priority: 0.6 })),
   ];

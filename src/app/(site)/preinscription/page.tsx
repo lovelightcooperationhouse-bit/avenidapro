@@ -11,6 +11,7 @@ import { siteConfig, whatsappUrl } from "@/content/site";
 export const metadata: Metadata = {
   title: "Pré-inscription en ligne",
   description: "Déposez votre dossier de pré-inscription à l'Hôtel École Avenida en 5 minutes : formation, informations, pièces et suivi en ligne.",
+  alternates: { canonical: "/preinscription" },
 };
 
 export default async function PreinscriptionPage() {

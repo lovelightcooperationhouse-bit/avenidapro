@@ -16,6 +16,7 @@ import { mergeContact } from "@/lib/site-contact";
 export const metadata: Metadata = {
   title: "Contact",
   description: "Contactez l'Hôtel École Avenida : 30, rue d'Almeida Léopold, Cocoteraie, Lomé. Téléphone, e-mail, WhatsApp, formulaire et plan d'accès.",
+  alternates: { canonical: "/contact" },
 };
 
 export const revalidate = 60;

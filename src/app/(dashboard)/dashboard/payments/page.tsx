@@ -65,7 +65,7 @@ export default function PaymentsPage() {
   const [targetStudent, setTargetStudent] = useState<Student | null>(null);
   const [paymentAmount, setPaymentAmount] = useState<number>(50000);
   const [paymentDesignation, setPaymentDesignation] = useState("Frais de scolarité (Tranche)");
-  const [paymentMethod, setPaymentMethod] = useState<"Espèces" | "Stripe" | "Mobile Money" | "Virement">("Espèces");
+  const [paymentMethod, setPaymentMethod] = useState<"Espèces" | "Carte Bancaire" | "Mobile Money" | "Virement">("Espèces");
   const [depositorName, setDepositorName] = useState("");
   const [depositorPhone, setDepositorPhone] = useState("");
   const [depositorRole, setDepositorRole] = useState("Parent / Tuteur");
@@ -85,7 +85,7 @@ export default function PaymentsPage() {
   const [targetCustomer, setTargetCustomer] = useState<HotelCustomer | null>(null);
   const [custAmount, setCustAmount] = useState<number>(35000);
   const [custDesignation, setCustDesignation] = useState("Règlement Séjour & Hébergement");
-  const [custMethod, setCustMethod] = useState<"Espèces" | "Stripe" | "Mobile Money" | "Virement">("Espèces");
+  const [custMethod, setCustMethod] = useState<"Espèces" | "Carte Bancaire" | "Mobile Money" | "Virement">("Espèces");
   const [custDepositorName, setCustDepositorName] = useState("");
   const [custDepositorPhone, setCustDepositorPhone] = useState("");
   const [customerProofFile, setCustomerProofFile] = useState<{
@@ -1061,7 +1061,7 @@ export default function PaymentsPage() {
                     <option value="Espèces">Espèces (Guichet Caisse)</option>
                     <option value="Mobile Money">Mobile Money (Flooz / T-Money)</option>
                     <option value="Virement">Virement Bancaire</option>
-                    <option value="Stripe">Carte Bancaire / Stripe</option>
+                    <option value="Carte Bancaire">Carte bancaire</option>
                   </select>
                 </div>
               </div>
@@ -1283,7 +1283,7 @@ export default function PaymentsPage() {
                     <option value="Espèces">Espèces</option>
                     <option value="Mobile Money">Mobile Money (T-Money / Flooz)</option>
                     <option value="Virement">Virement Bancaire</option>
-                    <option value="Stripe">Carte Bancaire / Stripe</option>
+                    <option value="Carte Bancaire">Carte bancaire</option>
                   </select>
                 </div>
               </div>

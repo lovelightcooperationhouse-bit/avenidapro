@@ -15,8 +15,9 @@ import { PhotoGallery } from "@/components/site/PhotoGallery";
 import { CmsSections } from "@/components/site/CmsBlocks";
 
 export const metadata: Metadata = {
-  title: "L'Hôtel — chambres et restaurant à Lomé",
+  title: "Hôtel Avenida Lomé — chambres, restaurant et réservation en ligne",
   description: "Séjournez à l'Hôtel École Avenida, à la Cocoteraie (Lomé) : chambres, restaurant et bar tenus par nos équipes et nos élèves. Demande de réservation en ligne.",
+  alternates: { canonical: "/hotel" },
 };
 
 

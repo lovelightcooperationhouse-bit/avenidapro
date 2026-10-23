@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { adminClient, verifyPayment } from "@/lib/payments";
 
-/** Retour du client après la page de paiement : statut vérifié auprès du prestataire, puis reçu. */
+/** Retour du client après la page de paiement PayDunya : statut vérifié auprès de PayDunya, puis reçu. */
 async function back(request: NextRequest, id: string) {
   const r = await verifyPayment(id);
   let token = r.token;
@@ -16,11 +16,4 @@ async function back(request: NextRequest, id: string) {
 
 export async function GET(request: NextRequest) {
   return back(request, request.nextUrl.searchParams.get("id") ?? "");
-}
-
-// CinetPay renvoie le client sur cette adresse en POST (transaction_id dans le formulaire)
-export async function POST(request: NextRequest) {
-  const form = await request.formData().catch(() => null);
-  const id = request.nextUrl.searchParams.get("id") || String(form?.get("transaction_id") ?? form?.get("cpm_trans_id") ?? "");
-  return back(request, id);
 }

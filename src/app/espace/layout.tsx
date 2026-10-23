@@ -1,6 +1,6 @@
 "use client";
 
-import { BedDouble, Bell, CalendarClock, FileSpreadsheet, LifeBuoy, ClipboardCheck, FileText, FolderOpen, Megaphone, GraduationCap, Home, IdCard, KeyRound, LayoutDashboard, LogOut, MessageSquare, ScrollText, UserRound, UsersRound, Wallet } from "lucide-react";
+import { BedDouble, Bell, CreditCard, CalendarClock, FileSpreadsheet, LifeBuoy, ClipboardCheck, FileText, FolderOpen, Megaphone, GraduationCap, Home, IdCard, KeyRound, LayoutDashboard, LogOut, MessageSquare, ScrollText, UserRound, UsersRound, Wallet } from "lucide-react";
 import { NotificationBell } from "@/components/espace/NotificationBell";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -10,7 +10,7 @@ import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 
 /** Pages accessibles avant la validation du dossier. */
-const OPEN_TO_NEW = ["/espace/guide", "/espace/profil", "/espace/mot-de-passe", "/espace/notifications", "/espace/messages", "/espace/documents"];
+const OPEN_TO_NEW = ["/espace/paiements", "/espace/guide", "/espace/profil", "/espace/mot-de-passe", "/espace/notifications", "/espace/messages", "/espace/documents"];
 
 /** Gabarit de l'espace personnel (élève, parent, professeur, candidat). */
 export default function EspaceLayout({ children }: { children: React.ReactNode }) {
@@ -43,6 +43,7 @@ export default function EspaceLayout({ children }: { children: React.ReactNode }
     { href: "/espace/fiche", label: "Fiche d'inscription", icon: FileText, show: ["eleve", "parent"].includes(role ?? "") },
     { href: "/espace/bulletins", label: "Bulletins", icon: FileSpreadsheet, show: ["eleve", "parent"].includes(role ?? "") },
     { href: "/espace/situation", label: "Situation financière", icon: Wallet, show: ["eleve", "parent"].includes(role ?? "") },
+    { href: "/espace/paiements", label: "Payer en ligne", icon: CreditCard, show: ["eleve", "parent", "candidat"].includes(role ?? "") },
     { href: "/espace/carte", label: role === "eleve" || role === "parent" ? "Carte scolaire" : "Carte de travail", icon: IdCard, show: role !== "candidat" && role !== "client" },
     { href: "/espace/reglement", label: "Règlement intérieur", icon: ScrollText, show: ["eleve", "parent", "professeur", "personnel"].includes(role ?? "") },
     { href: "/espace/annuaire", label: "Annuaire", icon: UsersRound, show: role !== "candidat" && role !== "client" },

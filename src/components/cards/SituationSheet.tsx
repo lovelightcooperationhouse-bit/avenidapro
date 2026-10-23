@@ -33,6 +33,29 @@ export function situationStatus(s: { total_fee?: unknown; paid_fee?: unknown; re
 }
 
 /**
+ * Échéancier de l'écolage : inscription et fournitures à l'inscription, puis la scolarité en 8 tranches mensuelles ;
+ * chaque ligne indique le cumul dû, si elle est réglée et si elle est en retard.
+ */
+export function feeSchedule(s: { program_code?: unknown; total_fee?: unknown; paid_fee?: unknown; academic_year?: unknown }, now = new Date()) {
+  const f = formations.find((x) => x.code === s.program_code);
+  const supplies = s.program_code === "CFA" ? fees.suppliesCfa : fees.suppliesDiploma;
+  const total = Number(s.total_fee ?? 0);
+  const paid = Number(s.paid_fee ?? 0);
+  const registration = (f?.registration ?? 0) + supplies;
+  const tuition = Math.max(0, total - registration);
+  const startYear = parseInt(String(s.academic_year ?? "").slice(0, 4), 10) || now.getFullYear();
+  const schedule = [
+    { label: "Inscription et fournitures", date: new Date(startYear, 9, 1), amount: Math.min(registration, total) },
+    ...Array.from({ length: 8 }, (_, i) => ({ label: `Tranche ${i + 1}`, date: new Date(startYear, 9 + i, 5), amount: Math.round(tuition / 8) })),
+  ];
+  let cumul = 0;
+  return schedule.map((t) => {
+    cumul += t.amount;
+    return { ...t, cumul, settled: paid >= cumul, late: paid < cumul && t.date < now };
+  });
+}
+
+/**
  * Fiche de situation financière (écolage) : document A4 distinct de la fiche d'inscription,
  * généré en temps réel à partir des paiements enregistrés (chaque paiement est déduit automatiquement).
  */
@@ -64,23 +87,10 @@ export function SituationSheet({ studentId }: { studentId: string }) {
   if (!s) return <p className="rounded-2xl bg-amber-50 p-6 text-amber-900">Dossier introuvable ou non accessible.</p>;
 
   const f = formations.find((x) => x.code === s.program_code);
-  const supplies = s.program_code === "CFA" ? fees.suppliesCfa : fees.suppliesDiploma;
   const total = Number(s.total_fee ?? 0);
   const paid = Number(s.paid_fee ?? payments.reduce((a, p) => a + Number(p.amount), 0));
   const remaining = Number(s.remaining_fee ?? Math.max(0, total - paid));
-  const registration = (f?.registration ?? 0) + supplies;
-  const tuition = Math.max(0, total - registration);
-  const startYear = parseInt(String(s.academic_year ?? "").slice(0, 4), 10) || now.getFullYear();
-  // Échéancier : inscription + fournitures à l'inscription, puis la scolarité en 8 tranches mensuelles
-  const schedule = [
-    { label: "Inscription et fournitures", date: new Date(startYear, 9, 1), amount: Math.min(registration, total) },
-    ...Array.from({ length: 8 }, (_, i) => ({ label: `Tranche ${i + 1}`, date: new Date(startYear, 9 + i, 5), amount: Math.round(tuition / 8) })),
-  ];
-  let cumul = 0;
-  const lines = schedule.map((t) => {
-    cumul += t.amount;
-    return { ...t, cumul, settled: paid >= cumul, late: paid < cumul && t.date < now };
-  });
+  const lines = feeSchedule({ program_code: s.program_code, total_fee: total, paid_fee: paid, academic_year: s.academic_year }, now);
   let running = total;
   const history = payments.map((p) => {
     running = Math.max(0, running - Number(p.amount));

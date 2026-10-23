@@ -1,61 +1,28 @@
 import { createClient as createAdmin, type SupabaseClient } from "@supabase/supabase-js";
 
 /**
- * Paiement en ligne des réservations de l'hôtel.
- *   Prestataire principal : PayDunya (PAYDUNYA_MASTER_KEY, PAYDUNYA_PRIVATE_KEY, PAYDUNYA_TOKEN, PAYDUNYA_SANDBOX=oui pour les essais)
- *   — Mixx by Yas (T-Money Togo), Moov Money Togo et carte, sur la page de paiement PayDunya ; IPN : /api/paiements/paydunya.
- *   Carte bancaire : Stripe Checkout (STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET) en priorité
- *   Mobile Money Togo (Yas, Moov) : KkiaPay (KKIAPAY_PUBLIC_KEY, KKIAPAY_PRIVATE_KEY, KKIAPAY_SECRET_KEY, KKIAPAY_SANDBOX=oui pour les essais),
- *   dans une fenêtre de paiement sur le site, puis vérification serveur ; KkiaPay prend aussi la carte si Stripe n'est pas configuré.
- *   Prestataire principal : CinetPay, API v1 (CINETPAY_API_KEY, CINETPAY_API_PASSWORD) — Mixx by Yas (TMONEY_TG), Moov Money (MOOV_TG),
- *   et la carte bancaire si CinetPay l'a activée sur le compte (CINETPAY_CARTE=oui)
- *   À défaut : Stripe pour la carte (STRIPE_SECRET_KEY), PayGate Global pour Yas et Moov (PAYGATE_AUTH_TOKEN)
- * Un paiement n'est jamais validé sur la seule parole du navigateur : le serveur interroge le prestataire
- * (vérification de la transaction CinetPay, session Stripe, statut PayGate) avant d'enregistrer l'encaissement.
+ * Paiement en ligne (réservations de l'hôtel, frais d'inscription et écolage de l'école) : PayDunya uniquement.
+ *   Clés : PAYDUNYA_MASTER_KEY, PAYDUNYA_PRIVATE_KEY, PAYDUNYA_TOKEN (PAYDUNYA_SANDBOX=oui pour les essais).
+ *   Mixx by Yas (T-Money Togo), Moov Money Togo et carte bancaire, sur la page de paiement PayDunya ;
+ *   IPN : /api/paiements/paydunya.
+ * Un paiement n'est jamais validé sur la seule parole du navigateur : le serveur confirme la facture
+ * auprès de PayDunya (statut, montant, identifiant) avant d'enregistrer l'encaissement.
  */
 export type OnlineMethod = "carte" | "yas" | "moov";
-
-const cinetpay = () => !!process.env.CINETPAY_API_KEY && !!process.env.CINETPAY_API_PASSWORD;
-// Clé sk_live_… : production ; clé sk_test_… : environnement de test (bac à sable)
-const cinetpayBase = () => (process.env.CINETPAY_API_KEY?.startsWith("sk_live_") ? "https://api.cinetpay.co" : "https://api.cinetpay.net");
-let cinetpayToken: { value: string; until: number } | null = null;
-
-/** Jeton d'accès CinetPay (valable 24 h, gardé 23 h en mémoire). */
-async function cinetpayAuth(force = false): Promise<string | null> {
-  if (!force && cinetpayToken && cinetpayToken.until > Date.now()) return cinetpayToken.value;
-  const res = await fetch(`${cinetpayBase()}/v1/oauth/login`, {
-    method: "POST",
-    headers: { Accept: "application/json", "Content-Type": "application/json" },
-    body: JSON.stringify({ api_key: process.env.CINETPAY_API_KEY, api_password: process.env.CINETPAY_API_PASSWORD }),
-  }).catch(() => null);
-  const j = res ? ((await res.json().catch(() => ({}))) as { access_token?: string }) : {};
-  if (!j.access_token) return null;
-  cinetpayToken = { value: j.access_token, until: Date.now() + 23 * 3600_000 };
-  return j.access_token;
-}
-
-/** Appel à l'API CinetPay avec renouvellement automatique du jeton expiré. */
-async function cinetpayCall(method: "GET" | "POST", path: string, body?: unknown): Promise<Record<string, unknown>> {
-  for (const force of [false, true]) {
-    const token = await cinetpayAuth(force);
-    if (!token) return { status: "INVALID_CREDENTIALS", description: "identifiants CinetPay refusés" };
-    const res = await fetch(`${cinetpayBase()}${path}`, {
-      method,
-      headers: { Accept: "application/json", "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: body ? JSON.stringify(body) : undefined,
-    }).catch(() => null);
-    const j = res ? ((await res.json().catch(() => ({}))) as Record<string, unknown>) : { status: "NETWORK", description: "CinetPay ne répond pas" };
-    if (j.code === 1003 || j.status === "EXPIRED_TOKEN" || j.status === "INVALID_TOKEN") continue;
-    return j;
-  }
-  return { status: "INVALID_TOKEN", description: "jeton CinetPay refusé" };
-}
+export const ONLINE_METHODS: OnlineMethod[] = ["carte", "yas", "moov"];
 
 // Clés lues sans espaces ni retours à la ligne (copier-coller dans Vercel)
 const env = (k: string) => (process.env[k] ?? "").trim().replace(/^["']|["']$/g, "");
 const paydunya = () => !!env("PAYDUNYA_MASTER_KEY") && !!env("PAYDUNYA_PRIVATE_KEY") && !!env("PAYDUNYA_TOKEN");
 const paydunyaSandbox = () => /^(oui|1|true)$/i.test(env("PAYDUNYA_SANDBOX"));
 const paydunyaBase = () => `https://app.paydunya.com/${paydunyaSandbox() ? "sandbox-api" : "api"}/v1/checkout-invoice`;
+const paydunyaHeaders = () => ({
+  "Content-Type": "application/json",
+  "PAYDUNYA-MASTER-KEY": env("PAYDUNYA_MASTER_KEY"),
+  "PAYDUNYA-PRIVATE-KEY": env("PAYDUNYA_PRIVATE_KEY"),
+  "PAYDUNYA-TOKEN": env("PAYDUNYA_TOKEN"),
+});
+const SITE = () => process.env.NEXT_PUBLIC_APP_URL || "https://www.hotelecoleavenida.net";
 
 /** Diagnostic des clés PayDunya pour le DG : format seulement (jamais la valeur), et réponse de PayDunya en test et en production. */
 export async function paydunyaDiagnostic() {
@@ -80,24 +47,12 @@ export async function paydunyaDiagnostic() {
     reponse_paydunya_test: await probe("sandbox-api"),
   };
 }
-const paydunyaHeaders = () => ({
-  "Content-Type": "application/json",
-  "PAYDUNYA-MASTER-KEY": env("PAYDUNYA_MASTER_KEY"),
-  "PAYDUNYA-PRIVATE-KEY": env("PAYDUNYA_PRIVATE_KEY"),
-  "PAYDUNYA-TOKEN": env("PAYDUNYA_TOKEN"),
-});
 
-const kkiapay = () => !!process.env.KKIAPAY_PUBLIC_KEY && !!process.env.KKIAPAY_PRIVATE_KEY && !!process.env.KKIAPAY_SECRET_KEY;
-const kkiapaySandbox = () => /^(oui|1|true)$/i.test(process.env.KKIAPAY_SANDBOX ?? "");
-
-/** Paramètres de la fenêtre de paiement KkiaPay ouverte sur la page du reçu. */
-export type KkiapayWidget = { amount: number; key: string; sandbox: boolean; partnerId: string; paymentmethod: string[]; countries: string[]; phone?: string; name: string; email?: string; reason: string; theme: string; position: string };
-
-export const onlineMethods = (): Record<OnlineMethod, boolean> => ({
-  carte: paydunya() || kkiapay() || (cinetpay() && /^(oui|1|true)$/i.test(process.env.CINETPAY_CARTE ?? "")) || !!process.env.STRIPE_SECRET_KEY,
-  yas: paydunya() || kkiapay() || cinetpay() || !!process.env.PAYGATE_AUTH_TOKEN,
-  moov: paydunya() || kkiapay() || cinetpay() || !!process.env.PAYGATE_AUTH_TOKEN,
-});
+/** Moyens de paiement en ligne proposés (tous passent par PayDunya). */
+export const onlineMethods = (): Record<OnlineMethod, boolean> => {
+  const on = paydunya();
+  return { carte: on, yas: on, moov: on };
+};
 
 export const paydunyaMasterKey = () => env("PAYDUNYA_MASTER_KEY");
 
@@ -107,13 +62,71 @@ export function adminClient(): SupabaseClient | null {
   return url && key ? createAdmin(url, key, { auth: { persistSession: false } }) : null;
 }
 
+type Invoice = {
+  amount: number;
+  label: string;
+  method: OnlineMethod;
+  customer: { name: string; email?: string | null; phone?: string | null };
+  custom: Record<string, string>;
+  returnUrl: string;
+  cancelUrl: string;
+  origin: string;
+};
+
+/** Crée une facture PayDunya et renvoie la page de paiement et son jeton. */
+async function paydunyaInvoice(o: Invoice): Promise<{ url: string; token: string } | { error: string; raw: unknown }> {
+  const create = (channels?: string[]) =>
+    fetch(`${paydunyaBase()}/create`, {
+      method: "POST",
+      headers: paydunyaHeaders(),
+      body: JSON.stringify({
+        invoice: {
+          total_amount: o.amount,
+          description: o.label,
+          ...(channels ? { channels } : {}),
+          customer: { name: o.customer.name, email: o.customer.email ?? "", phone: (o.customer.phone ?? "").replace(/\D/g, "") },
+        },
+        store: { name: "Hôtel École Avenida", phone: "+228 22 21 46 72", website_url: "https://www.hotelecoleavenida.net" },
+        custom_data: o.custom,
+        actions: { cancel_url: o.cancelUrl, return_url: o.returnUrl, callback_url: `${o.origin}/api/paiements/paydunya` },
+      }),
+    })
+      .then((r) => r.json() as Promise<{ response_code?: string; response_text?: string; description?: string; token?: string }>)
+      .catch(() => ({}) as { response_code?: string; response_text?: string; description?: string; token?: string });
+  // Moyen choisi présélectionné ; si ce canal n'est pas encore ouvert sur le compte (carte en cours de validation), page avec tous les moyens
+  const channel = o.method === "yas" ? "t-money-togo" : o.method === "moov" ? "moov-togo" : "card";
+  let j = await create([channel]);
+  if (j.response_code !== "00") j = await create();
+  if (j.response_code !== "00" || !j.response_text?.startsWith("http") || !j.token) return { error: `Paiement en ligne indisponible : ${j.response_text ?? j.description ?? "PayDunya ne répond pas"}`, raw: j };
+  return { url: j.response_text, token: j.token };
+}
+
+type Confirmation = { paid: boolean; status: string; details: unknown };
+
+/** Confirme une facture PayDunya : payée, du bon montant, pour le bon paiement. */
+async function paydunyaConfirm(invoiceToken: string, amount: number, identifier: string): Promise<Confirmation> {
+  const res = await fetch(`${paydunyaBase()}/confirm/${encodeURIComponent(invoiceToken)}`, { headers: paydunyaHeaders() }).catch(() => null);
+  const st = res ? ((await res.json().catch(() => ({}))) as { response_code?: string; status?: string; invoice?: { total_amount?: number | string }; custom_data?: { identifier?: string } }) : {};
+  const status = st.status ?? "";
+  const paid = st.response_code === "00" && status === "completed" && Number(st.invoice?.total_amount ?? 0) >= amount && (!st.custom_data?.identifier || st.custom_data.identifier === identifier);
+  return { paid, status, details: st };
+}
+
+/** Alertes « Paiement reçu » envoyées tout de suite (e-mail, téléphone) à la direction et aux services concernés. */
+async function dispatchAlerts() {
+  const secret = process.env.CRON_SECRET;
+  if (secret) await fetch(`${SITE()}/api/notifications/envoyer`, { method: "POST", headers: { Authorization: `Bearer ${secret}` } }).catch(() => null);
+}
+
+// ─── Réservations de l'hôtel ───────────────────────────────────────────────
+
 type Reservation = { id: string; booking_ref: string; token: string; customer_name: string; room_type: string | null; room_number: string | null; customer_email: string | null; customer_phone: string | null; total_price: number; deposit_paid: number | null; status: string; hold_until: string | null; room_uuid: string | null; check_in: string; check_out: string };
 
-/** Démarre un paiement en ligne et renvoie l'adresse de la page de paiement du prestataire. */
-export async function startPayment(token: string, method: OnlineMethod, origin: string): Promise<{ url: string } | { widget: KkiapayWidget; identifier: string } | { error: string }> {
+/** Démarre le paiement en ligne d'une réservation et renvoie l'adresse de la page de paiement PayDunya. */
+export async function startPayment(token: string, method: OnlineMethod, origin: string): Promise<{ url: string } | { error: string }> {
   const admin = adminClient();
   if (!admin) return { error: "Paiement en ligne indisponible (configuration du serveur)." };
-  if (!onlineMethods()[method]) return { error: "Ce moyen de paiement n'est pas encore activé. Choisissez le paiement à l'arrivée ou un autre moyen." };
+  if (!onlineMethods()[method]) return { error: "Le paiement en ligne n'est pas encore activé. Choisissez le paiement à l'arrivée." };
 
   const { data: v } = await admin.from("reservations").select("id, booking_ref, token, customer_name, room_type, room_number, customer_email, customer_phone, total_price, deposit_paid, status, hold_until, room_uuid, check_in, check_out").eq("token", token).maybeSingle<Reservation>();
   if (!v) return { error: "Réservation introuvable." };
@@ -132,138 +145,28 @@ export async function startPayment(token: string, method: OnlineMethod, origin: 
 
   // Identifiant unique par tentative (30 caractères au plus, sans caractères spéciaux)
   const identifier = `${v.booking_ref.replace(/[^A-Z0-9]/gi, "")}T${Date.now().toString(36).toUpperCase()}`;
-  // Carte : Stripe s'il est configuré ; Mobile Money (Yas, Moov) : KkiaPay, sinon CinetPay ou PayGate
-  const provider = method === "carte" && process.env.STRIPE_SECRET_KEY ? "stripe" : paydunya() ? "paydunya" : kkiapay() ? "kkiapay" : cinetpay() ? "cinetpay" : method === "carte" ? "stripe" : "paygate";
-  const amount = due;
-  if (provider === "cinetpay" && (amount < 100 || amount > 2_500_000)) return { error: "Montant hors des limites du paiement en ligne (100 à 2 500 000 F) : réglez à la réception." };
-  const { error: insErr } = await admin.from("reservation_payments").insert({ reservation_id: v.id, provider, method, amount, identifier, status: "en_cours" });
+  const { error: insErr } = await admin.from("reservation_payments").insert({ reservation_id: v.id, provider: "paydunya", method, amount: due, identifier, status: "en_cours" });
   if (insErr) return { error: insErr.message };
-  const back = `${origin}/api/reservations/retour?id=${encodeURIComponent(identifier)}`;
-  const label = `Réservation ${v.booking_ref} · ${v.room_type ?? "Chambre"} ${v.room_number ?? ""}`.trim();
 
-  if (provider === "paydunya") {
-    const create = (channels?: string[]) =>
-      fetch(`${paydunyaBase()}/create`, {
-        method: "POST",
-        headers: paydunyaHeaders(),
-        body: JSON.stringify({
-          invoice: {
-            total_amount: amount,
-            description: label,
-            ...(channels ? { channels } : {}),
-            customer: { name: v.customer_name, email: v.customer_email ?? "", phone: (v.customer_phone ?? "").replace(/\D/g, "") },
-          },
-          store: { name: "Hôtel École Avenida", phone: "+228 22 21 46 72", website_url: "https://www.hotelecoleavenida.net" },
-          custom_data: { identifier, booking_ref: v.booking_ref },
-          actions: { cancel_url: `${origin}/reservation/${v.token}?paiement=annule`, return_url: back, callback_url: `${origin}/api/paiements/paydunya` },
-        }),
-      })
-        .then((r) => r.json() as Promise<{ response_code?: string; response_text?: string; description?: string; token?: string }>)
-        .catch(() => ({}) as { response_code?: string; response_text?: string; description?: string; token?: string });
-    // Moyen choisi présélectionné ; si PayDunya ne reconnaît pas ce canal, page avec tous les moyens
-    const channel = method === "yas" ? "t-money-togo" : method === "moov" ? "moov-togo" : "card";
-    let j = await create([channel]);
-    if (j.response_code !== "00") j = await create();
-    if (j.response_code !== "00" || !j.response_text?.startsWith("http") || !j.token) {
-      await admin.from("reservation_payments").update({ status: "echoue", raw: j }).eq("identifier", identifier);
-      return { error: `Paiement en ligne indisponible : ${j.response_text ?? j.description ?? "PayDunya ne répond pas"}` };
-    }
-    await admin.from("reservation_payments").update({ provider_ref: j.token }).eq("identifier", identifier);
-    return { url: j.response_text };
+  const inv = await paydunyaInvoice({
+    amount: due,
+    label: `Réservation ${v.booking_ref} · ${v.room_type ?? "Chambre"} ${v.room_number ?? ""}`.trim(),
+    method,
+    customer: { name: v.customer_name, email: v.customer_email, phone: v.customer_phone },
+    custom: { identifier, booking_ref: v.booking_ref },
+    returnUrl: `${origin}/api/reservations/retour?id=${encodeURIComponent(identifier)}`,
+    cancelUrl: `${origin}/reservation/${v.token}?paiement=annule`,
+    origin,
+  });
+  if ("error" in inv) {
+    await admin.from("reservation_payments").update({ status: "echoue", raw: inv.raw }).eq("identifier", identifier);
+    return { error: inv.error };
   }
-
-  if (provider === "kkiapay") {
-    const phone = (v.customer_phone ?? "").replace(/\D/g, "").replace(/^228/, "");
-    return {
-      identifier,
-      widget: {
-        amount,
-        key: process.env.KKIAPAY_PUBLIC_KEY!,
-        sandbox: kkiapaySandbox(),
-        partnerId: identifier,
-        paymentmethod: method === "carte" ? ["card"] : ["momo"],
-        countries: ["TG"],
-        ...(phone.length === 8 ? { phone: `228${phone}` } : {}),
-        name: v.customer_name,
-        ...(v.customer_email ? { email: v.customer_email } : {}),
-        reason: label,
-        theme: "#0C356A",
-        position: "center",
-      },
-    };
-  }
-
-  if (provider === "cinetpay") {
-    const words = (v.customer_name || "Client Avenida").trim().split(/\s+/);
-    const pad = (x: string) => (x.length >= 2 ? x : `${x}.`);
-    const phone = (v.customer_phone ?? "").replace(/\D/g, "").replace(/^228/, "");
-    const j = await cinetpayCall("POST", "/v1/payment", {
-      currency: "XOF",
-      merchant_transaction_id: identifier,
-      amount,
-      lang: "fr",
-      designation: label.slice(0, 255),
-      client_email: v.customer_email || "reservation@hotelecoleavenida.net",
-      client_first_name: pad(words.length > 1 ? words.slice(0, -1).join(" ") : words[0]),
-      client_last_name: pad(words[words.length - 1]),
-      success_url: back,
-      failed_url: back,
-      notify_url: `${origin}/api/paiements/cinetpay`,
-      channel: "PUSH",
-      // Mobile Money : le client arrive directement sur l'opérateur choisi ; carte : page de paiement CinetPay
-      ...(method === "yas" ? { payment_method: "TMONEY_TG" } : method === "moov" ? { payment_method: "MOOV_TG" } : {}),
-      ...(phone.length === 8 ? { client_phone_number: `+228${phone}` } : {}),
-    });
-    const url = j.payment_url as string | undefined;
-    if (!url) {
-      await admin.from("reservation_payments").update({ status: "echoue", raw: j }).eq("identifier", identifier);
-      return { error: `Paiement en ligne indisponible : ${String(j.description ?? j.status ?? "CinetPay ne répond pas")}` };
-    }
-    // Le jeton de notification permet de reconnaître les vraies notifications de CinetPay
-    await admin
-      .from("reservation_payments")
-      .update({ provider_ref: (j.transaction_id as string) ?? null, raw: { notify_token: j.notify_token ?? null, payment_token: j.payment_token ?? null } })
-      .eq("identifier", identifier);
-    return { url };
-  }
-
-  if (provider === "stripe") {
-    const form = new URLSearchParams({
-      mode: "payment",
-      "line_items[0][quantity]": "1",
-      "line_items[0][price_data][currency]": "xof",
-      "line_items[0][price_data][unit_amount]": String(due), // le franc CFA n'a pas de centimes
-      "line_items[0][price_data][product_data][name]": label,
-      success_url: back,
-      cancel_url: `${origin}/reservation/${v.token}?paiement=annule`,
-      client_reference_id: identifier,
-      "metadata[identifier]": identifier,
-      "metadata[booking_ref]": v.booking_ref,
-      locale: "fr",
-    });
-    if (v.customer_email) form.set("customer_email", v.customer_email);
-    const res = await fetch("https://api.stripe.com/v1/checkout/sessions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}`, "Content-Type": "application/x-www-form-urlencoded" },
-      body: form,
-    });
-    const s = (await res.json()) as { id?: string; url?: string; error?: { message?: string } };
-    if (!res.ok || !s.url) {
-      await admin.from("reservation_payments").update({ status: "echoue", raw: s }).eq("identifier", identifier);
-      return { error: `Paiement par carte indisponible : ${s.error?.message ?? "erreur du prestataire"}` };
-    }
-    await admin.from("reservation_payments").update({ provider_ref: s.id }).eq("identifier", identifier);
-    return { url: s.url };
-  }
-
-  // PayGate Global : page de paiement Mixx by Yas (T-Money) ou Moov Money (Flooz)
-  const q = new URLSearchParams({ token: process.env.PAYGATE_AUTH_TOKEN!, amount: String(due), description: label, identifier, url: back });
-  const phone = (v.customer_phone ?? "").replace(/\D/g, "").replace(/^228/, "");
-  if (phone.length === 8) q.set("phone", phone);
-  return { url: `https://paygateglobal.com/v1/page?${q}` };
+  await admin.from("reservation_payments").update({ provider_ref: inv.token }).eq("identifier", identifier);
+  return { url: inv.url };
 }
 
-/** Interroge le prestataire ; si le paiement est confirmé, l'enregistre (une seule fois). */
+/** Interroge PayDunya ; si le paiement de la réservation est confirmé, l'enregistre (une seule fois). */
 export async function verifyPayment(identifier: string): Promise<{ ok: boolean; token?: string; pending?: boolean; fresh?: boolean; error?: string }> {
   const admin = adminClient();
   if (!admin) return { ok: false, error: "configuration" };
@@ -271,80 +174,18 @@ export async function verifyPayment(identifier: string): Promise<{ ok: boolean; 
   if (!pay) return { ok: false, error: "Paiement inconnu" };
   const token = (pay.reservations as unknown as { token: string } | null)?.token;
   if (pay.status === "reussi") return { ok: true, token };
+  if (pay.provider !== "paydunya" || !pay.provider_ref) return { ok: false, token };
 
-  let paid = false;
-  let ref: string | null = null;
-  let details: unknown = null;
-  if (pay.provider === "paydunya") {
-    if (!pay.provider_ref) return { ok: false, token };
-    const res = await fetch(`${paydunyaBase()}/confirm/${encodeURIComponent(pay.provider_ref)}`, { headers: paydunyaHeaders() }).catch(() => null);
-    const st = res ? ((await res.json().catch(() => ({}))) as { response_code?: string; status?: string; invoice?: { total_amount?: number | string }; custom_data?: { identifier?: string } }) : {};
-    const status = st.status ?? "";
-    paid = st.response_code === "00" && status === "completed" && Number(st.invoice?.total_amount ?? 0) >= Number(pay.amount) && (!st.custom_data?.identifier || st.custom_data.identifier === identifier);
-    ref = pay.provider_ref;
-    details = st;
-    if (status === "cancelled" || status === "failed") await admin.from("reservation_payments").update({ status: "echoue", raw: st }).eq("id", pay.id);
-    if (!paid) return { ok: false, token, pending: status === "pending" };
-  } else if (pay.provider === "kkiapay") {
-    if (!pay.provider_ref) return { ok: false, token, pending: true };
-    const res = await fetch(`${kkiapaySandbox() ? "https://api-sandbox.kkiapay.me" : "https://api.kkiapay.me"}/api/v1/transactions/status`, {
-      method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        "x-api-key": process.env.KKIAPAY_PUBLIC_KEY!,
-        "x-private-key": process.env.KKIAPAY_PRIVATE_KEY!,
-        "x-secret-key": process.env.KKIAPAY_SECRET_KEY!,
-      },
-      body: JSON.stringify({ transactionId: pay.provider_ref }),
-    }).catch(() => null);
-    const st = res ? ((await res.json().catch(() => ({}))) as Record<string, unknown>) : {};
-    const status = String(st.status ?? "");
-    const partner = (st.partnerId ?? (st.state as Record<string, unknown> | undefined)?.partnerId) as string | undefined;
-    // Une transaction KkiaPay ne peut solder qu'un seul paiement, du bon montant
-    const { count: reused } = await admin.from("reservation_payments").select("id", { count: "exact", head: true }).eq("provider_ref", pay.provider_ref).eq("status", "reussi").neq("id", pay.id);
-    paid = status === "SUCCESS" && Number(st.amount ?? 0) >= Number(pay.amount) && !reused && (!partner || partner === identifier);
-    ref = pay.provider_ref;
-    details = st;
-    if (status === "FAILED") await admin.from("reservation_payments").update({ status: "echoue", raw: st }).eq("id", pay.id);
-    if (!paid) return { ok: false, token, pending: status === "PENDING" || status === "" };
-  } else if (pay.provider === "cinetpay") {
-    const st = await cinetpayCall("GET", `/v1/payment/${encodeURIComponent(identifier)}`);
-    const status = String(st.status ?? "");
-    paid = status === "SUCCESS" && (st.merchant_transaction_id === undefined || st.merchant_transaction_id === identifier);
-    ref = (st.transaction_id as string) ?? null;
-    details = st;
-    if (status === "FAILED" || status === "EXPIRED") await admin.from("reservation_payments").update({ status: "echoue", raw: st }).eq("id", pay.id);
-    if (!paid) return { ok: false, token, pending: status === "PENDING" || status === "INITIATED" };
-  } else if (pay.provider === "stripe" && pay.provider_ref) {
-    const res = await fetch(`https://api.stripe.com/v1/checkout/sessions/${pay.provider_ref}`, { headers: { Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}` } });
-    const s = (await res.json()) as { payment_status?: string; amount_total?: number; payment_intent?: string };
-    paid = res.ok && s.payment_status === "paid" && Number(s.amount_total) >= Number(pay.amount);
-    ref = s.payment_intent ?? pay.provider_ref;
-    details = s;
-  } else if (pay.provider === "paygate") {
-    const res = await fetch("https://paygateglobal.com/api/v2/status", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ auth_token: process.env.PAYGATE_AUTH_TOKEN, identifier }),
-    });
-    const s = (await res.json().catch(() => ({}))) as { status?: number; tx_reference?: string; payment_reference?: string; payment_method?: string };
-    paid = res.ok && Number(s.status) === 0; // 0 = paiement réussi, 2 = en cours, 4 = expiré, 6 = annulé
-    ref = s.payment_reference ?? s.tx_reference ?? null;
-    details = s;
-    if (res.ok && (Number(s.status) === 4 || Number(s.status) === 6)) await admin.from("reservation_payments").update({ status: "echoue", raw: s }).eq("id", pay.id);
-    if (!paid) return { ok: false, token, pending: Number(s.status) === 2 };
-  }
-  if (!paid) return { ok: false, token };
-  const { data: applied, error } = await admin.rpc("apply_online_payment", { ident: identifier, pref: ref, details });
+  const c = await paydunyaConfirm(pay.provider_ref, Number(pay.amount), identifier);
+  if (c.status === "cancelled" || c.status === "failed") await admin.from("reservation_payments").update({ status: "echoue", raw: c.details }).eq("id", pay.id);
+  if (!c.paid) return { ok: false, token, pending: c.status === "pending" };
+
+  const { data: applied, error } = await admin.rpc("apply_online_payment", { ident: identifier, pref: pay.provider_ref, details: c.details });
   if (error) return { ok: false, token, error: error.message };
   const fresh = !(applied as { already?: boolean } | null)?.already;
   if (fresh && token) {
     await emailPaid(admin, token);
-    // Alertes « Paiement reçu » envoyées tout de suite (e-mail, téléphone) au DG et à l'hôtel
-    const secret = process.env.CRON_SECRET;
-    const site = process.env.NEXT_PUBLIC_APP_URL || "https://www.hotelecoleavenida.net";
-    if (secret) await fetch(`${site}/api/notifications/envoyer`, { method: "POST", headers: { Authorization: `Bearer ${secret}` } }).catch(() => null);
+    await dispatchAlerts();
   }
   return { ok: true, token, fresh };
 }
@@ -354,20 +195,83 @@ async function emailPaid(admin: SupabaseClient, token: string) {
   const { data: v } = await admin.from("reservations").select("booking_ref, customer_name, customer_email, total_price, deposit_paid").eq("token", token).maybeSingle();
   if (!v) return;
   const rest = Number(v.total_price) - Number(v.deposit_paid ?? 0);
-  const site = process.env.NEXT_PUBLIC_APP_URL || "https://www.hotelecoleavenida.net";
   await sendBookingEmail(
     v.customer_email,
     v.customer_name,
     rest > 0 ? `Paiement reçu · réservation ${v.booking_ref}` : `Réservation ${v.booking_ref} soldée`,
     rest > 0 ? `Nous avons bien reçu votre paiement. Reste à régler : ${rest.toLocaleString("fr-FR")} F CFA.` : "Votre paiement est confirmé : votre chambre vous est réservée. Présentez ce reçu à la réception à votre arrivée.",
-    `${site}/reservation/${token}`,
+    `${SITE()}/reservation/${token}`,
   );
+}
+
+// ─── Frais d'inscription et écolage de l'école ─────────────────────────────
+
+export type SchoolPaymentRequest = { student_id?: string; application_id?: string; amount?: number; designation?: string; option?: string; method: OnlineMethod };
+
+/**
+ * Démarre le paiement en ligne de frais scolaires. `supabase` est le client de l'utilisateur connecté :
+ * la base vérifie qu'il peut payer pour ce dossier (élève, parent rattaché, candidat admis) et le montant autorisé.
+ */
+export async function startSchoolPayment(supabase: SupabaseClient, req: SchoolPaymentRequest, origin: string): Promise<{ url: string } | { error: string }> {
+  const admin = adminClient();
+  if (!admin) return { error: "Paiement en ligne indisponible (configuration du serveur)." };
+  if (!onlineMethods()[req.method]) return { error: "Le paiement en ligne n'est pas encore activé : réglez à la caisse de l'école." };
+  const { data, error } = await supabase.rpc("prepare_school_payment", { p: req });
+  if (error) return { error: error.message };
+  const p = data as { identifier: string; amount: number; label: string; payer_name: string; payer_email: string | null; payer_phone: string | null };
+
+  const inv = await paydunyaInvoice({
+    amount: Number(p.amount),
+    label: p.label,
+    method: req.method,
+    customer: { name: p.payer_name, email: p.payer_email, phone: p.payer_phone },
+    custom: { identifier: p.identifier, kind: "ecole" },
+    returnUrl: `${origin}/api/ecolage/retour?id=${encodeURIComponent(p.identifier)}`,
+    cancelUrl: `${origin}/espace/paiements?paiement=annule`,
+    origin,
+  });
+  if ("error" in inv) {
+    await admin.from("school_payments").update({ status: "echoue", raw: inv.raw }).eq("identifier", p.identifier);
+    return { error: inv.error };
+  }
+  await admin.from("school_payments").update({ provider_ref: inv.token }).eq("identifier", p.identifier);
+  return { url: inv.url };
+}
+
+/** Interroge PayDunya ; si le paiement scolaire est confirmé, crée le reçu officiel (une seule fois). */
+export async function verifySchoolPayment(identifier: string): Promise<{ ok: boolean; pending?: boolean; receipt?: string | null; error?: string }> {
+  const admin = adminClient();
+  if (!admin) return { ok: false, error: "configuration" };
+  const { data: pay } = await admin.from("school_payments").select("id, amount, status, provider_ref, fee_payment_id, payer_email, payer_name, designation").eq("identifier", identifier).maybeSingle();
+  if (!pay) return { ok: false, error: "Paiement inconnu" };
+  if (pay.status === "reussi") return { ok: true, receipt: pay.fee_payment_id };
+  if (!pay.provider_ref) return { ok: false };
+
+  const c = await paydunyaConfirm(pay.provider_ref, Number(pay.amount), identifier);
+  if (c.status === "cancelled" || c.status === "failed") await admin.from("school_payments").update({ status: "echoue", raw: c.details }).eq("id", pay.id);
+  if (!c.paid) return { ok: false, pending: c.status === "pending" };
+
+  const { data: applied, error } = await admin.rpc("apply_school_payment", { ident: identifier, pref: pay.provider_ref, details: c.details });
+  if (error) return { ok: false, error: error.message };
+  const a = applied as { already?: boolean; fee_payment_id?: string | null };
+  if (!a.already) {
+    await sendBookingEmail(
+      pay.payer_email,
+      pay.payer_name ?? "",
+      `Paiement reçu · ${pay.designation}`,
+      `Nous avons bien reçu votre paiement de ${Number(pay.amount).toLocaleString("fr-FR")} F CFA (${pay.designation}). Votre reçu officiel et votre situation financière sont à jour dans votre espace.`,
+      a.fee_payment_id ? `${SITE()}/impression/recu/${a.fee_payment_id}` : `${SITE()}/espace/paiements`,
+      a.fee_payment_id ? "Voir mon reçu" : "Voir mes paiements",
+    );
+    await dispatchAlerts();
+  }
+  return { ok: true, receipt: a.fee_payment_id ?? null };
 }
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 
-/** E-mail au client (avec ou sans compte) : lien vers son reçu de réservation. */
-export async function sendBookingEmail(to: string | null, name: string, subject: string, text: string, link: string) {
+/** E-mail au client ou à la famille (avec ou sans compte) : lien vers son reçu. */
+export async function sendBookingEmail(to: string | null, name: string, subject: string, text: string, link: string, button = "Voir mon reçu de réservation") {
   const key = process.env.RESEND_API_KEY;
   if (!key || !to || to.endsWith("@ecole-avenida.tg")) return false;
   const html = `<!doctype html><html lang="fr"><body style="margin:0;background:#f1f5f9;font-family:Arial,sans-serif;color:#0f172a">
@@ -379,7 +283,7 @@ export async function sendBookingEmail(to: string | null, name: string, subject:
       <p style="margin:0 0 12px">Bonjour ${esc(name)},</p>
       <h1 style="margin:0 0 12px;font-size:20px;color:#0C356A">${esc(subject)}</h1>
       <p style="margin:0 0 24px">${esc(text).split("\n").join("<br>")}</p>
-      <a href="${link}" style="display:inline-block;background:#E30613;color:#fff;text-decoration:none;font-weight:bold;padding:12px 22px;border-radius:999px">Voir mon reçu de réservation</a>
+      <a href="${link}" style="display:inline-block;background:#E30613;color:#fff;text-decoration:none;font-weight:bold;padding:12px 22px;border-radius:999px">${esc(button)}</a>
     </td></tr>
     <tr><td style="padding:16px 24px;background:#f8fafc;font-size:12px;color:#64748b">Hôtel École Avenida · 30, rue d'Almeida Léopold, Cocoteraie, Lomé · +228 22 21 46 72</td></tr>
   </table></td></tr></table></body></html>`;
@@ -389,12 +293,4 @@ export async function sendBookingEmail(to: string | null, name: string, subject:
     body: JSON.stringify({ from: process.env.NOTIFY_FROM_EMAIL || "Hôtel École Avenida <onboarding@resend.dev>", to: [to], subject, html }),
   }).catch(() => null);
   return !!res?.ok;
-}
-
-/** Fenêtre KkiaPay terminée côté client : on note la transaction puis on la vérifie auprès de KkiaPay. */
-export async function confirmKkiapay(identifier: string, transactionId: string) {
-  const admin = adminClient();
-  if (!admin || !identifier || !transactionId) return { ok: false, error: "Demande invalide" };
-  await admin.from("reservation_payments").update({ provider_ref: transactionId }).eq("identifier", identifier).eq("provider", "kkiapay").eq("status", "en_cours").is("provider_ref", null);
-  return verifyPayment(identifier);
 }

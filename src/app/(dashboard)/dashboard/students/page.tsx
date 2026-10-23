@@ -96,7 +96,7 @@ export default function StudentsPage() {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState<number>(50000);
   const [paymentDesignation, setPaymentDesignation] = useState("Frais de scolarité (Tranche)");
-  const [paymentMethod, setPaymentMethod] = useState<"Espèces" | "Stripe" | "Mobile Money" | "Virement">("Espèces");
+  const [paymentMethod, setPaymentMethod] = useState<"Espèces" | "Carte Bancaire" | "Mobile Money" | "Virement">("Espèces");
   const [paymentDepositorName, setPaymentDepositorName] = useState("");
   const [paymentDepositorPhone, setPaymentDepositorPhone] = useState("");
   const [paymentDepositorRole, setPaymentDepositorRole] = useState("Parent / Tuteur");
@@ -1792,7 +1792,7 @@ export default function StudentsPage() {
                     <option value="Espèces">Espèces (Guichet)</option>
                     <option value="Mobile Money">Mobile Money (Flooz / T-Money)</option>
                     <option value="Virement">Virement Bancaire</option>
-                    <option value="Stripe">Carte Bancaire / Stripe</option>
+                    <option value="Carte Bancaire">Carte bancaire</option>
                   </select>
                 </div>
               </div>

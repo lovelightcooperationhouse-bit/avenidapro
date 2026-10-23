@@ -77,7 +77,7 @@ export default function HotelRoomsPage() {
     check_out: tomorrowStr,
     price_per_night: 25000,
     deposit_paid: 25000,
-    payment_method: "Espèces" as "Espèces" | "Stripe" | "Mobile Money" | "Virement" | "Carte Bancaire",
+    payment_method: "Espèces" as "Espèces" | "Carte Bancaire" | "Mobile Money" | "Virement",
     cashier_name: "Yao Richard MENSAH (Chef de Réception)",
     special_requests: "",
   });

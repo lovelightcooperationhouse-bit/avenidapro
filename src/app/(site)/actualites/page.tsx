@@ -11,6 +11,7 @@ export const revalidate = 60;
 export const metadata: Metadata = {
   title: "Actualités",
   description: "Annonces, événements, articles, photos et vidéos de l'Hôtel École Avenida à Lomé.",
+  alternates: { canonical: "/actualites" },
 };
 
 export default async function ActualitesPage() {

@@ -646,7 +646,7 @@ export default function ReservationsPage() {
                   >
                     <option value="Espèces">Espèces (Caisse Hôtel)</option>
                     <option value="Mobile Money">Mobile Money (T-Money / Flooz)</option>
-                    <option value="Carte Bancaire">Carte Bancaire (Stripe)</option>
+                    <option value="Carte Bancaire">Carte bancaire</option>
                     <option value="Virement">Virement Bancaire</option>
                   </select>
                 </div>

@@ -105,6 +105,15 @@ export function CandidateApplications() {
               ))}
             </ol>
 
+            {a.status === "acceptee" && !a.student_id && (
+              <div className="mx-6 mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-900">
+                <span>Dossier accepté : réglez vos frais d&apos;inscription en ligne (Yas, Moov ou carte), puis présentez-vous au bureau des inscriptions.</span>
+                <Link href="/espace/paiements" className="rounded-full bg-vif px-4 py-2 text-sm font-bold text-white hover:bg-vif-fonce">
+                  Payer mes frais d&apos;inscription
+                </Link>
+              </div>
+            )}
+
             {a.status === "pieces_manquantes" && (
               <p className="mx-6 mt-5 rounded-2xl bg-orange-50 p-4 text-sm text-orange-900">
                 L&apos;école attend des pièces complémentaires. Ajoutez-les ci-dessous ou déposez-les au bureau.

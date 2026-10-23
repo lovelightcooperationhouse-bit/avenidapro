@@ -1,6 +1,7 @@
 "use client";
 
-import { Wallet } from "lucide-react";
+import { CreditCard, Wallet } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { DocumentToolbar } from "@/components/cards/DocumentToolbar";
 import { SituationSheet } from "@/components/cards/SituationSheet";
@@ -40,6 +41,9 @@ export default function MaSituationPage() {
         </p>
         <h1 className="mt-1 font-display text-3xl font-extrabold text-avenida-blue">Écolage : paiements et reste à payer</h1>
         <p className="mt-1 text-sm text-slate-600">Mise à jour automatiquement à chaque paiement. Consultez, téléchargez ou imprimez la fiche.</p>
+        <Link href="/espace/paiements" className="mt-3 inline-flex items-center gap-2 rounded-full bg-vif px-5 py-2.5 text-sm font-bold text-white hover:bg-vif-fonce">
+          <CreditCard aria-hidden className="size-4" /> Payer en ligne (Yas, Moov, carte)
+        </Link>
       </div>
       {kids && kids.length > 1 && (
         <div className="mx-auto flex w-full max-w-[210mm] flex-wrap gap-2">

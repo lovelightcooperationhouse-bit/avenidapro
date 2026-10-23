@@ -10,15 +10,16 @@ import { VisitTracker } from "@/components/site/VisitTracker";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { TopBar } from "@/components/site/TopBar";
 import { getMenu, getSettings } from "@/lib/cms";
+import { structuredData } from "@/lib/seo";
 import { mergeContact, themeCss } from "@/lib/site-contact";
 
 export const metadata: Metadata = {
   title: {
-    default: "Hôtel École Avenida — Hôtellerie, Restauration, Tourisme à Lomé",
+    default: "Hôtel École Avenida — Hôtel Avenida et École Avenida à Lomé (Togo)",
     template: "%s · Hôtel École Avenida",
   },
   description:
-    "Hôtel École Avenida, Lomé (Togo) : formations CFA, CAP, BEP, BT et BTS en cuisine, restaurant, réception et hébergement. Cours du jour et du soir, internat, hôtel d'application.",
+    "Site officiel de l'Hôtel École Avenida, Lomé (Togo) : l'École Avenida forme aux métiers de l'hôtellerie, de la restauration et du tourisme (CFA, CAP, BEP, BT, BTS) ; l'Hôtel Avenida accueille vos séjours, réservation et paiement en ligne.",
 };
 
 /** Gabarit des pages publiques : top bar, header collant, contenu, footer (menu et réglages modifiables par le DG). */
@@ -34,6 +35,8 @@ export default async function SiteLayout({
     <SiteContentProvider menu={menu} settings={settings}>
       {/* Couleurs personnalisées dans « Site web → Couleurs » */}
       {theme && <style dangerouslySetInnerHTML={{ __html: theme }} />}
+      {/* Fiche de l'établissement pour les moteurs de recherche (schema.org) */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData(contact)).replace(/</g, "\\u003c") }} />
       <div id="top" className="flex min-h-dvh flex-col bg-white text-slate-900">
         {/* Lien d'évitement : premier élément focusable */}
         <a

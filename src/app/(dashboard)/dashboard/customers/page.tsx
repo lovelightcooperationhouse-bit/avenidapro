@@ -71,7 +71,7 @@ export default function CustomersPage() {
   const [isCustomerPayOpen, setIsCustomerPayOpen] = useState(false);
   const [custPayAmount, setCustPayAmount] = useState<number>(35000);
   const [custPayDesignation, setCustPayDesignation] = useState("Règlement Prestation & Séjour Hôtel");
-  const [custPayMethod, setCustPayMethod] = useState<"Espèces" | "Stripe" | "Mobile Money" | "Virement">("Espèces");
+  const [custPayMethod, setCustPayMethod] = useState<"Espèces" | "Carte Bancaire" | "Mobile Money" | "Virement">("Espèces");
   const [custPayDepositor, setCustPayDepositor] = useState("");
   const [custPayPhone, setCustPayPhone] = useState("");
   const [isCustSubmitting, setIsCustSubmitting] = useState(false);
@@ -1358,7 +1358,7 @@ export default function CustomersPage() {
                     <option value="Espèces">Espèces (Caisse)</option>
                     <option value="Mobile Money">T-Money / Flooz</option>
                     <option value="Virement">Virement / Carte Bancaire</option>
-                    <option value="Stripe">Stripe En Ligne</option>
+                    <option value="Carte Bancaire">Carte bancaire</option>
                   </select>
                 </div>
                 <div>

@@ -13,6 +13,7 @@ import { CmsSections } from "@/components/site/CmsBlocks";
 export const metadata: Metadata = {
   title: "Admissions — frais, pièces à fournir et rentrées 2026-2027",
   description: "Inscriptions à l'Hôtel École Avenida : pré-inscription en ligne, frais de scolarité, paiement en 8 tranches, pièces à fournir, rentrées 2026-2027 et internat.",
+  alternates: { canonical: "/admissions" },
 };
 
 export const revalidate = 60;

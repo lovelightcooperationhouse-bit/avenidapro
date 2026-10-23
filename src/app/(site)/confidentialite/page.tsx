@@ -8,6 +8,7 @@ import { siteConfig } from "@/content/site";
 export const metadata: Metadata = {
   title: "Politique de confidentialité",
   description: "Comment l'Hôtel École Avenida collecte, utilise, protège et conserve les données personnelles des élèves, parents, candidats, clients et personnels.",
+  alternates: { canonical: "/confidentialite" },
 };
 
 const sections: LegalSection[] = [

@@ -14,8 +14,9 @@ import { PhotoGallery } from "@/components/site/PhotoGallery";
 import { CmsSections } from "@/components/site/CmsBlocks";
 
 export const metadata: Metadata = {
-  title: "L'École — formations CFA, CAP, BEP, BT, BTS",
+  title: "École Avenida — école hôtelière à Lomé : CFA, CAP, BEP, BT, BTS",
   description: "Formations aux métiers de l'hôtellerie, de la restauration et du tourisme à Lomé : CFA, CAP, BEP, BT et BTS. Cours du jour et du soir, internat.",
+  alternates: { canonical: "/ecole" },
 };
 
 export const revalidate = 60;

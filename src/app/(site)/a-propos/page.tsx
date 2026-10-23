@@ -15,6 +15,7 @@ import { getPublicStaff } from "@/lib/cms";
 export const metadata: Metadata = {
   title: "À propos",
   description: "L'Hôtel École Avenida, centre de formation aux métiers de l'hôtellerie, de la restauration et du tourisme à Lomé. Travail – Discipline – Excellence.",
+  alternates: { canonical: "/a-propos" },
 };
 
 export const revalidate = 60;

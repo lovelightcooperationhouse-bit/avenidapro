@@ -58,7 +58,7 @@ export const siteConfig = {
   /** Numéro utilisé pour les boutons WhatsApp. ⚠️ À confirmer. */
   whatsapp: "+22896640000",
   email: "avenidahotel1994@gmail.com",
-  website: "www.hotelecoleavenida.com",
+  website: "www.hotelecoleavenida.net",
   officeHours: "Du lundi au vendredi, de 9 h à 14 h",
   /**
    * Réseaux sociaux, dans l'ordre d'affichage. Une URL vide masque l'icône.

@@ -822,7 +822,7 @@ export async function assignRoomToGuest(params: {
   price_per_night: number;
   total_price: number;
   deposit_paid: number;
-  payment_method: "Espèces" | "Stripe" | "Mobile Money" | "Virement" | "Carte Bancaire";
+  payment_method: "Espèces" | "Carte Bancaire" | "Mobile Money" | "Virement";
   cashier_name?: string;
   mode: "walk_in" | "reservation";
   special_requests?: string;
@@ -971,7 +971,7 @@ export async function assignRoomToGuest(params: {
       date: new Date().toISOString().split("T")[0],
       recorded_by: params.cashier_name || "Réceptionniste Caisse",
       payment_mode:
-        params.payment_method === "Stripe" || params.payment_method === "Carte Bancaire"
+        params.payment_method === "Carte Bancaire"
           ? "Virement"
           : (params.payment_method as "Espèces" | "Mobile Money" | "Virement" | "Chèque") || "Espèces",
       receipt_number: receiptRef,
@@ -1274,7 +1274,7 @@ export async function saveAndSyncReceipt(receipt: PaymentReceipt): Promise<Payme
       date: (receipt.date || new Date().toISOString()).split(" ")[0].split("T")[0],
       recorded_by: receipt.cashier_name || "Caisse Scolaire & Trésorerie",
       payment_mode:
-        receipt.payment_method === "Stripe"
+        receipt.payment_method === "Carte Bancaire"
           ? "Virement"
           : (receipt.payment_method as "Espèces" | "Mobile Money" | "Virement" | "Chèque") || "Espèces",
       receipt_number: receipt.reference,
@@ -1309,7 +1309,7 @@ export async function saveAndSyncCustomerPayment(params: {
   total_due?: number;
   remaining_due?: number;
   designation: string;
-  payment_method: "Espèces" | "Stripe" | "Mobile Money" | "Virement";
+  payment_method: "Espèces" | "Carte Bancaire" | "Mobile Money" | "Virement";
   depositor_name?: string;
   depositor_phone?: string;
   cashier_name?: string;
@@ -1430,7 +1430,7 @@ export async function saveAndSyncCustomerPayment(params: {
       date: new Date().toISOString().split("T")[0],
       recorded_by: params.cashier_name || "Caisse Centrale & Trésorerie",
       payment_mode:
-        params.payment_method === "Stripe"
+        params.payment_method === "Carte Bancaire"
           ? "Virement"
           : (params.payment_method as "Espèces" | "Mobile Money" | "Virement" | "Chèque") || "Espèces",
       receipt_number: newReceipt.reference,
