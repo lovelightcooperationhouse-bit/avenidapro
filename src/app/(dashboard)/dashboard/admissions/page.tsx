@@ -22,6 +22,8 @@ const totalFor = (code: string) => {
 };
 
 /** Gestion des pré-inscriptions déposées sur le site : étude, décision et création du dossier élève. */
+type MemberFile = { id: string; photo: string | null; documents: { path: string; name: string; label: string }[] | null };
+
 export default function AdmissionsDashboardPage() {
   const { user } = useAuth();
   const [apps, setApps] = useState<Application[]>([]);
@@ -34,6 +36,7 @@ export default function AdmissionsDashboardPage() {
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [enrolled, setEnrolled] = useState<string | null>(null);
+  const [members, setMembers] = useState<Record<string, MemberFile>>({});
 
   const load = useCallback(async () => {
     const supabase = createClient();
@@ -43,6 +46,12 @@ export default function AdmissionsDashboardPage() {
     ]);
     setApps((a ?? []) as Application[]);
     setDocs((d ?? []) as ApplicationDocument[]);
+    // Pré-inscriptions déposées depuis l'espace élève : photo et pièces du dossier du compte
+    const linked = (a ?? []).map((x) => x.member_application_id).filter(Boolean) as string[];
+    if (linked.length) {
+      const { data: m } = await supabase.from("member_applications").select("id, photo, documents").in("id", linked);
+      setMembers(Object.fromEntries((m ?? []).map((x) => [x.id, x as MemberFile])));
+    }
     setLoading(false);
   }, []);
 
@@ -220,6 +229,7 @@ Vous pouvez les déposer dans votre espace en ligne ou les apporter au bureau de
                       </span>
                       <span className="block text-xs text-slate-500">
                         {a.reference} · {a.program_code} {a.specialty} · {fmtDateTime(a.created_at)}
+                        {a.member_application_id ? " · depuis l'espace élève" : ""}
                       </span>
                     </span>
                     <span className={cn("shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold ring-1", APPLICATION_STATUS[a.status].tone)}>{APPLICATION_STATUS[a.status].label}</span>
@@ -277,6 +287,28 @@ Vous pouvez les déposer dans votre espace en ligne ou les apporter au bureau de
               ))}
             </dl>
             {selected.message && <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-700">« {selected.message} »</p>}
+
+            {selected.member_application_id && members[selected.member_application_id] && (
+              <div className="flex flex-wrap items-start gap-4 rounded-xl bg-sky-50 p-4 ring-1 ring-sky-200">
+                {members[selected.member_application_id].photo && (
+                  // eslint-disable-next-line @next/next/no-img-element -- photo d'identité du dossier
+                  <img src={members[selected.member_application_id].photo!} alt="Photo d'identité" className="h-[110px] w-[85px] rounded-lg object-cover ring-1 ring-slate-200" />
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-black text-[#0C356A]">Déposée depuis l&apos;espace élève</p>
+                  <p className="text-xs text-slate-600">Le candidat a rempli son dossier dans son espace : cette pré-inscription est liée à son compte et se met à jour avec son dossier.</p>
+                  <ul className="mt-2 flex flex-wrap gap-2">
+                    {(members[selected.member_application_id].documents ?? []).map((d) => (
+                      <li key={d.path}>
+                        <button type="button" onClick={() => setViewing({ bucket: "documents", path: d.path, name: d.name, label: d.label })} className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-[#0C356A] ring-1 ring-slate-200 hover:text-[#E30613]">
+                          <Eye aria-hidden className="size-3.5" /> {d.label}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
 
             <div>
               <h3 className="mb-2 flex items-center gap-1.5 text-sm font-black text-[#0C356A]">

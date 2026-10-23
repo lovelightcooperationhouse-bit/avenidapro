@@ -21,7 +21,8 @@ export default function EspaceLayout({ children }: { children: React.ReactNode }
   useEffect(() => {
     if (!isLoading && !user && pathname !== "/espace/mot-de-passe") router.replace("/connexion");
     // Nouveau membre : il complète d'abord son profil (statut, photo, informations, pièces)
-    if (!isLoading && user?.role === "candidat" && !OPEN_TO_NEW.some((p) => pathname.startsWith(p))) router.replace("/espace/profil");
+    // (l'accueil de l'espace reste ouvert : le candidat y suit sa pré-inscription)
+    if (!isLoading && user?.role === "candidat" && pathname !== "/espace" && !OPEN_TO_NEW.some((p) => pathname.startsWith(p))) router.replace("/espace/profil");
   }, [isLoading, user, pathname, router]);
 
   if (isLoading || (!user && pathname !== "/espace/mot-de-passe")) {
@@ -35,7 +36,7 @@ export default function EspaceLayout({ children }: { children: React.ReactNode }
   // Rubriques selon le rôle : École pour élèves et enseignants, Hôtel pour le personnel, correspondance et carte pour les familles
   const role = user?.role;
   const nav = [
-    { href: "/espace", label: "Mon espace", icon: Home, show: role !== "candidat" },
+    { href: "/espace", label: role === "candidat" ? "Ma pré-inscription" : "Mon espace", icon: Home, show: true },
     { href: "/espace/ecole", label: "Espace École", icon: GraduationCap, show: ["eleve", "professeur", "directeur_pedagogique", "directeur_general"].includes(role ?? "") },
     { href: "/espace/hotel", label: "Espace Hôtel", icon: BedDouble, show: ["personnel", "responsable_hotel", "directeur_general"].includes(role ?? "") },
     { href: "/espace/reservations", label: "Mes réservations", icon: BedDouble, show: role === "client" || role === "candidat" },

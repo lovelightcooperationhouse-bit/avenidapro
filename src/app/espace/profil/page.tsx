@@ -64,6 +64,23 @@ export default function ProfilePage() {
       setPhoto(a.photo);
       setDocs(a.documents ?? []);
     } else {
+      // Pré-inscription déjà déposée sur le site avec cette adresse : le dossier élève en reprend les informations
+      const { data: pre } = await supabase.from("applications").select("*").ilike("email", user.email).neq("status", "refusee").order("created_at", { ascending: false }).limit(1).maybeSingle();
+      if (pre) {
+        setKind("eleve");
+        setDepartment("ecole");
+        setData({
+          first_name: pre.first_name, last_name: pre.last_name, phone: pre.phone, gender: pre.gender ?? "", birth_date: pre.birth_date ?? "", birth_place: pre.birth_place ?? "",
+          nationality: pre.nationality ?? "", neighborhood: pre.neighborhood ?? "", program_code: pre.program_code, specialty: pre.specialty, intake: pre.intake,
+          schedule: pre.schedule === "soir" ? "Cours du soir" : "Cours du jour", boarding: pre.boarding ? "interne" : "externe",
+          previous_school: pre.previous_school ?? "", last_class: pre.last_class ?? "", last_diploma: pre.last_diploma ?? "",
+          tutor_name: pre.guardian_name ?? "", tutor_phone: pre.guardian_phone ?? "", tutor_relation: pre.guardian_relation ?? "",
+          emergency_name: pre.emergency_name ?? "", emergency_phone: pre.emergency_phone ?? "",
+        });
+        setPhoto(prof?.avatar_url?.startsWith("data:") ? prof.avatar_url : null);
+        setLoaded(true);
+        return;
+      }
       setData({ first_name: prof?.first_name ?? "", last_name: prof?.last_name ?? "", phone: prof?.phone ?? "" });
       setPhoto(prof?.avatar_url?.startsWith("data:") ? prof.avatar_url : null);
       // Rôle déjà attribué par la direction : statut pré-sélectionné
@@ -147,7 +164,14 @@ export default function ProfilePage() {
       .eq("id", user.id);
     setBusy(false);
     if (error) return setMsg({ ok: false, text: "Enregistrement impossible : " + error.message });
-    setMsg({ ok: true, text: submit ? "Dossier envoyé ! L'administration l'examine et vous serez prévenu(e) dans votre espace." : "Brouillon enregistré." });
+    setMsg({
+      ok: true,
+      text: submit
+        ? kind === "eleve"
+          ? "Pré-inscription envoyée ! Votre dossier figure dans la liste des pré-inscrits de l'école. Dès sa validation, vous recevrez votre fiche d'inscription et votre matricule."
+          : "Dossier envoyé ! L'administration l'examine et vous serez prévenu(e) dans votre espace."
+        : "Brouillon enregistré.",
+    });
     refresh();
     load();
   };
@@ -209,6 +233,13 @@ export default function ProfilePage() {
             </button>
           ))}
         </div>
+
+        {kind === "eleve" && (
+          <p className="mt-4 rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-900 ring-1 ring-emerald-200">
+            <strong>Ce dossier est votre pré-inscription.</strong> Une fois envoyé, il apparaît dans la liste des pré-inscrits de l&apos;école. Dès que l&apos;école valide votre
+            inscription, vous recevez votre fiche d&apos;inscription, votre matricule et votre espace élève.
+          </p>
+        )}
 
         {kind === "personnel" && (
           <div className="mt-4 flex flex-wrap gap-2" role="radiogroup" aria-label="Lieu de travail">

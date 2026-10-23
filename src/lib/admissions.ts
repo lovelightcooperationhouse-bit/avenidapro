@@ -45,6 +45,7 @@ export type Application = {
   guardian_phone: string | null;
   guardian_email: string | null;
   student_id: string | null;
+  member_application_id?: string | null;
   guardian_relation: string | null;
   guardian_profession: string | null;
   message: string | null;
