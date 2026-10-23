@@ -3,7 +3,7 @@
 import { CheckCircle2, Clock, CreditCard, Loader2, Smartphone, XCircle } from "lucide-react";
 import Link from "next/link";
 import QRCode from "qrcode";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { DocumentToolbar } from "@/components/cards/DocumentToolbar";
 import { siteConfig } from "@/content/site";
 import { createClient } from "@/lib/supabase/client";
@@ -40,6 +40,32 @@ type Receipt = {
   message: string | null;
   payments: { date: string; amount: number; method: string; ref: string | null }[];
 };
+
+type KkiapayGlobals = {
+  openKkiapayWidget?: (o: Record<string, unknown>) => void;
+  addSuccessListener?: (cb: (r: { transactionId?: string }) => void) => void;
+  addFailedListener?: (cb: (e: unknown) => void) => void;
+};
+
+/** Charge le script KkiaPay puis ouvre sa fenêtre de paiement ; `onSuccess` reçoit l'identifiant de transaction. */
+function openKkiapay(options: Record<string, unknown>, onSuccess: (transactionId: string) => void) {
+  return new Promise<void>((resolve, reject) => {
+    const w = window as unknown as KkiapayGlobals;
+    const open = () => {
+      if (!w.openKkiapayWidget) return reject(new Error("KkiaPay indisponible"));
+      w.addSuccessListener?.((resp) => resp.transactionId && onSuccess(resp.transactionId));
+      w.openKkiapayWidget(options);
+      resolve();
+    };
+    if (w.openKkiapayWidget) return open();
+    const s = document.createElement("script");
+    s.src = "https://cdn.kkiapay.me/k.js";
+    s.async = true;
+    s.onload = open;
+    s.onerror = () => reject(new Error("KkiaPay indisponible"));
+    document.body.appendChild(s);
+  });
+}
 
 const F = (n: number) => `${new Intl.NumberFormat("fr-FR").format(n).replace(/[  ]/g, " ")} F CFA`;
 const d = (s: string | null) => (s ? new Date(s.length === 10 ? `${s}T12:00:00` : s).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" }) : "—");
@@ -81,15 +107,42 @@ export function BookingReceipt({ token, methods }: { token: string; methods: Rec
     }
   }, [token]);
 
-  const pay = async (method: "carte" | "yas" | "moov") => {
-    setBusy(method);
-    setError("");
-    const res = await fetch("/api/reservations/payer", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token, method }) }).catch(() => null);
-    const j = res ? ((await res.json().catch(() => ({}))) as { url?: string; error?: string }) : { error: "Connexion impossible." };
-    if (j.url) return void (window.location.href = j.url);
-    setBusy("");
-    setError(j.error ?? "Paiement impossible.");
-  };
+  const pay = useCallback(
+    async (method: "carte" | "yas" | "moov") => {
+      setBusy(method);
+      setError("");
+      const res = await fetch("/api/reservations/payer", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token, method }) }).catch(() => null);
+      const j = res ? ((await res.json().catch(() => ({}))) as { url?: string; error?: string; widget?: Record<string, unknown>; identifier?: string }) : { error: "Connexion impossible." };
+      if (j.url) return void (window.location.href = j.url);
+      if (j.widget && j.identifier) {
+        // Fenêtre de paiement KkiaPay (Mobile Money ou carte), puis vérification côté serveur
+        try {
+          await openKkiapay(j.widget, async (transactionId) => {
+            setNotice("Paiement reçu : vérification auprès de KkiaPay…");
+            const r = await fetch("/api/reservations/kkiapay", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ identifier: j.identifier, transactionId }) }).catch(() => null);
+            const v = r ? ((await r.json().catch(() => ({}))) as { ok?: boolean; pending?: boolean }) : {};
+            window.location.href = `/reservation/${token}?paiement=${v.ok ? "ok" : v.pending ? "en_cours" : "echec"}`;
+          });
+        } catch {
+          setError("La fenêtre de paiement n'a pas pu s'ouvrir. Vérifiez votre connexion et réessayez.");
+        }
+        setBusy("");
+        return;
+      }
+      setBusy("");
+      setError(j.error ?? "Paiement impossible.");
+    },
+    [token],
+  );
+
+  // Arrivée depuis la réservation avec « payer maintenant » : la fenêtre de paiement s'ouvre d'elle-même
+  const autoPay = useRef(false);
+  useEffect(() => {
+    const m = new URLSearchParams(window.location.search).get("payer");
+    if (!r || autoPay.current || r.payment_status === "payé" || r.status === "annulée" || (m !== "carte" && m !== "yas" && m !== "moov")) return;
+    autoPay.current = true;
+    pay(m);
+  }, [r, pay]);
 
   if (r === undefined) return <div className="flex min-h-dvh items-center justify-center"><Loader2 aria-label="Chargement" className="size-8 animate-spin text-avenida-blue" /></div>;
   if (!r) return <p className="mx-auto mt-20 max-w-md rounded-2xl bg-amber-50 p-6 text-center text-amber-900">Réservation introuvable. Vérifiez le lien reçu par e-mail.</p>;

@@ -2,6 +2,9 @@ import { createClient as createAdmin, type SupabaseClient } from "@supabase/supa
 
 /**
  * Paiement en ligne des réservations de l'hôtel.
+ *   Carte bancaire : Stripe Checkout (STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET) en priorité
+ *   Mobile Money Togo (Yas, Moov) : KkiaPay (KKIAPAY_PUBLIC_KEY, KKIAPAY_PRIVATE_KEY, KKIAPAY_SECRET_KEY, KKIAPAY_SANDBOX=oui pour les essais),
+ *   dans une fenêtre de paiement sur le site, puis vérification serveur ; KkiaPay prend aussi la carte si Stripe n'est pas configuré.
  *   Prestataire principal : CinetPay, API v1 (CINETPAY_API_KEY, CINETPAY_API_PASSWORD) — Mixx by Yas (TMONEY_TG), Moov Money (MOOV_TG),
  *   et la carte bancaire si CinetPay l'a activée sur le compte (CINETPAY_CARTE=oui)
  *   À défaut : Stripe pour la carte (STRIPE_SECRET_KEY), PayGate Global pour Yas et Moov (PAYGATE_AUTH_TOKEN)
@@ -46,10 +49,16 @@ async function cinetpayCall(method: "GET" | "POST", path: string, body?: unknown
   return { status: "INVALID_TOKEN", description: "jeton CinetPay refusé" };
 }
 
+const kkiapay = () => !!process.env.KKIAPAY_PUBLIC_KEY && !!process.env.KKIAPAY_PRIVATE_KEY && !!process.env.KKIAPAY_SECRET_KEY;
+const kkiapaySandbox = () => /^(oui|1|true)$/i.test(process.env.KKIAPAY_SANDBOX ?? "");
+
+/** Paramètres de la fenêtre de paiement KkiaPay ouverte sur la page du reçu. */
+export type KkiapayWidget = { amount: number; key: string; sandbox: boolean; partnerId: string; paymentmethod: string[]; countries: string[]; phone?: string; name: string; email?: string; reason: string; theme: string; position: string };
+
 export const onlineMethods = (): Record<OnlineMethod, boolean> => ({
-  carte: (cinetpay() && /^(oui|1|true)$/i.test(process.env.CINETPAY_CARTE ?? "")) || !!process.env.STRIPE_SECRET_KEY,
-  yas: cinetpay() || !!process.env.PAYGATE_AUTH_TOKEN,
-  moov: cinetpay() || !!process.env.PAYGATE_AUTH_TOKEN,
+  carte: kkiapay() || (cinetpay() && /^(oui|1|true)$/i.test(process.env.CINETPAY_CARTE ?? "")) || !!process.env.STRIPE_SECRET_KEY,
+  yas: kkiapay() || cinetpay() || !!process.env.PAYGATE_AUTH_TOKEN,
+  moov: kkiapay() || cinetpay() || !!process.env.PAYGATE_AUTH_TOKEN,
 });
 
 export function adminClient(): SupabaseClient | null {
@@ -61,7 +70,7 @@ export function adminClient(): SupabaseClient | null {
 type Reservation = { id: string; booking_ref: string; token: string; customer_name: string; room_type: string | null; room_number: string | null; customer_email: string | null; customer_phone: string | null; total_price: number; deposit_paid: number | null; status: string; hold_until: string | null; room_uuid: string | null; check_in: string; check_out: string };
 
 /** Démarre un paiement en ligne et renvoie l'adresse de la page de paiement du prestataire. */
-export async function startPayment(token: string, method: OnlineMethod, origin: string): Promise<{ url: string } | { error: string }> {
+export async function startPayment(token: string, method: OnlineMethod, origin: string): Promise<{ url: string } | { widget: KkiapayWidget; identifier: string } | { error: string }> {
   const admin = adminClient();
   if (!admin) return { error: "Paiement en ligne indisponible (configuration du serveur)." };
   if (!onlineMethods()[method]) return { error: "Ce moyen de paiement n'est pas encore activé. Choisissez le paiement à l'arrivée ou un autre moyen." };
@@ -83,13 +92,35 @@ export async function startPayment(token: string, method: OnlineMethod, origin: 
 
   // Identifiant unique par tentative (30 caractères au plus, sans caractères spéciaux)
   const identifier = `${v.booking_ref.replace(/[^A-Z0-9]/gi, "")}T${Date.now().toString(36).toUpperCase()}`;
-  const provider = cinetpay() && (method !== "carte" || !process.env.STRIPE_SECRET_KEY) ? "cinetpay" : method === "carte" ? "stripe" : "paygate";
+  // Carte : Stripe s'il est configuré ; Mobile Money (Yas, Moov) : KkiaPay, sinon CinetPay ou PayGate
+  const provider = method === "carte" && process.env.STRIPE_SECRET_KEY ? "stripe" : kkiapay() ? "kkiapay" : cinetpay() ? "cinetpay" : method === "carte" ? "stripe" : "paygate";
   const amount = due;
   if (provider === "cinetpay" && (amount < 100 || amount > 2_500_000)) return { error: "Montant hors des limites du paiement en ligne (100 à 2 500 000 F) : réglez à la réception." };
   const { error: insErr } = await admin.from("reservation_payments").insert({ reservation_id: v.id, provider, method, amount, identifier, status: "en_cours" });
   if (insErr) return { error: insErr.message };
   const back = `${origin}/api/reservations/retour?id=${encodeURIComponent(identifier)}`;
   const label = `Réservation ${v.booking_ref} · ${v.room_type ?? "Chambre"} ${v.room_number ?? ""}`.trim();
+
+  if (provider === "kkiapay") {
+    const phone = (v.customer_phone ?? "").replace(/\D/g, "").replace(/^228/, "");
+    return {
+      identifier,
+      widget: {
+        amount,
+        key: process.env.KKIAPAY_PUBLIC_KEY!,
+        sandbox: kkiapaySandbox(),
+        partnerId: identifier,
+        paymentmethod: method === "carte" ? ["card"] : ["momo"],
+        countries: ["TG"],
+        ...(phone.length === 8 ? { phone: `228${phone}` } : {}),
+        name: v.customer_name,
+        ...(v.customer_email ? { email: v.customer_email } : {}),
+        reason: label,
+        theme: "#0C356A",
+        position: "center",
+      },
+    };
+  }
 
   if (provider === "cinetpay") {
     const words = (v.customer_name || "Client Avenida").trim().split(/\s+/);
@@ -173,7 +204,30 @@ export async function verifyPayment(identifier: string): Promise<{ ok: boolean; 
   let paid = false;
   let ref: string | null = null;
   let details: unknown = null;
-  if (pay.provider === "cinetpay") {
+  if (pay.provider === "kkiapay") {
+    if (!pay.provider_ref) return { ok: false, token, pending: true };
+    const res = await fetch(`${kkiapaySandbox() ? "https://api-sandbox.kkiapay.me" : "https://api.kkiapay.me"}/api/v1/transactions/status`, {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "x-api-key": process.env.KKIAPAY_PUBLIC_KEY!,
+        "x-private-key": process.env.KKIAPAY_PRIVATE_KEY!,
+        "x-secret-key": process.env.KKIAPAY_SECRET_KEY!,
+      },
+      body: JSON.stringify({ transactionId: pay.provider_ref }),
+    }).catch(() => null);
+    const st = res ? ((await res.json().catch(() => ({}))) as Record<string, unknown>) : {};
+    const status = String(st.status ?? "");
+    const partner = (st.partnerId ?? (st.state as Record<string, unknown> | undefined)?.partnerId) as string | undefined;
+    // Une transaction KkiaPay ne peut solder qu'un seul paiement, du bon montant
+    const { count: reused } = await admin.from("reservation_payments").select("id", { count: "exact", head: true }).eq("provider_ref", pay.provider_ref).eq("status", "reussi").neq("id", pay.id);
+    paid = status === "SUCCESS" && Number(st.amount ?? 0) >= Number(pay.amount) && !reused && (!partner || partner === identifier);
+    ref = pay.provider_ref;
+    details = st;
+    if (status === "FAILED") await admin.from("reservation_payments").update({ status: "echoue", raw: st }).eq("id", pay.id);
+    if (!paid) return { ok: false, token, pending: status === "PENDING" || status === "" };
+  } else if (pay.provider === "cinetpay") {
     const st = await cinetpayCall("GET", `/v1/payment/${encodeURIComponent(identifier)}`);
     const status = String(st.status ?? "");
     paid = status === "SUCCESS" && (st.merchant_transaction_id === undefined || st.merchant_transaction_id === identifier);
@@ -248,4 +302,12 @@ export async function sendBookingEmail(to: string | null, name: string, subject:
     body: JSON.stringify({ from: process.env.NOTIFY_FROM_EMAIL || "Hôtel École Avenida <onboarding@resend.dev>", to: [to], subject, html }),
   }).catch(() => null);
   return !!res?.ok;
+}
+
+/** Fenêtre KkiaPay terminée côté client : on note la transaction puis on la vérifie auprès de KkiaPay. */
+export async function confirmKkiapay(identifier: string, transactionId: string) {
+  const admin = adminClient();
+  if (!admin || !identifier || !transactionId) return { ok: false, error: "Demande invalide" };
+  await admin.from("reservation_payments").update({ provider_ref: transactionId }).eq("identifier", identifier).eq("provider", "kkiapay").eq("status", "en_cours").is("provider_ref", null);
+  return verifyPayment(identifier);
 }
