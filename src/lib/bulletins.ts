@@ -75,7 +75,17 @@ export const SANCTIONS = [
 export type SanctionKey = (typeof SANCTIONS)[number]["key"];
 
 /** Données propres à chaque bulletin, saisies par la direction et conservées lors des recalculs. */
-export type BulletinExtras = { distinction?: string; distinctionAuto?: boolean; sanctions?: Partial<Record<SanctionKey, boolean>>; remark?: string };
+export type BulletinExtras = { distinction?: string; distinctionAuto?: boolean; sanctions?: Partial<Record<SanctionKey, boolean>>; remark?: string; conduct?: string };
+
+/** Appréciation de l'assiduité selon les absences non justifiées et les retards du semestre. */
+export const assiduite = (unjustified: number, lates: number) =>
+  unjustified === 0 && lates <= 2 ? "Très assidu(e)" : unjustified <= 2 && lates <= 5 ? "Assidu(e)" : unjustified <= 5 ? "Irrégulier(ère)" : "Absentéisme préoccupant";
+
+/** Conduite proposée (modifiable) : sanctions de conduite, absences non justifiées et retards. */
+export const conductFor = (extras: BulletinExtras, unjustified: number, lates: number) =>
+  extras.sanctions?.blame_conduite ? "Mauvaise" : extras.sanctions?.avertissement_conduite ? "À améliorer" : unjustified > 3 || lates > 6 ? "Passable" : unjustified === 0 && lates <= 2 ? "Très bonne" : "Bonne";
+
+export const CONDUCTS = ["Très bonne", "Bonne", "Passable", "À améliorer", "Mauvaise"];
 
 /** Rang avec ex æquo : « 1er », « 2e », « 3e ex æquo ». */
 export function ranks(items: { id: string; average: number }[]) {

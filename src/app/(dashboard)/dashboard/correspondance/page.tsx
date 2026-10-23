@@ -1,8 +1,10 @@
 "use client";
 
-import { CheckCircle2, FileText, Inbox, Loader2, XCircle } from "lucide-react";
+import { CheckCircle2, FileText, Inbox, Loader2, Printer, XCircle } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { PERMISSION_STATUS, type PermissionRow } from "@/components/espace/AttendanceView";
+import { SLIP_KIND, SLIP_STATUS, type AccessSlip } from "@/components/cards/AccessSlipSheet";
 import { ArchiveButton } from "@/components/documents/ArchiveButton";
 import { DocumentViewer, type ViewableFile } from "@/components/documents/DocumentViewer";
 import { RollCall } from "@/components/espace/RollCall";
@@ -17,7 +19,7 @@ type Row = PermissionRow & { students: { first_name: string; last_name: string; 
 /** Fiche de correspondance côté administration : demandes de permission des parents et appel de toutes les classes. */
 export default function CorrespondanceAdminPage() {
   const { user } = useAuth();
-  const [tab, setTab] = useState<"permissions" | "appel" | "registre">("registre");
+  const [tab, setTab] = useState<"permissions" | "appel" | "registre" | "billets">("registre");
   const [rows, setRows] = useState<Row[] | null>(null);
   const [classes, setClasses] = useState<string[]>([]);
   const [responses, setResponses] = useState<Record<string, string>>({});
@@ -60,7 +62,10 @@ export default function CorrespondanceAdminPage() {
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-2xl font-black text-[#0C356A]">Fiche de correspondance</h1>
-        <p className="mt-1 text-sm text-slate-600">Permissions demandées par les parents, appel des classes et situation du jour. Les familles sont notifiées à chaque décision.</p>
+        <p className="mt-1 text-sm text-slate-600">
+          Permissions, appel des classes et registre. Une permission accordée ou une absence justifiée délivre automatiquement un billet d&apos;admission en classe (avec QR code), envoyé à
+          la famille et à présenter au professeur. Les absences non justifiées restent signalées jusqu&apos;à leur justification.
+        </p>
       </div>
 
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -82,6 +87,7 @@ export default function CorrespondanceAdminPage() {
           { key: "permissions" as const, label: `Demandes de permission${pending ? ` (${pending})` : ""}` },
           { key: "appel" as const, label: "Appel des classes" },
           { key: "registre" as const, label: "Registre : absences, retards, permissions" },
+          { key: "billets" as const, label: "Billets d'admission en classe" },
         ].map((t) => (
           <button key={t.key} type="button" onClick={() => setTab(t.key)} className={cn("rounded-xl px-4 py-2.5 text-sm font-bold ring-1", tab === t.key ? "bg-[#0C356A] text-white ring-[#0C356A]" : "bg-white text-slate-600 ring-slate-200")}>
             {t.label}
@@ -91,6 +97,7 @@ export default function CorrespondanceAdminPage() {
 
       {tab === "appel" && user && <RollCall classes={classes} recorderId={user.id} />}
       {tab === "registre" && <Registre classes={classes} />}
+      {tab === "billets" && <Billets />}
 
       {tab === "permissions" &&
         (!rows ? (
@@ -167,7 +174,7 @@ export default function CorrespondanceAdminPage() {
   );
 }
 
-type Entry = { id: string; date: string; status: string; note: string | null; student_id: string; students: { first_name: string; last_name: string; class_name: string | null; registration_number: string | null } | null };
+type Entry = { id: string; date: string; status: string; note: string | null; justified: boolean; justification: string | null; student_id: string; students: { first_name: string; last_name: string; class_name: string | null; registration_number: string | null } | null };
 
 /** Registre de correspondance : toutes les absences, retards et permissions, filtrables et imprimables. */
 function Registre({ classes }: { classes: string[] }) {
@@ -176,19 +183,20 @@ function Registre({ classes }: { classes: string[] }) {
   const [kind, setKind] = useState("");
   const [from, setFrom] = useState(() => new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10));
   const [to, setTo] = useState(() => new Date().toISOString().slice(0, 10));
+  const [refresh, setRefresh] = useState(0);
 
   useEffect(() => {
     setRows(null);
     let query = createClient()
       .from("student_attendance")
-      .select("id, date, status, note, student_id, students(first_name, last_name, class_name, registration_number)")
+      .select("id, date, status, note, justified, justification, student_id, students(first_name, last_name, class_name, registration_number)")
       .neq("status", "present")
       .gte("date", from)
       .lte("date", to)
       .order("date", { ascending: false });
     if (kind) query = query.eq("status", kind);
     query.then(({ data }) => setRows(((data ?? []) as unknown as Entry[]).filter((r) => !cls || r.students?.class_name === cls)));
-  }, [cls, kind, from, to]);
+  }, [cls, kind, from, to, refresh]);
 
   const label: Record<string, string> = { absent: "Absence", retard: "Retard", permission: "Permission" };
   const tone: Record<string, string> = { absent: "bg-red-100 text-[#B8000F]", retard: "bg-amber-100 text-amber-800", permission: "bg-sky-100 text-sky-800" };
@@ -245,6 +253,7 @@ function Registre({ classes }: { classes: string[] }) {
                 <th className="px-3 py-2">Classe</th>
                 <th className="px-3 py-2">Type</th>
                 <th className="px-3 py-2">Motif / observation</th>
+                <th className="px-3 py-2 print:hidden">Justification</th>
               </tr>
             </thead>
             <tbody>
@@ -260,6 +269,118 @@ function Registre({ classes }: { classes: string[] }) {
                     <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-bold", tone[r.status])}>{label[r.status] ?? r.status}</span>
                   </td>
                   <td className="px-3 py-2 text-slate-600">{r.note}</td>
+                  <td className="px-3 py-2 print:hidden">
+                    {r.status === "permission" || r.justified ? (
+                      <span className="text-xs font-bold text-emerald-700">✓ Justifiée{r.justification ? ` : ${r.justification}` : ""}</span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const reason = window.prompt("Justification vérifiée (justificatif, appel du parent, certificat…) :");
+                          if (!reason?.trim()) return;
+                          const { data, error } = await createClient().rpc("justify_attendance", { att: r.id, reason });
+                          if (error) return window.alert(error.message);
+                          pingNotifications();
+                          window.open(`/impression/billet/${data}`, "_blank");
+                          setRefresh((n) => n + 1);
+                        }}
+                        className="rounded-full bg-[#E30613] px-3 py-1 text-xs font-bold whitespace-nowrap text-white"
+                      >
+                        Non justifiée · justifier et délivrer le billet
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+type SlipRow = AccessSlip & { students: { first_name: string; last_name: string; class_name: string | null; registration_number: string | null } | null };
+
+/** Billets d'admission en classe : délivrés, présentés au professeur, annulés. */
+function Billets() {
+  const [rows, setRows] = useState<SlipRow[] | null>(null);
+  const [filter, setFilter] = useState<"valide" | "tous">("valide");
+  const load = useCallback(async () => {
+    let q = createClient().from("class_access_slips").select("*, students(first_name, last_name, class_name, registration_number)").order("issued_at", { ascending: false }).limit(300);
+    if (filter === "valide") q = q.eq("status", "valide");
+    const { data } = await q;
+    setRows((data ?? []) as SlipRow[]);
+  }, [filter]);
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const act = async (r: SlipRow, kind: "presente" | "annule") => {
+    if (kind === "annule" && !window.confirm(`Annuler le billet ${r.number} ?`)) return;
+    const { error } = kind === "presente" ? await createClient().rpc("present_access_slip", { slip: r.id }) : await createClient().from("class_access_slips").update({ status: "annule" }).eq("id", r.id);
+    if (error) window.alert(error.message);
+    load();
+  };
+
+  return (
+    <section className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-5">
+      <div className="flex gap-1 self-start rounded-xl bg-slate-100 p-1">
+        {(["valide", "tous"] as const).map((f) => (
+          <button key={f} type="button" onClick={() => setFilter(f)} className={cn("rounded-lg px-4 py-2 text-sm font-bold", filter === f ? "bg-white text-[#0C356A] shadow-sm" : "text-slate-500")}>
+            {f === "valide" ? "À présenter" : "Tous les billets"}
+          </button>
+        ))}
+      </div>
+      {!rows ? (
+        <Loader2 aria-label="Chargement" className="size-5 animate-spin" />
+      ) : rows.length === 0 ? (
+        <p className="text-sm text-slate-500">Aucun billet. Ils sont délivrés automatiquement quand une permission est accordée, ou depuis le registre en justifiant une absence ou un retard.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[48rem] text-sm">
+            <thead className="bg-slate-50 text-left text-xs text-slate-500 uppercase">
+              <tr>
+                <th className="px-3 py-2">N°</th>
+                <th className="px-3 py-2">Élève</th>
+                <th className="px-3 py-2">Motif</th>
+                <th className="px-3 py-2">Retour en classe</th>
+                <th className="px-3 py-2">État</th>
+                <th className="px-3 py-2" />
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.id} className="border-t border-slate-100">
+                  <td className="px-3 py-2 font-mono text-xs font-bold text-[#E30613]">{r.number}</td>
+                  <td className="px-3 py-2">
+                    <span className="font-semibold">
+                      {r.students?.last_name?.toUpperCase()} {r.students?.first_name}
+                    </span>
+                    <span className="block text-xs text-slate-500">{r.students?.class_name}</span>
+                  </td>
+                  <td className="px-3 py-2">{SLIP_KIND[r.kind]}</td>
+                  <td className="px-3 py-2">{new Date(`${r.return_date}T12:00:00`).toLocaleDateString("fr-FR")}</td>
+                  <td className="px-3 py-2">
+                    <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-bold whitespace-nowrap", SLIP_STATUS[r.status].tone)}>{SLIP_STATUS[r.status].label}</span>
+                  </td>
+                  <td className="px-3 py-2">
+                    <div className="flex justify-end gap-1">
+                      <Link href={`/impression/billet/${r.id}`} target="_blank" className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-bold text-[#0C356A] ring-1 ring-slate-200 hover:text-[#E30613]">
+                        <Printer aria-hidden className="size-3.5" /> Billet
+                      </Link>
+                      {r.status === "valide" && (
+                        <>
+                          <button type="button" onClick={() => act(r, "presente")} className="rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white">
+                            Présenté en classe
+                          </button>
+                          <button type="button" onClick={() => act(r, "annule")} className="rounded-full px-3 py-1.5 text-xs font-bold text-red-600 ring-1 ring-red-200">
+                            Annuler
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>

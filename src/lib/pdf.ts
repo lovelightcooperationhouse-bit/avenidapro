@@ -1,7 +1,24 @@
+/**
+ * Capture d'un élément en image (PDF et JPEG).
+ * html2canvas mesure la ligne de base du texte dans la page elle-même avec une petite image de test ;
+ * les styles de base du site affichent les images en « block », ce qui fausse la mesure et décale
+ * le texte vers le bas dans les bandeaux et les cadres. On rétablit l'image de mesure le temps de la capture.
+ */
+async function capture(el: HTMLElement) {
+  const { default: html2canvas } = await import("html2canvas");
+  const fix = document.createElement("style");
+  fix.textContent = 'body > div[style*="visibility: hidden"] > img { display: inline !important; }';
+  document.head.appendChild(fix);
+  try {
+    return await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: "#ffffff", windowWidth: el.scrollWidth });
+  } finally {
+    fix.remove();
+  }
+}
+
 /** Capture un élément de la page en image JPEG haute définition. */
 export async function elementToJpeg(el: HTMLElement) {
-  const { default: html2canvas } = await import("html2canvas");
-  const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: "#ffffff", windowWidth: el.scrollWidth });
+  const canvas = await capture(el);
   return new Promise<Blob>((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Capture impossible"))), "image/jpeg", 0.92));
 }
 
@@ -10,8 +27,7 @@ export async function elementToJpeg(el: HTMLElement) {
  * Les bibliothèques ne sont chargées qu'au moment de l'export.
  */
 export async function elementToPdf(el: HTMLElement) {
-  const [{ default: html2canvas }, { jsPDF }] = await Promise.all([import("html2canvas"), import("jspdf")]);
-  const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: "#ffffff", windowWidth: el.scrollWidth });
+  const [canvas, { jsPDF }] = await Promise.all([capture(el), import("jspdf")]);
   const pdf = new jsPDF({ unit: "mm", format: "a4", orientation: "portrait", compress: true });
   const pageW = 210;
   const pageH = 297;

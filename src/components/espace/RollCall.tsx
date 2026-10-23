@@ -19,6 +19,7 @@ export function RollCall({ classes, recorderId }: { classes: string[]; recorderI
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [students, setStudents] = useState<Student[]>([]);
   const [marks, setMarks] = useState<Record<string, Mark>>({});
+  const [flags, setFlags] = useState<Record<string, { unjustified: string[]; slips: string[] }>>({});
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState("");
 
@@ -39,6 +40,18 @@ export function RollCall({ classes, recorderId }: { classes: string[]; recorderI
     (a ?? []).forEach((r) => (m[r.student_id] = { status: r.status, note: r.note ?? "" }));
     setMarks(m);
     setSaved("");
+    // Avant l'entrée en classe : absences non justifiées et billets d'admission à présenter
+    if (list.length) {
+      const ids = list.map((x) => x.id);
+      const [{ data: unj }, { data: sl }] = await Promise.all([
+        supabase.from("student_attendance").select("student_id, date").in("student_id", ids).eq("status", "absent").eq("justified", false).lt("date", date),
+        supabase.from("class_access_slips").select("student_id, number").in("student_id", ids).eq("status", "valide"),
+      ]);
+      const f: Record<string, { unjustified: string[]; slips: string[] }> = {};
+      (unj ?? []).forEach((r) => ((f[r.student_id] ??= { unjustified: [], slips: [] }).unjustified.push(r.date)));
+      (sl ?? []).forEach((r) => ((f[r.student_id] ??= { unjustified: [], slips: [] }).slips.push(r.number)));
+      setFlags(f);
+    } else setFlags({});
   }, [cls, date]);
 
   useEffect(() => {
@@ -87,6 +100,12 @@ export function RollCall({ classes, recorderId }: { classes: string[]; recorderI
                     {s.last_name.toUpperCase()} {s.first_name}
                   </span>
                   <span className="text-xs text-slate-500">{s.registration_number}</span>
+                  {flags[s.id]?.unjustified.length ? (
+                    <span className="mt-1 block text-xs font-bold text-[#B8000F]">
+                      ⚠ Absence non justifiée ({flags[s.id].unjustified.map((d) => new Date(`${d}T12:00:00`).toLocaleDateString("fr-FR")).join(", ")}) : billet d&apos;admission exigé
+                    </span>
+                  ) : null}
+                  {flags[s.id]?.slips.length ? <span className="mt-1 block text-xs font-bold text-emerald-700">Billet n° {flags[s.id].slips.join(", ")} à présenter</span> : null}
                 </span>
                 <span className="flex gap-1" role="radiogroup" aria-label={`Présence de ${s.first_name}`}>
                   {(["present", "absent", "retard"] as const).map((st) => (

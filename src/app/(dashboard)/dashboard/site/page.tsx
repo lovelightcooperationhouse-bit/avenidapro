@@ -1,10 +1,11 @@
 "use client";
 
-import { BarChart3, ExternalLink, Globe, IdCard, Images, LayoutTemplate, Loader2, Mail, Menu, Newspaper, Palette, PanelTop, Phone, Rows3 } from "lucide-react";
+import { BarChart3, ExternalLink, Globe, IdCard, Images, LayoutTemplate, PanelBottom, PanelsTopLeft, Loader2, Mail, Menu, Newspaper, Palette, PanelTop, Phone, Rows3 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { CardsEditor, ImagesEditor } from "@/components/cms/ImagesCardsEditor";
+import { FooterEditor, PageHeadersEditor } from "@/components/cms/PagesFooterEditor";
 import { MenuEditor } from "@/components/cms/MenuEditor";
 import { PostsEditor } from "@/components/cms/PostsEditor";
 import { SectionsEditor } from "@/components/cms/SectionsEditor";
@@ -20,6 +21,8 @@ const SITE_TABS = [
   { key: "menus", label: "Menus", icon: Menu, hint: "Menus et sous-menus" },
   { key: "pages", label: "Pages et sections", icon: LayoutTemplate, hint: "Nouvelles pages, sections, images" },
   { key: "accueil", label: "Sections de l'accueil", icon: Rows3, hint: "Afficher ou masquer" },
+  { key: "entetes", label: "En-têtes des pages", icon: PanelsTopLeft, hint: "Titre, texte et photo du bandeau de chaque page" },
+  { key: "pied", label: "Pied de page", icon: PanelBottom, hint: "Présentation, citation, colonnes de liens" },
   { key: "images", label: "Images du site", icon: Images, hint: "Façades, chambres, restaurant, élèves en action" },
   { key: "entete", label: "Diaporama et bandeau", icon: PanelTop, hint: "Héros, annonce du haut" },
   { key: "coordonnees", label: "Coordonnées et réseaux", icon: Phone, hint: "Pied de page, localisation, WhatsApp, TikTok" },
@@ -44,10 +47,10 @@ function SiteAdmin() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="flex items-center gap-2 text-xs font-bold tracking-widest text-[#E30613] uppercase">
-            <Globe aria-hidden className="size-4" /> Site web
+            <Globe aria-hidden className="size-4" /> Gestion globale du site
           </p>
           <h1 className="text-2xl font-black text-[#0C356A]">{current.label}</h1>
-          <p className="mt-1 text-sm text-slate-600">{current.hint}. Chaque enregistrement est publié immédiatement sur le site.</p>
+          <p className="mt-1 text-sm text-slate-600">{current.hint}. Modifiez puis « Enregistrer et publier » : le changement prend effet immédiatement sur le site.</p>
         </div>
         <a href="/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-bold text-[#0C356A] ring-1 ring-slate-200 hover:text-[#E30613]">
           <ExternalLink aria-hidden className="size-4" /> Voir le site
@@ -77,6 +80,8 @@ function SiteAdmin() {
       {tab === "couleurs" && <ThemeEditor />}
       {tab === "abonnes" && <SubscribersList />}
       {tab === "images" && <ImagesEditor />}
+      {tab === "entetes" && <PageHeadersEditor />}
+      {tab === "pied" && <FooterEditor />}
       {tab === "cartes" && <CardsEditor />}
     </div>
   );

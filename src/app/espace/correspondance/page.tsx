@@ -2,6 +2,7 @@
 
 import { Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { AccessSlipList } from "@/components/cards/AccessSlipSheet";
 import { AttendanceView } from "@/components/espace/AttendanceView";
 import { PermissionForm } from "@/components/espace/PermissionForm";
 import { RollCall } from "@/components/espace/RollCall";
@@ -65,7 +66,12 @@ export default function CorrespondancePage() {
       {user.role === "professeur" && <RollCall classes={classes} recorderId={user.id} />}
 
       {user.role === "eleve" &&
-        (user.studentId ? <AttendanceView studentId={user.studentId} /> : <p className="rounded-3xl bg-amber-50 p-6 text-amber-900">Votre compte n&apos;est pas encore rattaché à votre dossier.</p>)}
+        (user.studentId ? (
+          <div className="flex flex-col gap-6">
+            <AccessSlipList studentId={user.studentId} linkBase="/espace/billet" />
+            <AttendanceView studentId={user.studentId} />
+          </div>
+        ) : <p className="rounded-3xl bg-amber-50 p-6 text-amber-900">Votre compte n&apos;est pas encore rattaché à votre dossier.</p>)}
 
       {user.role === "parent" &&
         (children === null ? (
@@ -94,6 +100,7 @@ export default function CorrespondancePage() {
             </div>
             {active && (
               <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+                <AccessSlipList key={`${active}-${refresh}`} studentId={active} linkBase="/espace/billet" />
                 <AttendanceView studentId={active} refreshKey={refresh} />
                 <PermissionForm studentId={active} parentId={user.id} onSent={() => setRefresh((r) => r + 1)} />
               </div>

@@ -30,6 +30,7 @@ export default async function HotelPage() {
   return (
     <>
       <PageHeader
+        pageKey="hotel"
         eyebrow="L'Hôtel"
         title={
           <>

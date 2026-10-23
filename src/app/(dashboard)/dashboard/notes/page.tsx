@@ -8,7 +8,7 @@ import { situationStatus } from "@/components/cards/SituationSheet";
 import { reglementSignataire } from "@/content/reglement";
 import { useAuth } from "@/context/AuthContext";
 import { useSchoolYear } from "@/context/SchoolYearContext";
-import { GROUPS, MARK_CLASS, MARK_COMPO, SANCTIONS, SEMESTERS, appreciation, maquetteFor, round2, type BulletinExtras, type BulletinStudent, type GradeRow, type MaquetteSubject, type SubjectGroup } from "@/lib/bulletins";
+import { CONDUCTS, GROUPS, MARK_CLASS, MARK_COMPO, SANCTIONS, SEMESTERS, appreciation, maquetteFor, round2, type BulletinExtras, type BulletinStudent, type GradeRow, type MaquetteSubject, type SubjectGroup } from "@/lib/bulletins";
 import { loadClass, recalcClass, saveMarks } from "@/lib/bulletins-sync";
 import { pingNotifications } from "@/lib/notify";
 import { submitToDG } from "@/lib/validations";
@@ -101,6 +101,7 @@ export default function NotesPage() {
             </select>
           </label>
           <p className="pb-2 text-sm font-semibold text-slate-600">Année {year}</p>
+          {(tab === "bulletins" || tab === "resultats") && classes.length > 0 && <PrepareAll classes={classes.map((c) => c.name)} semester={semester} year={year} />}
         </div>
       )}
 
@@ -115,6 +116,37 @@ export default function NotesPage() {
       ) : (
         <Bulletins key={`${cls}-${semester}-${year}`} cls={cls} semester={semester} year={year} />
       )}
+    </div>
+  );
+}
+
+/** Prépare (calcule) les bulletins de toutes les classes de toutes les filières pour le semestre, sans rien envoyer. */
+function PrepareAll({ classes, semester, year }: { classes: string[]; semester: number; year: string }) {
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const run = async () => {
+    setBusy(true);
+    let total = 0;
+    let without = 0;
+    for (const c of classes) {
+      setMsg(`Calcul : ${c}…`);
+      try {
+        const r = await recalcClass(c, semester, year);
+        total += r.count;
+        if (!r.count) without += 1;
+      } catch {
+        without += 1;
+      }
+    }
+    setBusy(false);
+    setMsg(`${total} bulletin(s) préparé(s) dans ${classes.length - without} classe(s)${without ? ` · ${without} classe(s) sans notes` : ""}. Rien n'est envoyé.`);
+  };
+  return (
+    <div className="flex flex-col gap-1 pb-1">
+      <button type="button" onClick={run} disabled={busy} className="inline-flex items-center gap-2 rounded-full bg-[#E30613] px-4 py-2 text-sm font-bold text-white disabled:opacity-60">
+        {busy ? <Loader2 aria-hidden className="size-4 animate-spin" /> : <RefreshCw aria-hidden className="size-4" />} Préparer les bulletins de toutes les filières
+      </button>
+      {msg && <p className="text-xs font-semibold text-slate-600">{msg}</p>}
     </div>
   );
 }
@@ -786,6 +818,17 @@ function Correction({ card, cls, semester, year, onClose, onDone }: { card: Card
                   <option value="">Aucune</option>
                   <option value="Tableau d'honneur">Tableau d&apos;honneur</option>
                   <option value="Tableau d'honneur et félicitations">Tableau d&apos;honneur et félicitations</option>
+                </select>
+              </fieldset>
+              <fieldset className="flex flex-col gap-2 rounded-xl border border-slate-200 p-3">
+                <legend className="px-1 text-xs font-bold text-slate-600 uppercase">Conduite</legend>
+                <select value={extras.conduct ?? ""} onChange={(e) => setExtras({ ...extras, conduct: e.target.value || undefined })} className={input}>
+                  <option value="">Automatique (sanctions, absences non justifiées, retards)</option>
+                  {CONDUCTS.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
                 </select>
               </fieldset>
               <fieldset className="flex flex-col gap-1.5 rounded-xl border border-slate-200 p-3">

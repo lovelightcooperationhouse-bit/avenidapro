@@ -9,7 +9,7 @@ import { createClient } from "@/lib/supabase/client";
  * Envoi d'un document de l'élève (fiche d'inscription, fiche de situation) en PDF :
  * par e-mail à l'élève et au tuteur, et dans « Mes documents » de leurs espaces.
  */
-export function SendToFamily({ studentId, elementId, docType, title }: { studentId: string; elementId: string; docType: "fiche" | "situation" | "bulletin"; title?: string }) {
+export function SendToFamily({ studentId, elementId, docType, title }: { studentId: string; elementId: string; docType: "fiche" | "situation" | "bulletin" | "carte" | "billet"; title?: string }) {
   const [emails, setEmails] = useState({ student: "", guardian: "", other: "" });
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);

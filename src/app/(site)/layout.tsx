@@ -49,7 +49,7 @@ export default async function SiteLayout({
           {children}
         </main>
         <Newsletter />
-        <SiteFooter contact={contact} />
+        <SiteFooter contact={contact} footer={settings.footer} />
         <SupportDock />
         <VisitTracker />
       </div>

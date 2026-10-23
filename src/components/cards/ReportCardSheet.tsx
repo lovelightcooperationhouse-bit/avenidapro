@@ -47,14 +47,14 @@ export type ReportCard = {
   signed_by_name: string | null;
   signed_at: string | null;
   revision: number | null;
-  raw_data: { extras?: BulletinExtras } | null;
+  raw_data: { extras?: BulletinExtras; assiduite?: string } | null;
 };
 
 const f2 = (n: number | null | undefined) => (n === null || n === undefined ? "" : Number(n).toFixed(2).replace(".", ","));
 const d = (x: string | null) => (x ? new Date(x).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" }) : "");
 
 /** URL de vérification publique d'un document (bulletin, reçu) encodée dans son QR code. */
-export const documentVerifyUrl = (kind: "bulletin" | "recu" | "situation", token: string) => `${typeof window !== "undefined" ? window.location.origin : ""}/verifier/document/${kind}/${token}`;
+export const documentVerifyUrl = (kind: "bulletin" | "recu" | "situation" | "billet", token: string) => `${typeof window !== "undefined" ? window.location.origin : ""}/verifier/document/${kind}/${token}`;
 
 const Box = ({ on }: { on: boolean }) => (
   <span className="inline-flex size-[3.4mm] shrink-0 items-center justify-center border border-slate-700 text-[9px] leading-none font-black">{on ? "✓" : ""}</span>
@@ -211,10 +211,20 @@ export function ReportCardSheet({ id }: { id: string }) {
         </tbody>
       </table>
 
-      <p className="mt-[1.5mm] text-[10.5px]">
-        Absences : <strong>{(r.absences_unjustified ?? 0) + (r.absences_justified ?? 0)}</strong>
-        {r.absences_justified ? ` (dont ${r.absences_justified} justifiée(s))` : ""} <span className="mx-4" /> Retards : <strong>{r.lates_count ?? 0}</strong>
-      </p>
+      <div className="mt-[1.5mm] grid grid-cols-5 border border-slate-700 text-center text-[9.5px]">
+        {[
+          ["Absences justifiées", String(r.absences_justified ?? 0)],
+          ["Absences non justifiées", String(r.absences_unjustified ?? 0)],
+          ["Retards", String(r.lates_count ?? 0)],
+          ["Assiduité", r.raw_data?.assiduite ?? "—"],
+          ["Conduite", r.conduct_appreciation ?? "—"],
+        ].map(([k, v], i) => (
+          <div key={k} className={i ? "border-l border-slate-700" : ""}>
+            <p className="bg-slate-100 px-1 py-[0.6mm] text-[8px] font-extrabold uppercase">{k}</p>
+            <p className={`py-[0.8mm] font-bold ${k === "Absences non justifiées" && Number(v) > 0 ? "text-[#E31B3A]" : ""}`}>{v}</p>
+          </div>
+        ))}
+      </div>
 
       {/* Distinctions, sanctions, résultats */}
       <div className="mt-[2.5mm] grid grid-cols-[1.15fr_1fr] gap-[4mm]">

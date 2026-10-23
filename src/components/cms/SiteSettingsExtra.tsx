@@ -112,6 +112,7 @@ export function ContactEditor() {
 const DEFAULT_THEME: Required<ThemeSetting> = { blue: "#0C356A", vif: "#E30613", or: "#F2B705", nuit: "#06152E" };
 const PRESETS: { name: string; theme: Required<ThemeSetting> }[] = [
   { name: "Avenida (d'origine)", theme: DEFAULT_THEME },
+  { name: "Couleurs du logo", theme: { blue: "#1B1652", vif: "#E31B3A", or: "#F2B705", nuit: "#100C33" } },
   { name: "Bleu royal", theme: { blue: "#1D3E8A", vif: "#D62839", or: "#F4B400", nuit: "#0B1A3A" } },
   { name: "Vert élégance", theme: { blue: "#0F5132", vif: "#C1121F", or: "#E9B949", nuit: "#08281A" } },
   { name: "Bordeaux", theme: { blue: "#5B1A2A", vif: "#B3122E", or: "#D4A017", nuit: "#2A0C14" } },

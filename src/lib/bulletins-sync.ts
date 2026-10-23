@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
-import { MARK_CLASS, MARK_COMPO, SEMESTERS, computeClass, distinctionFor, maquetteFor, round2, semesterRange, appreciation, type BulletinExtras, type BulletinStudent, type GradeRow, type MaquetteSubject } from "@/lib/bulletins";
+import { MARK_CLASS, MARK_COMPO, SEMESTERS, assiduite, computeClass, conductFor, distinctionFor, maquetteFor, round2, semesterRange, appreciation, type BulletinExtras, type BulletinStudent, type GradeRow, type MaquetteSubject } from "@/lib/bulletins";
 
 export const STUDENT_COLS = "id, first_name, last_name, registration_number, student_number, class_name, program_code, gender, birth_date, birth_place, nationality, photo_url";
 
@@ -81,7 +81,7 @@ export async function recalcClass(cls: string, semester: number, year: string) {
   const ids = students.map((x) => x.id);
   const [from, to] = semesterRange(year, semester);
   const [{ data: att }, { data: ex }] = await Promise.all([
-    supabase.from("student_attendance").select("student_id, status").in("student_id", ids).gte("date", from).lte("date", to).neq("status", "present"),
+    supabase.from("student_attendance").select("student_id, status, justified").in("student_id", ids).gte("date", from).lte("date", to).neq("status", "present"),
     supabase.from("report_cards").select("id, student_id, published, revision, signed_at, signed_by_name, sent_at, general_average, rank_display, subjects_data, raw_data").in("student_id", ids).eq("term", semester).eq("academic_year", year),
   ]);
   const existing = new Map(((ex ?? []) as Existing[]).map((e) => [e.student_id, e]));
@@ -96,7 +96,9 @@ export async function recalcClass(cls: string, semester: number, year: string) {
     const extras: BulletinExtras = { distinctionAuto: true, ...(old?.raw_data?.extras ?? {}) };
     if (extras.distinctionAuto !== false) extras.distinction = distinctionFor(c.average);
     const mine = (att ?? []).filter((a) => a.student_id === c.student.id);
-    const unjust = mine.filter((a) => a.status === "absent").length;
+    // Absences non justifiées = absences sans justification vérifiée ; justifiées = permissions + absences justifiées
+    const unjust = mine.filter((a) => a.status === "absent" && !a.justified).length;
+    const lates = mine.filter((a) => a.status === "retard").length;
     const changed = !!old && (Number(old.general_average) !== c.average || old.rank_display !== (c.rank?.display ?? null) || JSON.stringify(old.subjects_data) !== JSON.stringify(c.lines));
     // Un bulletin signé ou envoyé qui change doit être revalidé, resigné puis renvoyé : rien ne part automatiquement
     const reopen = !!old && changed && (!!old.signed_at || old.published);
@@ -127,14 +129,14 @@ export async function recalcClass(cls: string, semester: number, year: string) {
       class_highest_average: Math.max(...avgs),
       class_lowest_average: Math.min(...avgs),
       absences_unjustified: unjust,
-      absences_justified: mine.filter((a) => a.status === "permission").length,
-      lates_count: mine.filter((a) => a.status === "retard").length,
+      absences_justified: mine.filter((a) => a.status === "permission" || (a.status === "absent" && a.justified)).length,
+      lates_count: lates,
       mention: appreciation(c.average),
-      conduct_appreciation: extras.sanctions?.blame_conduite || extras.sanctions?.avertissement_conduite ? "À améliorer" : unjust <= 2 ? "Bonne" : "À surveiller",
+      conduct_appreciation: extras.conduct || conductFor(extras, unjust, lates),
       director_comment: extras.remark ?? null,
       bulletin_number: `BUL-${year.slice(2, 4)}S${semester}-${c.student.registration_number ?? c.student.id.slice(0, 6)}`,
       issue_date: new Date().toISOString().slice(0, 10),
-      raw_data: { ...(old?.raw_data ?? {}), extras, model: "avenida-semestre" },
+      raw_data: { ...(old?.raw_data ?? {}), extras, model: "avenida-semestre", assiduite: assiduite(unjust, lates) },
       revision: (old?.revision ?? 0) + (reopen ? 1 : 0),
       signed_at: reopen ? null : (old?.signed_at ?? null),
       signed_by_name: reopen ? null : (old?.signed_by_name ?? null),

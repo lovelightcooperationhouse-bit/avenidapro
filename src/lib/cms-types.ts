@@ -85,6 +85,9 @@ export const HOME_SECTIONS = [
   { key: "appel", label: "Appel final (pré-inscription)" },
 ] as const;
 
+export type FooterLink = { label: string; href: string };
+export type FooterSetting = { about?: string; tagline?: string; col1?: { title?: string; links?: FooterLink[] }; col2?: { title?: string; links?: FooterLink[] } };
+
 export type CardSettings = {
   motto?: string;
   signatureTitle?: string;
@@ -106,10 +109,12 @@ export type CmsSettings = {
   images?: Record<string, { src: string; alt?: string }>;
   /** Textes et réglages communs des cartes (recto, verso, signature). */
   cards?: CardSettings;
+  /** En-têtes des pages (sur-titre, titre, introduction, photo), par clé de page. */
+  page_headers?: Record<string, { eyebrow?: string; title?: string; description?: string; image?: string }>;
   hero?: HeroSlideSetting[];
   bandeau?: { text: string; href?: string; visible: boolean };
   socials?: Partial<Record<"facebook" | "instagram" | "tiktok" | "youtube" | "linkedin" | "whatsapp", string>>;
-  footer?: { about?: string };
+  footer?: FooterSetting;
 };
 
 /** Pages du site auxquelles on peut ajouter des sections. */
@@ -121,6 +126,20 @@ export const BUILTIN_PAGES = [
   { key: "a-propos", label: "À propos", href: "/a-propos" },
   { key: "contact", label: "Contact", href: "/contact" },
   { key: "actualites", label: "Actualités", href: "/actualites" },
+] as const;
+
+/** Pages dont l'en-tête (bandeau photo) est modifiable. */
+export const HEADER_PAGES = [
+  { key: "ecole", label: "L'École", href: "/ecole" },
+  { key: "admissions", label: "Admissions", href: "/admissions" },
+  { key: "preinscription", label: "Pré-inscription", href: "/preinscription" },
+  { key: "hotel", label: "L'Hôtel", href: "/hotel" },
+  { key: "a-propos", label: "À propos", href: "/a-propos" },
+  { key: "actualites", label: "Actualités", href: "/actualites" },
+  { key: "contact", label: "Contact", href: "/contact" },
+  { key: "reglement", label: "Règlement intérieur", href: "/reglement" },
+  { key: "confidentialite", label: "Politique de confidentialité", href: "/confidentialite" },
+  { key: "conditions-utilisation", label: "Conditions d'utilisation", href: "/conditions-utilisation" },
 ] as const;
 
 export const POST_KINDS: { value: CmsPost["kind"]; label: string }[] = [

@@ -149,6 +149,7 @@ export default async function ConditionsPage() {
   return (
     <>
       <PageHeader
+        pageKey="conditions-utilisation"
         eyebrow="Informations légales"
         title={
           <>

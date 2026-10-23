@@ -22,6 +22,7 @@ export default async function AdmissionsPage() {
   return (
     <>
       <PageHeader
+        pageKey="admissions"
         eyebrow="Admissions 2026-2027"
         title={
           <>

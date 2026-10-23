@@ -14,14 +14,22 @@ type Payment = { id: string; receipt_number: string | null; amount: number; paym
 const dt = (x: string) => new Date(x).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 const d = (x: Date) => x.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" });
 
-/** Statut de l'élève vis-à-vis de l'écolage. */
+/**
+ * Statut de l'élève vis-à-vis de l'écolage : « En règle » seulement si tout est payé ;
+ * sinon « Non soldé » avec le reste à payer (et le retard éventuel sur l'échéancier).
+ */
 export function situationStatus(s: { total_fee?: unknown; paid_fee?: unknown; remaining_fee?: unknown; academic_year?: unknown }) {
   const total = Number(s.total_fee ?? 0);
   const remaining = Number(s.remaining_fee ?? 0);
-  if (total > 0 && remaining <= 0) return { label: "Soldé", tone: "#047857", bg: "#ECFDF5" };
-  if (paymentOk({ total_fee: total, paid_fee: Number(s.paid_fee ?? 0), remaining_fee: remaining, academic_year: String(s.academic_year ?? "") }))
-    return { label: "En règle", tone: "#0C356A", bg: "#EFF6FF" };
-  return { label: "En retard de paiement", tone: "#B8000F", bg: "#FEF2F2" };
+  if (total > 0 && remaining <= 0) return { label: "En règle", detail: "Écolage entièrement payé", tone: "#047857", bg: "#ECFDF5", paid: true };
+  const late = !paymentOk({ total_fee: total, paid_fee: Number(s.paid_fee ?? 0), remaining_fee: remaining, academic_year: String(s.academic_year ?? "") });
+  return {
+    label: "Non soldé",
+    detail: `Reste à payer : ${formatFCFA(remaining)}${late ? " · en retard sur l'échéancier" : ""}`,
+    tone: late ? "#B8000F" : "#B45309",
+    bg: late ? "#FEF2F2" : "#FFFBEB",
+    paid: false,
+  };
 }
 
 /**
@@ -120,6 +128,9 @@ export function SituationSheet({ studentId }: { studentId: string }) {
             <p className="text-[8px] font-bold tracking-widest text-slate-500 uppercase">Statut</p>
             <p className="text-[13px] font-extrabold" style={{ color: status.tone }}>
               {status.label}
+            </p>
+            <p className="text-[8.5px] font-semibold" style={{ color: status.tone }}>
+              {status.paid ? "Écolage entièrement payé" : "L'élève n'a pas encore tout payé"}
             </p>
           </div>
         </div>

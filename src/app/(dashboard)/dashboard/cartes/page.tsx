@@ -161,25 +161,29 @@ function CardsAdmin() {
 
   const allSelected = rows.length > 0 && rows.every((r) => selected.has(r.id));
 
+  // Chaque catégorie de carte appartient à son département : école (élèves), RH (personnel), hôtel (clients)
+  const CATEGORY = {
+    eleve: { title: "Cartes scolaires des élèves", roles: ["directeur_general", "directeur_pedagogique"] },
+    personnel: { title: "Cartes de travail du personnel (hôtel et école)", roles: ["directeur_general", "ressources_humaines"] },
+    client: { title: "Cartes de fidélité des clients de l'hôtel", roles: ["directeur_general", "responsable_hotel"] },
+  }[tab];
+  if (user && !CATEGORY.roles.includes(user.role)) {
+    return <p className="rounded-2xl bg-red-50 p-6 font-semibold text-[#B8000F]">Ces cartes sont gérées par un autre département.</p>;
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h1 className="text-2xl font-black text-[#0C356A]">Cartes : élèves, personnel et fidélité</h1>
+        <h1 className="text-2xl font-black text-[#0C356A]">{CATEGORY.title}</h1>
         <p className="mt-1 text-sm text-slate-600">
           Photo, matricule et QR code de vérification. Le QR affiche en temps réel la validité, la scolarité et l&apos;assiduité. Actualisez une carte après chaque changement de dossier.
         </p>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        {[
-          { key: "eleve" as const, label: `Élèves (${students.length})` },
-          { key: "personnel" as const, label: `Personnel & professeurs (${employees.length})` },
-          { key: "client" as const, label: `Clients de l'hôtel · fidélité (${customers.length})` },
-        ].map((t) => (
-          <button key={t.key} type="button" onClick={() => setTab(t.key)} className={cn("rounded-xl px-4 py-2.5 text-sm font-bold ring-1", tab === t.key ? "bg-[#0C356A] text-white ring-[#0C356A]" : "bg-white text-slate-600 ring-slate-200")}>
-            {t.label}
-          </button>
-        ))}
+        <span className="rounded-xl bg-[#0C356A] px-4 py-2.5 text-sm font-bold text-white">
+          {tab === "eleve" ? `Élèves (${students.length})` : tab === "client" ? `Clients (${customers.length})` : `Personnel et professeurs (${employees.length})`}
+        </span>
         <select value={group} onChange={(e) => setGroup(e.target.value)} aria-label={tab === "eleve" ? "Classe" : "Département"} className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold">
           <option value="tous">{tab === "eleve" ? "Toutes les classes" : "Tous les départements"}</option>
           {groups.map((g) => (
@@ -371,6 +375,16 @@ function CardsAdmin() {
               <X aria-hidden className="size-5" />
             </button>
             <IdCard data={previewData} className="mt-6" />
+            <div className="mt-5 flex flex-wrap gap-2">
+              <button type="button" onClick={() => (review(preview!, true), setPreview(null))} className="inline-flex items-center gap-2 rounded-full bg-[#0C356A] px-4 py-2 text-sm font-bold text-white">
+                <Send aria-hidden className="size-4" /> {user?.role === "directeur_general" ? "Envoyer dans l'espace du titulaire" : "Soumettre l'envoi au DG (espace du titulaire)"}
+              </button>
+              {tab === "eleve" && (
+                <a href={`/impression/cartes?type=eleve&ids=${preview}&envoyer=1`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full bg-[#E30613] px-4 py-2 text-sm font-bold text-white">
+                  <Printer aria-hidden className="size-4" /> Envoyer par e-mail (PDF) ou imprimer
+                </a>
+              )}
+            </div>
           </div>
         </div>
       )}

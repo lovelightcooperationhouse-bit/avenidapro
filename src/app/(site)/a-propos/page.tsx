@@ -26,6 +26,7 @@ export default async function AboutPage() {
   return (
     <>
       <PageHeader
+        pageKey="a-propos"
         eyebrow="À propos"
         title={
           <>

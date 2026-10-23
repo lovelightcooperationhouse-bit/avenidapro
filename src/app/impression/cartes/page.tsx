@@ -4,6 +4,7 @@ import { Printer } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { DocumentToolbar } from "@/components/cards/DocumentToolbar";
+import { SendToFamily } from "@/components/cards/SendToFamily";
 import { IdCard, type CardData } from "@/components/cards/IdCard";
 import { customerCardData, employeeCardData, studentCardData, type CardRow, type CustomerRow, type EmployeeRow, type StudentRow, STUDENT_CARD_COLS, EMPLOYEE_CARD_COLS } from "@/lib/cards";
 import { createClient } from "@/lib/supabase/client";
@@ -53,6 +54,7 @@ function PrintSheet() {
           }}
         />
       )}
+      {type === "eleve" && cards.length === 1 && params.get("ids") && !params.get("ids")!.includes(",") && <SendToFamily studentId={params.get("ids")!} elementId="planche-cartes" docType="carte" />}
       <div className="mb-6 flex items-center justify-between print:hidden">
         <p className="font-bold text-slate-700">
           {cards.length} carte(s) · imprimez en couleur, recto-verso, à 100 % (format carte 9 × 5,5 cm)

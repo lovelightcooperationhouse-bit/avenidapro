@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { PhoneLinks } from "@/components/annuaire/PhoneLinks";
+import { PhoneLinks, WriteLink } from "@/components/annuaire/PhoneLinks";
 import { REGLEMENT_VERSION } from "@/content/reglement";
 import { useAuth } from "@/context/AuthContext";
 import { pingNotifications } from "@/lib/notify";
@@ -35,6 +35,7 @@ type Entry = {
   role_status: "propose" | "valide" | "refuse";
   role_note: string | null;
   profile_id: string | null;
+  employee_id: string | null;
   validated_at: string | null;
 };
 type Tab = "annuaire" | "roles" | "reglement";
@@ -198,6 +199,22 @@ function Directory({
       >
         <Plus aria-hidden className="size-4" /> Ajouter une personne
       </button>
+      {rows.some((r) => !r.employee_id) && (
+        <button
+          type="button"
+          onClick={async () => {
+            if (!window.confirm("Créer la fiche RH (matricule, poste, téléphone) de chaque personne de l'annuaire qui n'en a pas ? Contrats, salaires et dates d'embauche resteront à compléter.")) return;
+            const { data, error: e } = await createClient().rpc("create_employees_from_directory");
+            setError(e ? e.message : "");
+            if (!e) window.alert(`${data} fiche(s) RH créée(s). Complétez-les dans « Personnel & professeurs » ; les cartes de travail peuvent maintenant être émises.`);
+            onChange();
+          }}
+          className="inline-flex items-center gap-2 self-start rounded-full bg-[#0C356A] px-4 py-2 text-sm font-bold text-white"
+        >
+          <UserPlus aria-hidden className="size-4" /> Créer les fiches RH manquantes ({rows.filter((r) => !r.employee_id).length})
+        </button>
+      )}
+      {error && !edit && <p className="text-sm font-semibold text-[#B8000F]">{error}</p>}
       {edit && (
         <div className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-3">
           {(
@@ -313,6 +330,9 @@ function Directory({
                 </td>
                 <td className="p-3">
                   <PhoneLinks phones={r.phones} />
+                  <span className="mt-1 block">
+                    <WriteLink profileId={r.profile_id} name={r.full_name} />
+                  </span>
                 </td>
                 <td className="p-3 text-xs">
                   {r.show_public ? "Visible" : "Masqué"}

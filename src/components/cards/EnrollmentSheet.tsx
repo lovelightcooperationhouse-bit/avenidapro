@@ -5,6 +5,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { fees, formations, requiredDocuments, siteConfig } from "@/content/site";
 import { createClient } from "@/lib/supabase/client";
 import { formatFCFA } from "@/lib/utils";
+import { situationStatus } from "./SituationSheet";
 import { verifyUrl } from "./IdCard";
 
 type Student = Record<string, string | number | null | boolean | undefined> & {
@@ -207,9 +208,20 @@ export function EnrollmentSheet({ studentId }: { studentId: string }) {
             ))}
           </ul>
         )}
-        <p className="mt-[3mm] text-[9.5px] text-slate-600">
-          Écolage annuel : <strong>{formatFCFA(total)}</strong>. Le détail des paiements et du reste à payer figure sur la <strong>fiche de situation financière</strong>, mise à jour à chaque paiement.
-        </p>
+        <div className="mt-[3mm] flex items-center gap-[3mm] text-[9.5px] text-slate-600">
+          <p className="flex-1">
+            Écolage annuel : <strong>{formatFCFA(total)}</strong>. Le détail des paiements et du reste à payer figure sur la <strong>fiche de situation financière</strong>, mise à jour à chaque paiement.
+          </p>
+          {(() => {
+            const st = situationStatus({ total_fee: s.total_fee, paid_fee: s.paid_fee, remaining_fee: s.remaining_fee, academic_year: s.academic_year });
+            return (
+              <p className="shrink-0 rounded border-2 px-2 py-1 text-center leading-tight" style={{ borderColor: st.tone, background: st.bg, color: st.tone }}>
+                <span className="block text-[10px] font-extrabold">{st.paid ? "✔ Écolage en règle" : "⚠ Écolage non soldé"}</span>
+                <span className="block text-[8px] font-semibold">{st.detail}</span>
+              </p>
+            );
+          })()}
+        </div>
 
         <p className="mt-[4mm] rounded bg-slate-50 p-2 text-[9.5px] text-slate-700">
           L&apos;élève et ses parents ou tuteur certifient l&apos;exactitude des informations ci-dessus et s&apos;engagent à respecter le règlement intérieur de l&apos;Hôtel École Avenida : port de

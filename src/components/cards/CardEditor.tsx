@@ -2,6 +2,7 @@
 
 import { Camera, Loader2, Save, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { IdCard } from "@/components/cards/IdCard";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -155,65 +156,73 @@ export function CardEditor({ kind, holderId, onClose, onSaved }: { kind: Kind; h
   };
 
   const input = "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#0C356A]";
-  return (
-    <div role="dialog" aria-modal="true" aria-label="Modifier la carte" className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/60 p-3 sm:items-center sm:p-6" onClick={onClose}>
-      <div className="relative w-full max-w-5xl rounded-3xl bg-slate-50 p-5 shadow-2xl sm:p-6" onClick={(e) => e.stopPropagation()}>
-        <button type="button" onClick={onClose} aria-label="Fermer" className="absolute top-3 right-3 rounded-full p-2 hover:bg-white">
-          <X aria-hidden className="size-5" />
-        </button>
-        <h2 className="text-xl font-black text-[#0C356A]">Modifier la carte</h2>
-        <p className="mb-4 text-sm text-slate-600">Tous les éléments de la carte : corrigez puis enregistrez. Le dossier de la personne est mis à jour en même temps.</p>
-        {!row || !preview ? (
-          <Loader2 aria-label="Chargement" className="size-6 animate-spin" />
-        ) : (
-          <div className="grid gap-6 lg:grid-cols-[1fr_26rem]">
-            <div className="flex flex-col gap-3">
-              {cfg.photo && (
-                <label className="inline-flex cursor-pointer items-center gap-2 self-start rounded-full bg-white px-4 py-2 text-sm font-bold text-[#0C356A] ring-1 ring-slate-200 hover:text-[#E30613]">
-                  <Camera aria-hidden className="size-4" /> Changer la photo d&apos;identité
-                  <input type="file" accept="image/*" className="sr-only" onChange={(e) => pickPhoto(e.target.files?.[0])} />
-                </label>
-              )}
-              <div className="grid gap-3 sm:grid-cols-2">
-                {cfg.fields.map((f) => (
-                  <label key={f.k} className="flex flex-col gap-1 text-xs font-bold text-slate-600">
-                    {f.label}
-                    {f.type === "select" ? (
-                      <select value={String(row[f.k] ?? "")} onChange={(e) => set(f.k, e.target.value)} className={input}>
-                        <option value="">—</option>
-                        {f.options!.map(([v, l]) => (
-                          <option key={v} value={v}>
-                            {l}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <input type={f.type ?? "text"} value={String(row[f.k] ?? "").slice(0, f.type === "date" ? 10 : undefined)} onChange={(e) => set(f.k, e.target.value)} className={input} />
-                    )}
-                  </label>
-                ))}
-                <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">
-                  Carte valable jusqu&apos;au
-                  <input type="date" value={validUntil.slice(0, 10)} onChange={(e) => setValidUntil(e.target.value)} className={input} />
-                </label>
-              </div>
-              {error && <p className="text-sm font-semibold text-[#B8000F]">{error}</p>}
-              <div className="flex flex-wrap gap-2 pt-2">
-                <button type="button" onClick={save} disabled={busy} className="inline-flex items-center gap-2 rounded-full bg-[#E30613] px-5 py-2.5 text-sm font-bold text-white disabled:opacity-60">
-                  {busy ? <Loader2 aria-hidden className="size-4 animate-spin" /> : <Save aria-hidden className="size-4" />} {card ? "Enregistrer la carte corrigée" : "Émettre la carte"}
-                </button>
-                <button type="button" onClick={onClose} className="rounded-full px-5 py-2.5 text-sm font-bold text-slate-600 ring-1 ring-slate-200">
-                  Annuler
-                </button>
-              </div>
-            </div>
-            <div className="flex flex-col gap-2">
-              <p className="text-xs font-bold text-slate-500 uppercase">Aperçu en direct</p>
-              <IdCard data={preview} className="sm:flex-col" />
-            </div>
+  // Fenêtre posée au-dessus de toute la page (portail) : elle défile seule, les boutons restent visibles
+  return createPortal(
+    <div role="dialog" aria-modal="true" aria-label="Modifier la carte" className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-900/60 p-2 sm:p-6" onClick={onClose}>
+      <div className="flex max-h-[96dvh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-slate-50 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <header className="flex shrink-0 items-start gap-3 border-b border-slate-200 bg-white px-5 py-4">
+          <div className="min-w-0 flex-1">
+            <h2 className="text-xl font-black text-[#0C356A]">Modifier la carte</h2>
+            <p className="text-sm text-slate-600">Faites défiler pour voir et corriger tous les éléments ; le dossier de la personne est mis à jour en même temps.</p>
           </div>
-        )}
+          <button type="button" onClick={onClose} aria-label="Fermer" className="rounded-full p-2 hover:bg-slate-100">
+            <X aria-hidden className="size-5" />
+          </button>
+        </header>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4">
+          {!row || !preview ? (
+            <Loader2 aria-label="Chargement" className="size-6 animate-spin" />
+          ) : (
+            <div className="grid gap-6 lg:grid-cols-[1fr_26rem]">
+              <div className="flex flex-col gap-3">
+                {cfg.photo && (
+                  <label className="inline-flex cursor-pointer items-center gap-2 self-start rounded-full bg-white px-4 py-2 text-sm font-bold text-[#0C356A] ring-1 ring-slate-200 hover:text-[#E30613]">
+                    <Camera aria-hidden className="size-4" /> Changer la photo d&apos;identité
+                    <input type="file" accept="image/*" className="sr-only" onChange={(e) => pickPhoto(e.target.files?.[0])} />
+                  </label>
+                )}
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {cfg.fields.map((f) => (
+                    <label key={f.k} className="flex flex-col gap-1 text-xs font-bold text-slate-600">
+                      {f.label}
+                      {f.type === "select" ? (
+                        <select value={String(row[f.k] ?? "")} onChange={(e) => set(f.k, e.target.value)} className={input}>
+                          <option value="">—</option>
+                          {f.options!.map(([v, l]) => (
+                            <option key={v} value={v}>
+                              {l}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input type={f.type ?? "text"} value={String(row[f.k] ?? "").slice(0, f.type === "date" ? 10 : undefined)} onChange={(e) => set(f.k, e.target.value)} className={input} />
+                      )}
+                    </label>
+                  ))}
+                  <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">
+                    Carte valable jusqu&apos;au
+                    <input type="date" value={validUntil.slice(0, 10)} onChange={(e) => setValidUntil(e.target.value)} className={input} />
+                  </label>
+                </div>
+              </div>
+              <div className="flex flex-col gap-2 lg:sticky lg:top-0 lg:self-start">
+                <p className="text-xs font-bold text-slate-500 uppercase">Aperçu en direct</p>
+                <IdCard data={preview} className="sm:flex-col" />
+              </div>
+            </div>
+          )}
+        </div>
+        <footer className="flex shrink-0 flex-wrap items-center gap-2 border-t border-slate-200 bg-white px-5 py-3">
+          {error && <p className="w-full text-sm font-semibold text-[#B8000F]">{error}</p>}
+          <button type="button" onClick={save} disabled={busy || !row} className="inline-flex items-center gap-2 rounded-full bg-[#E30613] px-5 py-2.5 text-sm font-bold text-white disabled:opacity-60">
+            {busy ? <Loader2 aria-hidden className="size-4 animate-spin" /> : <Save aria-hidden className="size-4" />} {card ? "Enregistrer la carte corrigée" : "Émettre la carte"}
+          </button>
+          <button type="button" onClick={onClose} className="rounded-full px-5 py-2.5 text-sm font-bold text-slate-600 ring-1 ring-slate-200">
+            Annuler
+          </button>
+        </footer>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

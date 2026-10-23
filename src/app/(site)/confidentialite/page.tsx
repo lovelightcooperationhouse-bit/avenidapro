@@ -193,6 +193,7 @@ export default async function ConfidentialitePage() {
   return (
     <>
       <PageHeader
+        pageKey="confidentialite"
         eyebrow="Informations légales"
         title={
           <>

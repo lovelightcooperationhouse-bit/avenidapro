@@ -32,6 +32,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { MOCK_EMPLOYEES } from "@/lib/mock-data";
+import { createClient } from "@/lib/supabase/client";
 import { Employee, EmployeeSector } from "@/types";
 import { formatFCFA } from "@/lib/utils";
 import { NEIGHBORHOODS } from "@/lib/academic-data";
@@ -267,16 +268,20 @@ export default function EmployeesPage() {
   }, [employees, activeTab, searchTerm, contractFilter]);
 
   // Soumission du formulaire
-  const handleCreateEmployee = (e: React.FormEvent) => {
+  const handleCreateEmployee = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newEmp.first_name || !newEmp.last_name || !newEmp.role_title) {
       alert("Veuillez renseigner au moins le prénom, le nom et le rôle du collaborateur.");
       return;
     }
 
-    const prefix = newEmp.sector === "ecole" ? "AVN-ENS" : "AVN-HOT";
-    const nextNum = String(employees.length + 1).padStart(3, "0");
-    const matricule = `${prefix}-${nextNum}`;
+    // Matricule unique attribué par la base (ENS26-0001 école, HOT26-0001 hôtel) : jamais de doublon
+    const { data: mat, error: matErr } = await createClient().rpc("next_matricule", { program: newEmp.sector === "ecole" ? "ENS" : "HOT" });
+    if (matErr || !mat) {
+      alert("Matricule impossible à attribuer : " + (matErr?.message ?? "erreur"));
+      return;
+    }
+    const matricule = String(mat);
 
     const created: Employee = {
       id: `emp-${Date.now()}`,
@@ -284,10 +289,11 @@ export default function EmployeesPage() {
       first_name: newEmp.first_name,
       last_name: newEmp.last_name.toUpperCase(),
       gender: newEmp.gender,
-      birth_date: newEmp.birth_date || "1990-01-01",
+      // Champs non renseignés : laissés vides (aucune donnée inventée dans le dossier RH)
+      birth_date: newEmp.birth_date || "",
       nationality: newEmp.nationality,
-      phone: newEmp.phone || "+228 90 00 00 00",
-      email: newEmp.email || `${newEmp.first_name.toLowerCase()}.${newEmp.last_name.toLowerCase()}@avenida-lome.tg`,
+      phone: newEmp.phone || "",
+      email: newEmp.email || "",
       neighborhood: newEmp.neighborhood,
       photo_url: newEmp.photo_url || undefined,
       uploaded_documents: newEmp.uploaded_documents,
@@ -299,11 +305,11 @@ export default function EmployeesPage() {
       hire_date: newEmp.hire_date,
       contract_duration: newEmp.contract_duration,
       contract_end_date: newEmp.contract_end_date || undefined,
-      base_salary: Number(newEmp.base_salary) || 200000,
-      cnss_number: newEmp.cnss_number || `TG-CNSS-${Math.floor(100000 + Math.random() * 900000)}`,
-      highest_degree: newEmp.highest_degree || "Diplôme d'État",
-      experience_years: Number(newEmp.experience_years) || 3,
-      cv_summary: newEmp.cv_summary || "Profil recruté pour renforcer l'équipe Avenida.",
+      base_salary: Number(newEmp.base_salary) || 0,
+      cnss_number: newEmp.cnss_number || "",
+      highest_degree: newEmp.highest_degree || "",
+      experience_years: Number(newEmp.experience_years) || 0,
+      cv_summary: newEmp.cv_summary || "",
       status: "actif",
     };
 

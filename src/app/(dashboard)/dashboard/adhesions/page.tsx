@@ -2,7 +2,8 @@
 
 import { CheckCircle2, ClipboardCheck, Download, Mail, Eye, FileText, IdCard, Loader2, Printer, Search, ShieldCheck, ThumbsDown, ThumbsUp, UserCheck, XCircle } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { ArchiveButton } from "@/components/documents/ArchiveButton";
 import { DocumentList } from "@/components/documents/DocumentList";
 import { DocumentViewer, downloadFile, type ViewableFile } from "@/components/documents/DocumentViewer";
@@ -28,6 +29,13 @@ const TABS: { key: string; label: string; statuses: AppStatus[] }[] = [
 ];
 
 const kindLabel = (k: string) => KINDS.find((x) => x.value === k)?.label ?? k;
+
+/** Chaque département ne traite que ses dossiers : école (élèves, parents), RH (personnel, professeurs, direction), hôtel (clients). */
+const SCOPES: Record<string, { label: string; kinds: string[]; text: string }> = {
+  ecole: { label: "Dossiers des élèves et parents", kinds: ["eleve", "parent"], text: "Profils des élèves et des parents : la pédagogie examine et donne son avis, le Directeur général valide." },
+  rh: { label: "Recrutements et dossiers du personnel", kinds: ["professeur", "personnel", "direction"], text: "Candidatures et dossiers des professeurs, du personnel de l'hôtel et de l'école, de la direction : les RH examinent, le Directeur général valide." },
+  hotel: { label: "Dossiers des clients de l'hôtel", kinds: ["client"], text: "Profils des clients de l'hôtel : l'hôtel examine, le Directeur général valide." },
+};
 const input = "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm";
 
 /**
@@ -35,7 +43,16 @@ const input = "w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text
  * le Directeur général valide, attribue le rôle ; fiches, matricule et carte sont créés automatiquement.
  */
 export default function AdhesionsPage() {
+  return (
+    <Suspense fallback={<Loader2 aria-label="Chargement" className="size-6 animate-spin" />}>
+      <Adhesions />
+    </Suspense>
+  );
+}
+
+function Adhesions() {
   const { user } = useAuth();
+  const scope = SCOPES[useSearchParams().get("scope") ?? ""];
   const isDG = user?.role === "directeur_general";
   const [rows, setRows] = useState<Row[] | null>(null);
   const [positions, setPositions] = useState<Position[]>([]);
@@ -58,28 +75,29 @@ export default function AdhesionsPage() {
     load();
   }, [load]);
 
-  const counts = useMemo(() => Object.fromEntries(TABS.map((t) => [t.key, (rows ?? []).filter((r) => t.statuses.includes(r.status)).length])), [rows]);
+  const counts = useMemo(() => Object.fromEntries(TABS.map((t) => [t.key, (rows ?? []).filter((r) => t.statuses.includes(r.status) && (!scope || scope.kinds.includes(r.kind))).length])), [rows, scope]);
   const list = useMemo(() => {
     const t = TABS.find((x) => x.key === tab)!;
     const s = q.trim().toLowerCase();
     return (rows ?? []).filter(
       (r) =>
         t.statuses.includes(r.status) &&
+        (!scope || scope.kinds.includes(r.kind)) &&
         (!kind || r.kind === kind) &&
         (!s || `${r.data.first_name ?? ""} ${r.data.last_name ?? ""} ${r.profiles?.email ?? ""} ${r.data.phone ?? ""}`.toLowerCase().includes(s))
     );
-  }, [rows, tab, kind, q]);
+  }, [rows, tab, kind, q, scope]);
   const selected = (rows ?? []).find((r) => r.id === selectedId) ?? null;
 
   return (
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="flex items-center gap-2 text-2xl font-black text-[#0C356A]">
-          <ClipboardCheck aria-hidden className="size-6 text-[#E30613]" /> Dossiers des membres
+          <ClipboardCheck aria-hidden className="size-6 text-[#E30613]" /> {scope?.label ?? "Dossiers des membres"}
         </h1>
         <p className="mt-1 text-sm text-slate-600">
-          Profils complétés par les élèves, parents, professeurs, personnels et clients. Le gestionnaire concerné donne son avis ; le Directeur général
-          valide et attribue le rôle. Fiche, matricule et carte sont alors créés automatiquement.
+          {scope?.text ??
+            "Profils complétés par les élèves, parents, professeurs, personnels et clients. Le gestionnaire concerné donne son avis ; le Directeur général valide et attribue le rôle. Fiche, matricule et carte sont alors créés automatiquement."}
         </p>
       </div>
 
@@ -107,7 +125,7 @@ export default function AdhesionsPage() {
             </span>
             <select value={kind} onChange={(e) => setKind(e.target.value)} aria-label="Statut demandé" className="rounded-xl border border-slate-200 bg-white px-2 text-sm">
               <option value="">Tous</option>
-              {KINDS.map((k) => (
+              {KINDS.filter((k) => !scope || scope.kinds.includes(k.value)).map((k) => (
                 <option key={k.value} value={k.value}>
                   {k.label}
                 </option>

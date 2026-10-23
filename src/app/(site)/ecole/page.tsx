@@ -25,6 +25,7 @@ export default async function SchoolPage() {
   return (
     <>
       <PageHeader
+        pageKey="ecole"
         eyebrow="L'École"
         title={
           <>

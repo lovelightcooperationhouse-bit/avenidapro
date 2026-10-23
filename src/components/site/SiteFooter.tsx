@@ -1,6 +1,7 @@
 import { ArrowUp, Globe, Mail, MapPin, Navigation, Phone, UserRound } from "lucide-react";
 import Link from "next/link";
 import { footerNav, siteConfig } from "@/content/site";
+import type { FooterSetting } from "@/lib/cms-types";
 import type { SiteContact } from "@/lib/site-contact";
 import { Container } from "./Section";
 import { SiteLogo } from "./SiteLogo";
@@ -27,7 +28,7 @@ function FooterColumn({ title, items }: { title: string; items: { label: string;
 }
 
 /** Pied de page : appel à la pré-inscription, présentation, liens, coordonnées et carte, barre basse. */
-export function SiteFooter({ contact }: { contact: SiteContact }) {
+export function SiteFooter({ contact, footer }: { contact: SiteContact; footer?: FooterSetting }) {
   const { address } = contact;
   const year = new Date().getFullYear();
 
@@ -38,19 +39,19 @@ export function SiteFooter({ contact }: { contact: SiteContact }) {
         <Container className="relative grid gap-12 pt-16 pb-12 md:grid-cols-2 lg:grid-cols-12 lg:gap-8">
           <div className="flex flex-col gap-5 lg:col-span-4">
             <SiteLogo inverted />
-            <p className="text-sm leading-relaxed">
-              Centre de formation aux métiers de l&apos;hôtellerie, de la restauration et du tourisme, adossé à un hôtel d&apos;application à
-              Lomé. Diplômes d&apos;État du CFA au BTS, cours du jour et du soir, internat.
+            <p className="text-sm leading-relaxed whitespace-pre-line">
+              {footer?.about ||
+                "Centre de formation aux métiers de l'hôtellerie, de la restauration et du tourisme, adossé à un hôtel d'application à Lomé. Diplômes d'État du CFA au BTS, cours du jour et du soir, internat."}
             </p>
-            <blockquote className="border-l-2 border-vif pl-4 font-elegant text-lg text-white italic">« {siteConfig.tagline} »</blockquote>
+            <blockquote className="border-l-2 border-vif pl-4 font-elegant text-lg text-white italic">« {footer?.tagline || siteConfig.tagline} »</blockquote>
             <SocialLinks brand />
           </div>
 
           <div className="lg:col-span-2">
-            <FooterColumn title="L'École" items={footerNav.school} />
+            <FooterColumn title={footer?.col1?.title || "L'École"} items={footer?.col1?.links?.length ? footer.col1.links : footerNav.school} />
           </div>
           <div className="lg:col-span-2">
-            <FooterColumn title="L'Hôtel" items={footerNav.hotel} />
+            <FooterColumn title={footer?.col2?.title || "L'Hôtel"} items={footer?.col2?.links?.length ? footer.col2.links : footerNav.hotel} />
           </div>
 
           <div className="flex flex-col gap-4 md:col-span-2 lg:col-span-4">

@@ -2,7 +2,7 @@
 
 import { Search, UsersRound } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { PhoneLinks, type DirectoryEntry } from "@/components/annuaire/PhoneLinks";
+import { PhoneLinks, WriteLink, type DirectoryEntry } from "@/components/annuaire/PhoneLinks";
 import { createClient } from "@/lib/supabase/client";
 
 /** Annuaire de l'établissement : administration et professeurs, avec leurs numéros (membres connectés). */
@@ -12,7 +12,7 @@ export default function AnnuairePage() {
   useEffect(() => {
     createClient()
       .from("staff_directory")
-      .select("id, full_name, function_title, subjects, phones, position")
+      .select("id, full_name, function_title, subjects, phones, position, profile_id")
       .order("position")
       .then(({ data }) => setRows((data ?? []) as DirectoryEntry[]));
   }, []);
@@ -49,6 +49,9 @@ export default function AnnuairePage() {
                   <p className="text-xs font-bold tracking-widest text-vif uppercase">{r.function_title}</p>
                   <p className="font-bold text-slate-900">{r.full_name}</p>
                   <PhoneLinks phones={r.phones} />
+                  <span className="mt-1">
+                    <WriteLink profileId={r.profile_id} name={r.full_name} />
+                  </span>
                 </li>
               ))}
             </ul>
@@ -62,6 +65,7 @@ export default function AnnuairePage() {
                     <th className="p-3">Nom et prénoms</th>
                     <th className="p-3">Matière(s)</th>
                     <th className="p-3">Contact</th>
+                    <th className="p-3">Messagerie</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -71,6 +75,9 @@ export default function AnnuairePage() {
                       <td className="p-3 text-slate-700">{r.subjects}</td>
                       <td className="p-3">
                         <PhoneLinks phones={r.phones} />
+                      </td>
+                      <td className="p-3">
+                        <WriteLink profileId={r.profile_id} name={r.full_name} />
                       </td>
                     </tr>
                   ))}

@@ -34,6 +34,7 @@ export default async function ContactPage() {
   return (
     <>
       <PageHeader
+        pageKey="contact"
         eyebrow="Contact"
         title={
           <>

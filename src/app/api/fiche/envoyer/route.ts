@@ -16,10 +16,12 @@ export async function POST(request: NextRequest) {
   const { data: me } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
   if (!["directeur_general", "directeur_pedagogique", "comptable"].includes(me?.role ?? "")) return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
 
-  const body = (await request.json().catch(() => ({}))) as { studentId?: string; pdf?: string; emails?: string[]; docType?: "fiche" | "situation" | "bulletin"; title?: string };
+  const body = (await request.json().catch(() => ({}))) as { studentId?: string; pdf?: string; emails?: string[]; docType?: "fiche" | "situation" | "bulletin" | "carte" | "billet"; title?: string };
   const situation = body.docType === "situation";
   const bulletin = body.docType === "bulletin";
-  const docLabel = bulletin ? (body.title?.slice(0, 80) || "Bulletin de notes") : situation ? "Fiche de situation financière" : "Fiche d'inscription";
+  const carte = body.docType === "carte";
+  const billet = body.docType === "billet";
+  const docLabel = billet ? (body.title?.slice(0, 80) || "Billet d'admission en classe") : carte ? "Carte scolaire" : bulletin ? (body.title?.slice(0, 80) || "Bulletin de notes") : situation ? "Fiche de situation financière" : "Fiche d'inscription";
   if (!body.studentId || !body.pdf) return NextResponse.json({ error: "Fiche manquante" }, { status: 400 });
   const pdf = Buffer.from(body.pdf, "base64");
   if (pdf.length > 8 * 1024 * 1024) return NextResponse.json({ error: "Fiche trop lourde" }, { status: 400 });
@@ -31,7 +33,7 @@ export async function POST(request: NextRequest) {
 
   const { data: st } = await admin.from("students").select("id, first_name, last_name, registration_number, email, guardian_email, program_code, class_name").eq("id", body.studentId).maybeSingle();
   if (!st) return NextResponse.json({ error: "Élève introuvable" }, { status: 404 });
-  const fileName = `${bulletin ? "Bulletin" : situation ? "Situation-financiere" : "Fiche-inscription"}-${st.registration_number ?? st.last_name}.pdf`;
+  const fileName = `${billet ? "Billet-admission" : carte ? "Carte-scolaire" : bulletin ? "Bulletin" : situation ? "Situation-financiere" : "Fiche-inscription"}-${st.registration_number ?? st.last_name}.pdf`;
 
   // 1. Espaces : l'élève (compte rattaché) et ses parents
   const [{ data: student }, { data: parents }] = await Promise.all([
@@ -46,7 +48,7 @@ export async function POST(request: NextRequest) {
     if (up.error) continue;
     await admin.from("member_documents").insert({
       profile_id: owner,
-      category: bulletin ? "bulletin" : situation ? "recu" : "fiche",
+      category: billet ? "courrier" : carte ? "carte" : bulletin ? "bulletin" : situation ? "recu" : "fiche",
       title: `${docLabel} ${st.registration_number ?? ""}`.trim(),
       path,
       mime: "application/pdf",
@@ -71,7 +73,7 @@ export async function POST(request: NextRequest) {
         from: process.env.NOTIFY_FROM_EMAIL || "Hôtel École Avenida <onboarding@resend.dev>",
         to: emails,
         subject: `${docLabel} de ${st.first_name} ${st.last_name} – Hôtel École Avenida`,
-        html: `<p>Bonjour,</p><p>Veuillez trouver ci-joint la ${bulletin ? `${docLabel.toLowerCase()} signé par le Directeur pédagogique` : situation ? "fiche de situation financière (écolage) à jour" : "fiche d'inscription définitive"} de <strong>${st.first_name} ${st.last_name}</strong> (matricule <strong>${st.registration_number ?? ""}</strong>, ${st.class_name ?? st.program_code ?? ""}).</p><p>Elle est également disponible dans l'espace en ligne de l'élève et des parents : <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://www.hotelecoleavenida.net"}/espace/documents">Mes documents</a>.</p><p>Hôtel École Avenida · Travail – Discipline – Excellence</p>`,
+        html: `<p>Bonjour,</p><p>Veuillez trouver ci-joint la ${billet ? "billet d'admission en classe, à présenter au professeur avant de réintégrer la classe" : carte ? "carte scolaire (recto-verso, avec QR code de vérification)" : bulletin ? `${docLabel.toLowerCase()} signé par le Directeur pédagogique` : situation ? "fiche de situation financière (écolage) à jour" : "fiche d'inscription définitive"} de <strong>${st.first_name} ${st.last_name}</strong> (matricule <strong>${st.registration_number ?? ""}</strong>, ${st.class_name ?? st.program_code ?? ""}).</p><p>Elle est également disponible dans l'espace en ligne de l'élève et des parents : <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://www.hotelecoleavenida.net"}/espace/documents">Mes documents</a>.</p><p>Hôtel École Avenida · Travail – Discipline – Excellence</p>`,
         attachments: [{ filename: fileName, content: body.pdf }],
       }),
     });

@@ -8,6 +8,7 @@ import { situationStatus } from "@/components/cards/SituationSheet";
 import { IdCard } from "@/components/cards/IdCard";
 import { DocumentList } from "@/components/documents/DocumentList";
 import { DocumentViewer, downloadFile, type ViewableFile } from "@/components/documents/DocumentViewer";
+import { AccessSlipList } from "@/components/cards/AccessSlipSheet";
 import { AttendanceView } from "@/components/espace/AttendanceView";
 import { useAuth } from "@/context/AuthContext";
 import { DOC_LABELS } from "@/lib/admissions";
@@ -125,7 +126,10 @@ export default function DossierElevePage() {
       {tab === "carte" && <Carte s={s} />}
       {tab === "assiduite" && (
         <div className="rounded-2xl border border-slate-200 bg-white p-5">
-          <AttendanceView studentId={s.id} />
+          <AccessSlipList studentId={s.id} linkBase="/impression/billet" />
+          <div className="mt-6">
+            <AttendanceView studentId={s.id} />
+          </div>
         </div>
       )}
     </div>

@@ -19,6 +19,7 @@ export default async function ReglementPage() {
   return (
     <>
       <PageHeader
+        pageKey="reglement"
         eyebrow="Vie scolaire"
         title={
           <>

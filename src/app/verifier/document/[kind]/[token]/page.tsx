@@ -36,6 +36,18 @@ export default function VerifyDocumentPage() {
           ["Signé le", r.issued ? new Date(String(r.issued)).toLocaleDateString("fr-FR") : "—"],
           ...(Number(r.revision ?? 0) > 0 ? [["Version", `Bulletin rectifié (${r.revision})`] as [string, string]] : []),
         ]
+      : r.type === "billet"
+        ? [
+            ["N° du billet", String(r.number ?? "")],
+            ["Élève", String(r.name ?? "")],
+            ["Matricule", String(r.matricule ?? "")],
+            ["Classe", String(r.class ?? "")],
+            ["Motif", String(r.motif ?? "")],
+            ["Période", String(r.period ?? "")],
+            ["Retour en classe", r.return_date ? new Date(`${String(r.return_date)}T12:00:00`).toLocaleDateString("fr-FR") : "—"],
+            ["Délivré par", String(r.issued_by ?? "—")],
+            ["État", String(r.status ?? "")],
+          ]
       : r.type === "situation"
         ? [
             ["Élève", String(r.name ?? "")],
@@ -75,7 +87,7 @@ export default function VerifyDocumentPage() {
           ) : r.valid ? (
             <>
               <p className="flex items-center gap-2 rounded-2xl bg-emerald-50 p-4 font-bold text-emerald-800">
-                <CheckCircle2 aria-hidden className="size-6" /> {r.type === "bulletin" ? "Bulletin authentique" : r.type === "situation" ? "Situation financière à jour" : "Reçu authentique"}
+                <CheckCircle2 aria-hidden className="size-6" /> {r.type === "bulletin" ? "Bulletin authentique" : r.type === "situation" ? "Situation financière à jour" : r.type === "billet" ? "Billet d'admission authentique" : "Reçu authentique"}
               </p>
               <dl className="mt-4 divide-y divide-slate-100 text-sm">
                 {rows.map(([k, v]) => (

@@ -90,7 +90,7 @@ export const MODULES: NavModule[] = [
         items: [
           { label: "Pré-inscriptions", href: "/dashboard/admissions", icon: ClipboardList, roles: [DG, DP], hint: "Dossiers du site à valider" },
           { label: "Élèves par filière", href: "/dashboard/eleves", icon: GraduationCap, roles: [DG, DP, CPT], hint: "Inscrits, classes, situation" },
-          { label: "Dossiers des membres", href: "/dashboard/adhesions", icon: ClipboardSignature, roles: MANAGERS, hint: "Profils à examiner et valider" },
+          { label: "Dossiers élèves et parents", href: "/dashboard/adhesions?scope=ecole", icon: ClipboardSignature, roles: [DG, DP], hint: "Profils à examiner et valider" },
         ],
       },
       {
@@ -99,7 +99,7 @@ export const MODULES: NavModule[] = [
           { label: "Correspondance & permissions", href: "/dashboard/correspondance", icon: ClipboardCheck, roles: [DG, DP], hint: "Appel, absences, retards, permissions" },
           { label: "Notes & bulletins", href: "/dashboard/notes", icon: FileSpreadsheet, roles: [DG, DP], hint: "Saisie des notes, bulletins avec QR" },
           { label: "Filières & classes", href: "/dashboard/programs", icon: Landmark, roles: [DG, DP], hint: "CFA, CAP, BEP, BT, BTS" },
-          { label: "Cartes scolaires", href: "/dashboard/cartes", icon: IdCard, roles: [DG, DP, RH], hint: "Émission, QR, impression" },
+          { label: "Cartes scolaires", href: "/dashboard/cartes", icon: IdCard, roles: [DG, DP], hint: "Élèves : émission, QR, impression" },
           { label: "Annuaire, rôles et règlement", href: "/dashboard/annuaire", icon: UsersRound, roles: [DG, DP, RH], hint: "Administration, professeurs, signatures" },
           { label: "Espace École (en ligne)", href: "/espace/ecole", icon: MonitorPlay, roles: [DG, DP], hint: "Cours, devoirs, visio" },
         ],
@@ -149,6 +149,7 @@ export const MODULES: NavModule[] = [
         items: [
           { label: "Clients", href: "/dashboard/customers", icon: Users, roles: [DG, HOT], hint: "Fichier clients" },
           { label: "Cartes de fidélité", href: "/dashboard/cartes?type=client", icon: Star, roles: [DG, HOT], hint: "Numéros et niveaux" },
+          { label: "Dossiers des clients", href: "/dashboard/adhesions?scope=hotel", icon: ClipboardSignature, roles: [DG, HOT], hint: "Profils clients à examiner" },
           { label: "Espace Hôtel (équipes)", href: "/espace/hotel", icon: MonitorPlay, roles: [DG, HOT, PER], hint: "Consignes par service" },
         ],
       },
@@ -163,8 +164,9 @@ export const MODULES: NavModule[] = [
       {
         items: [
           { label: "Personnel & professeurs", href: "/dashboard/employees", icon: Users, roles: [DG, RH], hint: "Dossiers RH, contrats" },
-          { label: "Cartes de travail", href: "/dashboard/cartes?type=personnel", icon: IdCard, roles: [DG, RH], hint: "Émission et impression" },
-          { label: "Dossiers à examiner", href: "/dashboard/adhesions", icon: ClipboardSignature, roles: [DG, RH, HOT], hint: "Candidatures du personnel" },
+          { label: "Recrutements", href: "/dashboard/adhesions?scope=rh", icon: ClipboardSignature, roles: [DG, RH], hint: "Candidatures, dossiers du personnel" },
+          { label: "Salaires", href: "/dashboard/salaries", icon: Wallet, roles: [DG, RH, CPT], hint: "Paie, bulletins de salaire" },
+          { label: "Cartes de travail", href: "/dashboard/cartes?type=personnel", icon: IdCard, roles: [DG, RH], hint: "Personnel de l'hôtel et de l'école" },
         ],
       },
     ],
@@ -186,7 +188,7 @@ export const MODULES: NavModule[] = [
   },
   {
     key: "site",
-    label: "Site web",
+    label: "Gestion globale du site",
     icon: Globe,
     accent: "#0C356A",
     sections: [
@@ -204,6 +206,8 @@ export const MODULES: NavModule[] = [
           { label: "Menus et sous-menus", href: "/dashboard/site?tab=menus", icon: MenuIcon, roles: SITE, hint: "Ajouter, renommer, ordonner" },
           { label: "Pages et sections", href: "/dashboard/site?tab=pages", icon: LayoutTemplate, roles: SITE, hint: "Textes, images, vidéos" },
           { label: "Sections de l'accueil", href: "/dashboard/site?tab=accueil", icon: Rows3, roles: SITE, hint: "Afficher ou masquer" },
+          { label: "En-têtes des pages", href: "/dashboard/site?tab=entetes", icon: LayoutTemplate, roles: SITE, hint: "Titre, texte, photo de chaque page" },
+          { label: "Pied de page", href: "/dashboard/site?tab=pied", icon: LayoutTemplate, roles: SITE, hint: "Présentation et liens" },
           { label: "Images du site", href: "/dashboard/site?tab=images", icon: Images, roles: SITE, hint: "Façades, chambres, restaurant, élèves" },
           { label: "Diaporama et bandeau", href: "/dashboard/site?tab=entete", icon: PanelTop, roles: SITE, hint: "Héros de l'accueil" },
         ],

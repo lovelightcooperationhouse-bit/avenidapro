@@ -19,6 +19,7 @@ export default async function ActualitesPage() {
   return (
     <>
       <PageHeader
+        pageKey="actualites"
         eyebrow="Actualités"
         title={
           <>

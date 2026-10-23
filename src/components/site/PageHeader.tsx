@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { SiteImage } from "@/content/site";
+import { getSettings } from "@/lib/cms";
 import { Container } from "./Section";
 
 type Crumb = { label: string; href?: string };
@@ -11,15 +12,18 @@ type Crumb = { label: string; href?: string };
  * Bandeau d'en-tête des pages intérieures : photo animée, voile bleu nuit, motif Avenida,
  * fil d'Ariane, sur-titre, titre (h1) et introduction.
  */
-export function PageHeader({
-  title,
-  description,
-  eyebrow,
-  image,
+export async function PageHeader({
+  pageKey,
+  title: baseTitle,
+  description: baseDescription,
+  eyebrow: baseEyebrow,
+  image: baseImage,
   focus = "center",
   breadcrumbs,
   children,
 }: {
+  /** Clé de la page : son en-tête est modifiable dans « Gestion globale du site › En-têtes des pages ». */
+  pageKey?: string;
   title: ReactNode;
   description?: ReactNode;
   eyebrow?: string;
@@ -30,6 +34,22 @@ export function PageHeader({
   breadcrumbs: Crumb[];
   children?: ReactNode;
 }) {
+  const o = pageKey ? (await getSettings()).page_headers?.[pageKey] : undefined;
+  const eyebrow = o?.eyebrow || baseEyebrow;
+  const description = o?.description || baseDescription;
+  const image = o?.image ? { src: o.image, alt: "" } : baseImage;
+  // Titre modifié : le texte entre [crochets] est mis en valeur comme sur le site
+  const title = o?.title
+    ? o.title.split(/\[([^\]]+)\]/).map((part, i) =>
+        i % 2 ? (
+          <span key={i} className="font-elegant text-vif-clair italic">
+            {part}
+          </span>
+        ) : (
+          part
+        ),
+      )
+    : baseTitle;
   return (
     <header className="relative isolate overflow-hidden bg-nuit text-white">
       <Image src={image.src} alt="" fill priority sizes="100vw" style={{ objectPosition: focus }} className="site-kenburns-slow -z-20 object-cover opacity-70" />

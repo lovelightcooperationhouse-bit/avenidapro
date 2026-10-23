@@ -18,6 +18,7 @@ export default async function PreinscriptionPage() {
   return (
     <>
       <PageHeader
+        pageKey="preinscription"
         eyebrow="Admissions 2026-2027"
         title={
           <>

@@ -77,6 +77,20 @@ export function ChatApp() {
     router.replace(`/discussions?c=${c}`);
   }, [params, convs, router]);
 
+  // Depuis l'annuaire : « Écrire » ouvre (ou crée) la discussion privée avec la personne
+  useEffect(() => {
+    const avec = params.get("avec");
+    if (!avec || !user || avec === user.id) return;
+    createClient()
+      .rpc("start_direct", { other: avec })
+      .then(({ data, error }) => {
+        if (error || !data) return;
+        load();
+        setActiveId(String(data));
+        router.replace(`/discussions?c=${data}`);
+      });
+  }, [params, user, load, router]);
+
   const active = convs?.find((c) => c.id === activeId) ?? null;
   const filtered = useMemo(() => (convs ?? []).filter((c) => conversationName(c).toLowerCase().includes(q.toLowerCase())), [convs, q]);
   const unreadTotal = (convs ?? []).reduce((a, c) => a + c.unread, 0);
