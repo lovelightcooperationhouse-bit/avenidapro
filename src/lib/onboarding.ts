@@ -109,7 +109,7 @@ const idDoc: FieldGroup = {
 };
 
 const emergency: FieldGroup = {
-  title: "Personne à prévenir en cas d'urgence",
+  title: "Personne à prévenir en cas d'urgence (au verso de la carte)",
   fields: [
     { name: "emergency_name", label: "Nom et prénom", required: true },
     { name: "emergency_phone", label: "Téléphone", type: "tel", required: true },
@@ -276,7 +276,6 @@ export function documentSpecs(kind: MemberKind): DocSpec[] {
         { key: "bulletins", label: "Derniers bulletins ou relevés de notes", required: true },
         { key: "diplome", label: "Dernier diplôme obtenu", required: false },
         { key: "certificat_medical", label: "Certificat médical", required: true },
-        { key: "cni_parent", label: "Pièce d'identité du parent ou tuteur", required: false },
       ];
     case "parent":
       return [{ key: "piece_identite", label: "Pièce d'identité", required: true }];

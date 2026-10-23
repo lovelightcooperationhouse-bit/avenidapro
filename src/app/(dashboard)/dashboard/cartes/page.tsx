@@ -102,8 +102,7 @@ function CardsAdmin() {
       if (error) errors += 1;
     }
     setBusy(false);
-    pingNotifications();
-    setMessage(errors ? `${ids.length - errors} carte(s) traitée(s), ${errors} erreur(s).` : `${ids.length} carte(s) ${regenerate ? "régénérée(s) (nouveau QR)" : "émise(s) / actualisée(s)"}. Les titulaires et familles sont notifiés.`);
+    setMessage(errors ? `${ids.length - errors} carte(s) traitée(s), ${errors} erreur(s).` : `${ids.length} carte(s) ${regenerate ? "régénérée(s) (nouveau QR)" : "émise(s) / actualisée(s)"}. Rien n'est envoyé : vérifiez, puis « Valider et envoyer » quand vous le décidez.`);
     load();
   };
 

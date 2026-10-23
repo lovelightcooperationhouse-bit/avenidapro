@@ -67,12 +67,6 @@ const REQUIRED_DOCS: RequiredDocDef[] = [
     required: true,
   },
   {
-    key: "doc_id_card",
-    label: "Pièce d'Identité / CNI ou Passeport",
-    description: "Copie recto-verso de la carte d'identité togolaise ou passeport",
-    required: true,
-  },
-  {
     key: "doc_photos",
     label: "Photos d'Identité 4x4",
     description: "Planche ou photo numérique récente sur fond blanc",

@@ -43,6 +43,8 @@ type Form = {
   guardian_email: string;
   guardian_relation: string;
   guardian_profession: string;
+  emergency_name: string;
+  emergency_phone: string;
   message: string;
 };
 
@@ -69,6 +71,8 @@ const empty: Form = {
   guardian_email: "",
   guardian_relation: "",
   guardian_profession: "",
+  emergency_name: "",
+  emergency_phone: "",
   message: "",
 };
 
@@ -128,6 +132,8 @@ export function PreinscriptionForm() {
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email.trim())) e.push("Indiquez une adresse e-mail valide.");
     }
     if (s === 2 && form.guardian_phone && form.guardian_phone.replace(/\D/g, "").length < 8) e.push("Le téléphone du parent semble incomplet.");
+    if (s === 2 && !form.emergency_name.trim()) e.push("Indiquez la personne à prévenir en cas d'urgence.");
+    if (s === 2 && form.emergency_phone.replace(/\D/g, "").length < 8) e.push("Indiquez le téléphone de la personne à prévenir.");
     if (s === 2 && form.guardian_email.trim() && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.guardian_email.trim())) e.push("L'e-mail du parent semble incorrect.");
     if (s === 3) {
       Object.values(files).forEach((f) => {
@@ -183,6 +189,8 @@ export function PreinscriptionForm() {
       guardian_email: clean(form.guardian_email.toLowerCase()),
       guardian_relation: clean(form.guardian_relation),
       guardian_profession: clean(form.guardian_profession),
+      emergency_name: clean(form.emergency_name),
+      emergency_phone: clean(form.emergency_phone),
       message: clean(form.message),
     });
     if (error) {
@@ -428,6 +436,13 @@ export function PreinscriptionForm() {
             <Field label="Profession">
               <input value={form.guardian_profession} onChange={(e) => set("guardian_profession", e.target.value)} className={field} />
             </Field>
+            <p className="mt-2 text-sm font-bold text-avenida-blue sm:col-span-2">Personne à prévenir en cas d&apos;urgence (figure au verso de la carte scolaire)</p>
+            <Field label="Nom et prénom *">
+              <input value={form.emergency_name} onChange={(e) => set("emergency_name", e.target.value)} placeholder="Peut être le parent ou une autre personne" className={field} />
+            </Field>
+            <Field label="Téléphone *">
+              <input type="tel" value={form.emergency_phone} onChange={(e) => set("emergency_phone", e.target.value)} placeholder="+228 …" className={field} />
+            </Field>
             <div className="sm:col-span-2">
               <Field label="Message ou précision (facultatif)">
                 <textarea value={form.message} onChange={(e) => set("message", e.target.value)} rows={3} maxLength={2000} className={cn(field, "resize-y")} />
@@ -500,6 +515,7 @@ export function PreinscriptionForm() {
                 ["Candidat", `${form.first_name} ${form.last_name}`],
                 ["Contact", `${form.phone} · ${form.email}`],
                 ["Parent / tuteur", form.guardian_name ? `${form.guardian_name} (${form.guardian_phone || "—"})` : "Non renseigné"],
+                ["Personne à prévenir", `${form.emergency_name} (${form.emergency_phone})`],
                 ["Pièces jointes", `${Object.keys(files).length} fichier(s)`],
               ].map(([k, v]) => (
                 <div key={k}>

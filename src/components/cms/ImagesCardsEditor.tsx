@@ -84,7 +84,8 @@ const SAMPLE: CardData = {
     { label: "Adresse", value: "Bè Kpota, Lomé" },
     { label: "Tuteur", value: "Kossi Koffi · +228 90 00 00 00" },
   ],
-  emergency: "Kossi Koffi · +228 90 00 00 00",
+  guardian: "Kossi Koffi · +228 90 00 00 00",
+  emergency: "Afi Mensah · +228 91 00 00 00",
 };
 
 /** Textes communs des cartes (verso, signature, contact) avec aperçu en direct, par catégorie. */

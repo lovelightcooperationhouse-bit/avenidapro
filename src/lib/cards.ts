@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/client";
 
 /** Colonnes lues pour afficher une carte (élève / salarié). */
 export const STUDENT_CARD_COLS =
-  "id, first_name, last_name, photo_url, registration_number, student_number, class_name, program_code, academic_year, status, total_fee, paid_fee, remaining_fee, birth_date, birth_place, gender, residence_neighborhood, address, city, phone, tutor_name, tutor_phone, parent_father_name, parent_father_phone, parent_mother_name, parent_mother_phone";
+  "id, first_name, last_name, photo_url, registration_number, student_number, class_name, program_code, academic_year, status, total_fee, paid_fee, remaining_fee, birth_date, birth_place, gender, residence_neighborhood, address, city, phone, tutor_name, tutor_phone, emergency_contact_name, emergency_contact_phone, parent_father_name, parent_father_phone, parent_mother_name, parent_mother_phone";
 export const EMPLOYEE_CARD_COLS = "id, first_name, last_name, photo_url, matricule, role_title, position, department, sector, status, phone, birth_date, gender, nationality, neighborhood, hire_date";
 
 export type StudentRow = {
@@ -29,6 +29,8 @@ export type StudentRow = {
   phone?: string | null;
   tutor_name?: string | null;
   tutor_phone?: string | null;
+  emergency_contact_name?: string | null;
+  emergency_contact_phone?: string | null;
   parent_father_name?: string | null;
   parent_father_phone?: string | null;
   parent_mother_name?: string | null;
@@ -106,7 +108,8 @@ export const studentCardData = (s: StudentRow, c: CardRow): CardData => ({
     { label: "Tuteur", value: [guardian(s).name, guardian(s).phone].filter(Boolean).join(" · ") },
     { label: "Adresse", value: [s.address, s.residence_neighborhood, s.city].filter(Boolean).join(", ") },
   ],
-  emergency: [guardian(s).name, guardian(s).phone].filter(Boolean).join(" · ") || null,
+  guardian: [guardian(s).name, guardian(s).phone].filter(Boolean).join(" · ") || null,
+  emergency: [s.emergency_contact_name, s.emergency_contact_phone].filter(Boolean).join(" · ") || null,
   cardNumber: c.card_number,
 });
 

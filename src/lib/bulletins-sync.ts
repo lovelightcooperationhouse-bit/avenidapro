@@ -67,12 +67,12 @@ export async function saveMarks(
   return upserts.length;
 }
 
-type Existing = { id: string; student_id: string; published: boolean; revision: number; general_average: number | null; rank_display: string | null; subjects_data: unknown; raw_data: { extras?: BulletinExtras } | null };
+type Existing = { id: string; student_id: string; published: boolean; revision: number; signed_at: string | null; signed_by_name: string | null; sent_at: string | null; general_average: number | null; rank_display: string | null; subjects_data: unknown; raw_data: { extras?: BulletinExtras } | null };
 
 /**
  * Calcule (ou recalcule) tous les bulletins d'une classe pour un semestre : moyennes, produits, rangs,
- * classement, distinctions et assiduité. Les données saisies à la main (sanctions, distinction, remarque)
- * sont conservées. Un bulletin déjà publié dont le résultat change devient « rectifié » (famille prévenue).
+ * classement, distinctions et assiduité. Les données saisies à la main (sanctions, distinction, remarque, décision du conseil)
+ * sont conservées. Un bulletin signé ou envoyé dont le résultat change redevient « à valider » (rectifié) : il faudra le resigner et le renvoyer.
  */
 export async function recalcClass(cls: string, semester: number, year: string) {
   const supabase = createClient();
@@ -82,7 +82,7 @@ export async function recalcClass(cls: string, semester: number, year: string) {
   const [from, to] = semesterRange(year, semester);
   const [{ data: att }, { data: ex }] = await Promise.all([
     supabase.from("student_attendance").select("student_id, status").in("student_id", ids).gte("date", from).lte("date", to).neq("status", "present"),
-    supabase.from("report_cards").select("id, student_id, published, revision, general_average, rank_display, subjects_data, raw_data").in("student_id", ids).eq("term", semester).eq("academic_year", year),
+    supabase.from("report_cards").select("id, student_id, published, revision, signed_at, signed_by_name, sent_at, general_average, rank_display, subjects_data, raw_data").in("student_id", ids).eq("term", semester).eq("academic_year", year),
   ]);
   const existing = new Map(((ex ?? []) as Existing[]).map((e) => [e.student_id, e]));
   const computed = computeClass(students, maquette, grades).filter((c) => c.lines.length);
@@ -98,7 +98,9 @@ export async function recalcClass(cls: string, semester: number, year: string) {
     const mine = (att ?? []).filter((a) => a.student_id === c.student.id);
     const unjust = mine.filter((a) => a.status === "absent").length;
     const changed = !!old && (Number(old.general_average) !== c.average || old.rank_display !== (c.rank?.display ?? null) || JSON.stringify(old.subjects_data) !== JSON.stringify(c.lines));
-    if (old?.published && changed) rectified += 1;
+    // Un bulletin signé ou envoyé qui change doit être revalidé, resigné puis renvoyé : rien ne part automatiquement
+    const reopen = !!old && changed && (!!old.signed_at || old.published);
+    if (reopen) rectified += 1;
     return {
       student_id: c.student.id,
       student_name: `${c.student.last_name.toUpperCase()} ${c.student.first_name}`,
@@ -133,7 +135,10 @@ export async function recalcClass(cls: string, semester: number, year: string) {
       bulletin_number: `BUL-${year.slice(2, 4)}S${semester}-${c.student.registration_number ?? c.student.id.slice(0, 6)}`,
       issue_date: new Date().toISOString().slice(0, 10),
       raw_data: { ...(old?.raw_data ?? {}), extras, model: "avenida-semestre" },
-      revision: (old?.revision ?? 0) + (old?.published && changed ? 1 : 0),
+      revision: (old?.revision ?? 0) + (reopen ? 1 : 0),
+      signed_at: reopen ? null : (old?.signed_at ?? null),
+      signed_by_name: reopen ? null : (old?.signed_by_name ?? null),
+      published: reopen ? false : (old?.published ?? false),
     };
   });
   const { error } = await supabase.from("report_cards").upsert(rows, { onConflict: "student_id,academic_year,term" });

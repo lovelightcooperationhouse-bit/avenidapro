@@ -1,9 +1,10 @@
 "use client";
 
-import { BookOpenCheck, CheckCircle2, FileSpreadsheet, ListOrdered, Loader2, Pencil, Plus, Printer, RefreshCw, Save, Signature, Trash2, Trophy, X } from "lucide-react";
+import { BookOpenCheck, FileSpreadsheet, ListOrdered, Loader2, Pencil, Plus, Printer, RefreshCw, Save, Send, Signature, Trash2, Trophy, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DocumentToolbar } from "@/components/cards/DocumentToolbar";
+import { situationStatus } from "@/components/cards/SituationSheet";
 import { reglementSignataire } from "@/content/reglement";
 import { useAuth } from "@/context/AuthContext";
 import { useSchoolYear } from "@/context/SchoolYearContext";
@@ -61,8 +62,8 @@ export default function NotesPage() {
           <FileSpreadsheet aria-hidden className="size-6 text-[#E30613]" /> Notes et bulletins
         </h1>
         <p className="mt-1 text-sm text-slate-600">
-          Modèle officiel : note de classe et note de composition par matière. Moyennes, produits, rangs, classement, appréciations et distinctions se calculent automatiquement ; le
-          Directeur pédagogique valide et signe, puis les bulletins arrivent dans l&apos;espace et la boîte e-mail des élèves et des parents.
+          Modèle officiel : note de classe et note de composition par matière. Moyennes, produits, rangs, classement, appréciations et distinctions se calculent automatiquement.
+          Rien n&apos;est envoyé automatiquement : après vérification, décision du conseil et signature du Directeur pédagogique, vous décidez de l&apos;envoi (espace, e-mail).
         </p>
       </header>
 
@@ -287,8 +288,7 @@ function Entry({ cls, semester, year }: { cls: string; semester: number; year: s
         year,
       );
       const r = await recalcClass(cls, semester, year);
-      pingNotifications();
-      setMsg({ ok: true, text: `${n} note(s) enregistrée(s) en ${m.name}. Bulletins recalculés automatiquement (${r.count} élève(s))${r.rectified ? ` · ${r.rectified} bulletin(s) publié(s) rectifié(s), familles prévenues` : ""}.` });
+      setMsg({ ok: true, text: `${n} note(s) enregistrée(s) en ${m.name}. Bulletins préparés automatiquement (${r.count} élève(s)), sans envoi${r.rectified ? ` · ${r.rectified} bulletin(s) signé(s) à revalider` : ""}.` });
       load();
     } catch (e) {
       setMsg({ ok: false, text: e instanceof Error ? e.message : "Enregistrement impossible" });
@@ -391,25 +391,76 @@ function Entry({ cls, semester, year }: { cls: string; semester: number; year: s
 
 /* ───────────────────── 3. Bulletins ───────────────────── */
 
-type Card = { id: string; student_id: string; student_name: string | null; general_average: number | null; rank_display: string | null; total_students: number | null; mention: string | null; published: boolean; revision: number; signed_by_name: string | null; signed_at: string | null; raw_data: { extras?: BulletinExtras } | null };
+type Card = {
+  id: string;
+  student_id: string;
+  student_name: string | null;
+  general_average: number | null;
+  rank_display: string | null;
+  total_students: number | null;
+  mention: string | null;
+  council_decision: string | null;
+  published: boolean;
+  revision: number;
+  signed_by_name: string | null;
+  signed_at: string | null;
+  sent_at: string | null;
+  sent_by_email: boolean;
+  raw_data: { extras?: BulletinExtras } | null;
+};
+type Pay = { id: string; total_fee: number | null; paid_fee: number | null; remaining_fee: number | null; academic_year: string | null };
+
+/** Décision du conseil proposée selon la moyenne (modifiable avant la signature). */
+const councilSuggestion = (avg: number, semester: number) =>
+  semester === 2
+    ? avg >= 10
+      ? "Admis(e) en classe supérieure"
+      : avg >= 9
+        ? "Admission conditionnelle, travail de rattrapage exigé"
+        : "Redouble la classe"
+    : avg >= 14
+      ? "Félicitations du conseil"
+      : avg >= 12
+        ? "Encouragements du conseil"
+        : avg >= 10
+          ? "Travail satisfaisant, continuez ainsi"
+          : "Résultats insuffisants, des efforts sont exigés";
+
+const stateOf = (c: Card) =>
+  c.published
+    ? { label: `Envoyé le ${new Date(c.sent_at ?? c.signed_at ?? Date.now()).toLocaleDateString("fr-FR")} · ${c.sent_by_email ? "espace + e-mail" : "espace"}`, tone: "bg-emerald-600 text-white" }
+    : c.signed_at
+      ? { label: "Signé · prêt à envoyer", tone: "bg-emerald-100 text-emerald-800" }
+      : c.revision
+        ? { label: "Rectifié · à revalider", tone: "bg-orange-100 text-orange-800" }
+        : { label: "Préparé · à vérifier", tone: "bg-amber-100 text-amber-800" };
 
 function Bulletins({ cls, semester, year }: { cls: string; semester: number; year: string }) {
   const { user } = useAuth();
   const [cards, setCards] = useState<Card[] | null>(null);
+  const [pays, setPays] = useState<Map<string, Pay>>(new Map());
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [fixing, setFixing] = useState<Card | null>(null);
+  const [sending, setSending] = useState(false);
   const canSign = user?.role === "directeur_pedagogique" || user?.role === "directeur_general";
 
   const load = useCallback(async () => {
-    const { data } = await createClient()
+    const supabase = createClient();
+    const { data } = await supabase
       .from("report_cards")
-      .select("id, student_id, student_name, general_average, rank_display, total_students, mention, published, revision, signed_by_name, signed_at, raw_data")
+      .select("id, student_id, student_name, general_average, rank_display, total_students, mention, council_decision, published, revision, signed_by_name, signed_at, sent_at, sent_by_email, raw_data")
       .eq("class_name", cls)
       .eq("term", semester)
       .eq("academic_year", year)
       .order("rank", { ascending: true });
-    setCards((data ?? []) as Card[]);
+    const list = (data ?? []) as Card[];
+    setCards(list);
+    if (list.length) {
+      const { data: st } = await supabase.from("students").select("id, total_fee, paid_fee, remaining_fee, academic_year").in("id", list.map((c) => c.student_id));
+      setPays(new Map(((st ?? []) as Pay[]).map((s) => [s.id, s])));
+    }
   }, [cls, semester, year]);
   useEffect(() => {
     load();
@@ -419,8 +470,11 @@ function Bulletins({ cls, semester, year }: { cls: string; semester: number; yea
     setBusy(true);
     try {
       const r = await recalcClass(cls, semester, year);
-      pingNotifications();
-      setMsg(r.count ? { ok: true, text: `${r.count} bulletin(s) calculé(s) : moyennes, rangs et classement à jour${r.rectified ? ` · ${r.rectified} bulletin(s) rectifié(s)` : ""}.` } : { ok: false, text: "Aucune note saisie pour ce semestre : saisissez d'abord les notes." });
+      setMsg(
+        r.count
+          ? { ok: true, text: `${r.count} bulletin(s) préparé(s) : moyennes, rangs et classement à jour${r.rectified ? ` · ${r.rectified} bulletin(s) modifié(s) à revalider et resigner` : ""}. Rien n'est envoyé aux familles.` }
+          : { ok: false, text: "Aucune note saisie pour ce semestre : saisissez d'abord les notes." },
+      );
     } catch (e) {
       setMsg({ ok: false, text: e instanceof Error ? e.message : "Calcul impossible" });
     }
@@ -428,81 +482,168 @@ function Bulletins({ cls, semester, year }: { cls: string; semester: number; yea
     load();
   };
 
-  const sign = async (ids: string[]) => {
-    if (!user || !ids.length) return;
+  const chosen = (cards ?? []).filter((c) => selected.has(c.id));
+  const toSign = chosen.filter((c) => !c.signed_at);
+  const toSend = chosen.filter((c) => c.signed_at);
+
+  /** Étape 3 : décision du conseil et signature officielle du Directeur pédagogique (sans envoi). */
+  const sign = async () => {
+    if (!user || !toSign.length) return;
     const name = user.role === "directeur_pedagogique" ? user.fullName : reglementSignataire.name;
-    if (!window.confirm(`Valider, signer (${name}, Directeur pédagogique) et publier ${ids.length} bulletin(s) ? Élèves et parents les recevront dans leur espace et par e-mail.`)) return;
+    if (!window.confirm(`Valider et signer ${toSign.length} bulletin(s) au nom de ${name}, Directeur pédagogique ?\nLes bulletins ne seront PAS envoyés : vous déciderez ensuite de l'envoi.`)) return;
     setBusy(true);
-    const { error } = await createClient().from("report_cards").update({ published: true, signed_by_name: name, signed_at: new Date().toISOString() }).in("id", ids);
+    const supabase = createClient();
+    const now = new Date().toISOString();
+    const results = await Promise.all(
+      toSign.map((c) => supabase.from("report_cards").update({ signed_at: now, signed_by_name: name, council_decision: c.council_decision ?? councilSuggestion(Number(c.general_average), semester) }).eq("id", c.id)),
+    );
     setBusy(false);
-    pingNotifications();
-    setMsg(error ? { ok: false, text: error.message } : { ok: true, text: `${ids.length} bulletin(s) signé(s) et publié(s) : déposés dans les espaces, e-mails envoyés aux élèves et parents.` });
+    const err = results.find((r) => r.error)?.error;
+    setMsg(err ? { ok: false, text: err.message } : { ok: true, text: `${toSign.length} bulletin(s) validé(s) et signé(s). Ils sont prêts : envoyez-les quand vous le décidez.` });
+    setSelected(new Set());
     load();
   };
 
-  const pending = (cards ?? []).filter((c) => !c.published);
+  /** Étape 4 : envoi décidé par la direction, dans l'espace de l'élève et du tuteur, avec ou sans e-mail. */
+  const send = async (byEmail: boolean) => {
+    setSending(false);
+    setBusy(true);
+    const { data, error } = await createClient().rpc("send_report_cards", { ids: toSend.map((c) => c.id), by_email: byEmail });
+    setBusy(false);
+    if (!error && byEmail) pingNotifications();
+    setMsg(error ? { ok: false, text: error.message } : { ok: true, text: `${data} bulletin(s) envoyé(s) dans l'espace de l'élève et du tuteur${byEmail ? ", avec un e-mail" : ""}.` });
+    setSelected(new Set());
+    load();
+  };
+
+  const toggleAll = () => setSelected(selected.size === (cards?.length ?? 0) ? new Set() : new Set((cards ?? []).map((c) => c.id)));
+
   return (
     <section className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5">
+      <ol className="grid gap-2 text-xs sm:grid-cols-4">
+        {[
+          ["1. Préparé", "Moyennes, rangs, classement calculés"],
+          ["2. Vérifié", "Consulter chaque bulletin et la situation de paiement"],
+          ["3. Signé", "Décision du conseil et signature du Directeur pédagogique"],
+          ["4. Envoyé", "Sur décision : espace de l'élève et du tuteur, e-mail"],
+        ].map(([t, d]) => (
+          <li key={t} className="rounded-xl bg-slate-50 p-2.5">
+            <p className="font-extrabold text-[#0C356A]">{t}</p>
+            <p className="text-slate-600">{d}</p>
+          </li>
+        ))}
+      </ol>
       <div className="flex flex-wrap gap-2">
         <button type="button" onClick={recalc} disabled={busy} className="inline-flex items-center gap-2 rounded-full bg-[#0C356A] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#E30613] disabled:opacity-60">
-          {busy ? <Loader2 aria-hidden className="size-4 animate-spin" /> : <RefreshCw aria-hidden className="size-4" />} Calculer / recalculer la classe
+          {busy ? <Loader2 aria-hidden className="size-4 animate-spin" /> : <RefreshCw aria-hidden className="size-4" />} Préparer / recalculer la classe
         </button>
-        {canSign && pending.length > 0 && (
-          <button type="button" onClick={() => sign(pending.map((c) => c.id))} disabled={busy} className="inline-flex items-center gap-2 rounded-full bg-[#E30613] px-5 py-2.5 text-sm font-bold text-white">
-            <Signature aria-hidden className="size-4" /> Valider, signer et publier ({pending.length})
+        {canSign && (
+          <button type="button" onClick={sign} disabled={busy || !toSign.length} className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-40">
+            <Signature aria-hidden className="size-4" /> Valider et signer ({toSign.length})
+          </button>
+        )}
+        {canSign && (
+          <button type="button" onClick={() => setSending(true)} disabled={busy || !toSend.length} className="inline-flex items-center gap-2 rounded-full bg-[#E30613] px-5 py-2.5 text-sm font-bold text-white disabled:opacity-40">
+            <Send aria-hidden className="size-4" /> Envoyer ({toSend.length})
           </button>
         )}
       </div>
+      {sending && (
+        <div className="flex flex-col gap-3 rounded-2xl border-2 border-[#E30613] bg-red-50/40 p-4">
+          <p className="font-bold text-[#0C356A]">Envoyer {toSend.length} bulletin(s) signé(s) : comment ?</p>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={() => send(true)} className="rounded-full bg-[#E30613] px-4 py-2 text-sm font-bold text-white">
+              Espace de l&apos;élève et du tuteur + e-mail
+            </button>
+            <button type="button" onClick={() => send(false)} className="rounded-full bg-[#0C356A] px-4 py-2 text-sm font-bold text-white">
+              Espace seulement (sans e-mail)
+            </button>
+            <button type="button" onClick={() => setSending(false)} className="rounded-full px-4 py-2 text-sm font-bold text-slate-600 ring-1 ring-slate-200">
+              Annuler
+            </button>
+          </div>
+          <p className="text-xs text-slate-600">Pour envoyer le PDF en pièce jointe à une adresse précise, ouvrez le « Bulletin A4 » de l&apos;élève.</p>
+        </div>
+      )}
       {msg && <p className={cn("rounded-xl p-3 text-sm font-semibold", msg.ok ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-900")}>{msg.text}</p>}
       {cards === null ? (
         <Loader2 aria-label="Chargement" className="size-6 animate-spin" />
       ) : cards.length === 0 ? (
-        <p className="text-sm text-slate-500">Aucun bulletin pour ce semestre. Saisissez les notes : les bulletins se calculent automatiquement.</p>
+        <p className="text-sm text-slate-500">Aucun bulletin pour ce semestre. Saisissez les notes : les bulletins se préparent automatiquement (sans être envoyés).</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[48rem] text-sm">
+          <table className="w-full min-w-[62rem] text-sm">
             <thead className="bg-slate-50 text-left text-xs text-slate-500 uppercase">
               <tr>
+                <th className="px-3 py-2">
+                  <input type="checkbox" aria-label="Tout sélectionner" checked={selected.size === cards.length} onChange={toggleAll} className="size-4" />
+                </th>
                 <th className="px-3 py-2">Rang</th>
                 <th className="px-3 py-2">Élève</th>
                 <th className="px-3 py-2 text-right">Moyenne</th>
                 <th className="px-3 py-2">Appréciation</th>
-                <th className="px-3 py-2">Distinction</th>
+                <th className="px-3 py-2">Écolage</th>
+                <th className="px-3 py-2">Décision du conseil</th>
                 <th className="px-3 py-2">État</th>
                 <th className="px-3 py-2" />
               </tr>
             </thead>
             <tbody>
-              {cards.map((c) => (
-                <tr key={c.id} className="border-t border-slate-100">
-                  <td className="px-3 py-2 font-bold whitespace-nowrap text-[#0C356A]">
-                    {c.rank_display} <span className="text-xs font-normal text-slate-500">/ {c.total_students}</span>
-                  </td>
-                  <td className="px-3 py-2 font-semibold">{c.student_name}</td>
-                  <td className={cn("px-3 py-2 text-right font-black", Number(c.general_average) < 10 ? "text-[#E30613]" : "text-[#0C356A]")}>{f2(c.general_average)}</td>
-                  <td className="px-3 py-2">{c.mention}</td>
-                  <td className="px-3 py-2 text-xs text-emerald-700">{c.raw_data?.extras?.distinction}</td>
-                  <td className="px-3 py-2">
-                    {c.published ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold whitespace-nowrap text-emerald-800">
-                        <CheckCircle2 aria-hidden className="size-3.5" /> Signé{c.revision ? ` · rectifié ${c.revision}×` : ""}
-                      </span>
-                    ) : (
-                      <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold whitespace-nowrap text-amber-800">À valider</span>
-                    )}
-                  </td>
-                  <td className="px-3 py-2">
-                    <div className="flex justify-end gap-1">
-                      <button type="button" onClick={() => setFixing(c)} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold text-[#E30613] ring-1 ring-red-200">
-                        <Pencil aria-hidden className="size-3.5" /> Corriger
-                      </button>
-                      <Link href={`/impression/bulletin/${c.id}`} target="_blank" className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold text-[#0C356A] ring-1 ring-slate-200 hover:text-[#E30613]">
-                        <Printer aria-hidden className="size-3.5" /> Bulletin A4
-                      </Link>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {cards.map((c) => {
+                const p = pays.get(c.student_id);
+                const pay = p ? situationStatus(p) : null;
+                const st = stateOf(c);
+                return (
+                  <tr key={c.id} className="border-t border-slate-100 align-top">
+                    <td className="px-3 py-2">
+                      <input
+                        type="checkbox"
+                        aria-label={`Sélectionner ${c.student_name}`}
+                        checked={selected.has(c.id)}
+                        onChange={() =>
+                          setSelected((s) => {
+                            const n = new Set(s);
+                            if (n.has(c.id)) n.delete(c.id);
+                            else n.add(c.id);
+                            return n;
+                          })
+                        }
+                        className="size-4"
+                      />
+                    </td>
+                    <td className="px-3 py-2 font-bold whitespace-nowrap text-[#0C356A]">
+                      {c.rank_display} <span className="text-xs font-normal text-slate-500">/ {c.total_students}</span>
+                    </td>
+                    <td className="px-3 py-2 font-semibold">
+                      {c.student_name}
+                      {c.raw_data?.extras?.distinction && <span className="block text-xs font-normal text-emerald-700">{c.raw_data.extras.distinction}</span>}
+                    </td>
+                    <td className={cn("px-3 py-2 text-right font-black", Number(c.general_average) < 10 ? "text-[#E30613]" : "text-[#0C356A]")}>{f2(c.general_average)}</td>
+                    <td className="px-3 py-2">{c.mention}</td>
+                    <td className="px-3 py-2">
+                      {pay && (
+                        <Link href={`/impression/situation/${c.student_id}`} target="_blank" title="Fiche de situation financière" className="rounded-full px-2.5 py-0.5 text-xs font-bold whitespace-nowrap" style={{ background: pay.bg, color: pay.tone }}>
+                          {pay.label}
+                        </Link>
+                      )}
+                    </td>
+                    <td className="max-w-[14rem] px-3 py-2 text-xs text-slate-700">{c.council_decision ?? <span className="text-slate-400 italic">{councilSuggestion(Number(c.general_average), semester)} (proposée)</span>}</td>
+                    <td className="px-3 py-2">
+                      <span className={cn("inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold whitespace-nowrap", st.tone)}>{st.label}</span>
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="flex justify-end gap-1">
+                        <button type="button" onClick={() => setFixing(c)} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold text-[#E30613] ring-1 ring-red-200">
+                          <Pencil aria-hidden className="size-3.5" /> Corriger
+                        </button>
+                        <Link href={`/impression/bulletin/${c.id}`} target="_blank" className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold whitespace-nowrap text-[#0C356A] ring-1 ring-slate-200 hover:text-[#E30613]">
+                          <Printer aria-hidden className="size-3.5" /> Bulletin A4
+                        </Link>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -530,6 +671,7 @@ function Correction({ card, cls, semester, year, onClose, onDone }: { card: Card
   const [data, setData] = useState<{ student: BulletinStudent; maquette: MaquetteSubject[]; grades: GradeRow[] } | null>(null);
   const [marks, setMarks] = useState<Record<string, { c: string; p: string }>>({});
   const [extras, setExtras] = useState<BulletinExtras>(card.raw_data?.extras ?? { distinctionAuto: true });
+  const [council, setCouncil] = useState(card.council_decision ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -557,11 +699,10 @@ function Correction({ card, cls, semester, year, onClose, onDone }: { card: Card
       );
       await createClient()
         .from("report_cards")
-        .update({ raw_data: { ...(card.raw_data ?? {}), extras } })
+        .update({ raw_data: { ...(card.raw_data ?? {}), extras }, council_decision: council.trim() || null })
         .eq("id", card.id);
       const r = await recalcClass(cls, semester, year);
-      pingNotifications();
-      onDone(`Correction enregistrée pour ${card.student_name} : toute la classe est recalculée (moyennes, rangs, classement)${r.rectified ? `, ${r.rectified} bulletin(s) publié(s) rectifié(s) et familles prévenues` : ""}.`);
+      onDone(`Correction enregistrée pour ${card.student_name} : toute la classe est recalculée (moyennes, rangs, classement)${r.rectified ? ` · ${r.rectified} bulletin(s) à revalider et resigner` : ""}.`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Correction impossible");
       setBusy(false);
@@ -580,7 +721,7 @@ function Correction({ card, cls, semester, year, onClose, onDone }: { card: Card
           <X aria-hidden className="size-5" />
         </button>
         <h2 className="text-xl font-black text-[#0C356A]">Corriger le bulletin · {card.student_name}</h2>
-        <p className="mb-4 text-sm text-slate-600">Réclamation ou erreur de saisie : modifiez les notes, puis enregistrez. Toute la classe est recalculée et, si le bulletin était publié, la famille reçoit le bulletin rectifié.</p>
+        <p className="mb-4 text-sm text-slate-600">Réclamation ou erreur de saisie : modifiez les notes, puis enregistrez. Toute la classe est recalculée ; un bulletin déjà signé redevient « à revalider » et devra être resigné puis renvoyé. Rien n'est envoyé automatiquement.</p>
         {!data ? (
           <Loader2 aria-label="Chargement" className="size-6 animate-spin" />
         ) : (
@@ -642,6 +783,15 @@ function Correction({ card, cls, semester, year, onClose, onDone }: { card: Card
                 ))}
               </fieldset>
             </div>
+            <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">
+              Décision du conseil (vide = proposée automatiquement selon la moyenne)
+              <input list="decisions" value={council} onChange={(e) => setCouncil(e.target.value)} className={input} />
+              <datalist id="decisions">
+                {["Félicitations du conseil", "Encouragements du conseil", "Travail satisfaisant, continuez ainsi", "Résultats insuffisants, des efforts sont exigés", "Admis(e) en classe supérieure", "Admission conditionnelle, travail de rattrapage exigé", "Redouble la classe"].map((x) => (
+                  <option key={x} value={x} />
+                ))}
+              </datalist>
+            </label>
             <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">
               Observation de la direction (facultatif)
               <input value={extras.remark ?? ""} onChange={(e) => setExtras({ ...extras, remark: e.target.value })} className={input} />

@@ -92,7 +92,7 @@ export function ReportCardSheet({ id }: { id: string }) {
 
   return (
     <article id="avenida-official-report-card" className="relative mx-auto w-full max-w-[210mm] bg-white p-[7mm] text-[10px] leading-snug text-slate-900 shadow-xl ring-1 ring-slate-200 print:p-[5mm] print:shadow-none print:ring-0">
-      {!r.published && (
+      {!r.signed_at && (
         <p aria-hidden className="pointer-events-none absolute top-1/3 left-1/2 -translate-x-1/2 -rotate-[25deg] text-[52px] font-black whitespace-nowrap text-red-600/10 select-none">
           PROVISOIRE · À VALIDER
         </p>
@@ -253,6 +253,11 @@ export function ReportCardSheet({ id }: { id: string }) {
           <p className="border-t border-slate-200 pt-1 text-[9px] text-slate-600">
             Moyenne de la classe : {f2(r.class_general_average)} · plus forte : {f2(r.class_highest_average)} · plus faible : {f2(r.class_lowest_average)}
           </p>
+          {r.council_decision && (
+            <p className="border-t border-slate-200 pt-1">
+              Décision du conseil : <strong>{r.council_decision}</strong>
+            </p>
+          )}
           {r.director_comment && <p className="text-[9.5px] italic">Observation : {r.director_comment}</p>}
         </div>
       </div>
@@ -272,14 +277,14 @@ export function ReportCardSheet({ id }: { id: string }) {
         <div className="min-w-[62mm] text-center text-[10.5px]">
           <p>Fait à Lomé, le {d(r.signed_at ?? r.issue_date) || ".............................."}</p>
           <p className="mt-1 font-extrabold uppercase">Le Directeur pédagogique</p>
-          {r.published && cs.signatureImage ? (
+          {r.signed_at && cs.signatureImage ? (
             // eslint-disable-next-line @next/next/no-img-element -- signature scannée
             <img src={cs.signatureImage} alt="Signature" className="mx-auto mt-1 h-[13mm] object-contain" />
           ) : (
             <div className="h-[13mm]" />
           )}
           <p className="font-bold">{r.signed_by_name ?? ""}</p>
-          {r.published && r.signed_at ? (
+          {r.signed_at ? (
             <p className="text-[8px] text-emerald-700">Validé et signé électroniquement le {new Date(r.signed_at).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}</p>
           ) : (
             <p className="text-[8px] text-amber-700">En attente de validation</p>

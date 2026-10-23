@@ -48,6 +48,8 @@ const CONFIG: Record<Kind, { table: string; cols: string; photo: boolean; fields
       { k: "city", label: "Ville" },
       { k: "tutor_name", label: "Tuteur / parent" },
       { k: "tutor_phone", label: "Téléphone du tuteur" },
+      { k: "emergency_contact_name", label: "Personne à prévenir" },
+      { k: "emergency_contact_phone", label: "Téléphone de la personne à prévenir" },
     ],
   },
   personnel: {

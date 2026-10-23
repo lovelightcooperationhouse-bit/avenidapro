@@ -29,9 +29,12 @@ export default function VerifyDocumentPage() {
           ["Classe", String(r.class ?? "")],
           ["Période", `${r.period ?? ""} · ${r.year ?? ""}`],
           ["Moyenne générale", r.average !== null ? `${Number(r.average).toFixed(2)}/20` : "—"],
-          ["Rang", String(r.rank ?? "—")],
-          ["Mention", String(r.mention ?? "—")],
+          ["Classement", `${r.rank ?? "—"}${r.total ? ` sur ${r.total}` : ""}`],
+          ["Appréciation", String(r.mention ?? "—")],
           ["N° de bulletin", String(r.number ?? "")],
+          ["Signé par", `${r.signed_by ?? "—"}, Directeur pédagogique`],
+          ["Signé le", r.issued ? new Date(String(r.issued)).toLocaleDateString("fr-FR") : "—"],
+          ...(Number(r.revision ?? 0) > 0 ? [["Version", `Bulletin rectifié (${r.revision})`] as [string, string]] : []),
         ]
       : r.type === "situation"
         ? [

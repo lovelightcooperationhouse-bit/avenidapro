@@ -38,7 +38,9 @@ export type CardData = {
   line2: string;
   /** Informations détaillées du recto (naissance, sexe, adresse, tuteur…). */
   details?: { label: string; value: string }[];
-  /** Contact à prévenir (verso). */
+  /** Parent ou tuteur (verso). */
+  guardian?: string | null;
+  /** Personne à prévenir en cas d'urgence (verso). */
   emergency?: string | null;
   statusLabel?: string;
 };
@@ -242,10 +244,15 @@ export function IdCard({ data, side = "both", className, settings }: { data: Car
           <div className="flex min-w-0 flex-col gap-[1.4cqw]">
             <div>
               <p className="text-[3.1cqw] leading-tight font-extrabold uppercase">Administration</p>
-              <p className="text-[2.8cqw] leading-snug text-white/90">En cas de perte, contactez :</p>
+              <p className="text-[2.5cqw] leading-snug text-white/90">En cas de perte, contactez l&apos;administration.</p>
+              {data.guardian && (
+                <p className="truncate text-[2.6cqw] leading-snug">
+                  <span className="text-white/75">Tuteur :</span> <strong>{data.guardian}</strong>
+                </p>
+              )}
               {data.emergency && (
-                <p className="truncate text-[2.8cqw] leading-snug">
-                  <span className="text-white/75">{isStudent ? "Tuteur" : "Urgence"} :</span> <strong>{data.emergency}</strong>
+                <p className="truncate text-[2.6cqw] leading-snug">
+                  <span className="text-white/75">Personne à prévenir :</span> <strong>{data.emergency}</strong>
                 </p>
               )}
               {data.cardNumber && (
