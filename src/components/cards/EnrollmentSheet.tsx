@@ -5,8 +5,10 @@ import { useEffect, useState, type ReactNode } from "react";
 import { fees, formations, requiredDocuments, siteConfig } from "@/content/site";
 import { createClient } from "@/lib/supabase/client";
 import { formatFCFA } from "@/lib/utils";
+import { officialSignatory } from "@/lib/official";
+import { verifyUrl, useCardSettings } from "./IdCard";
+import { OfficialSeal } from "./OfficialSeal";
 import { situationStatus } from "./SituationSheet";
-import { verifyUrl } from "./IdCard";
 
 type Student = Record<string, string | number | null | boolean | undefined> & {
   id: string;
@@ -43,6 +45,7 @@ function Title({ n, children, red }: { n: number; children: ReactNode; red?: boo
 export function EnrollmentSheet({ studentId }: { studentId: string }) {
   const [s, setS] = useState<Student | null | undefined>(undefined);
   const [qr, setQr] = useState<string | null>(null);
+  const official = officialSignatory(useCardSettings());
   const [docs, setDocs] = useState<string[]>([]);
 
   useEffect(() => {
@@ -228,12 +231,17 @@ export function EnrollmentSheet({ studentId }: { studentId: string }) {
           la tenue officielle, ponctualité, assiduité et paiement de l&apos;écolage aux échéances.
         </p>
         <div className="mt-auto grid grid-cols-[1fr_1fr_1fr_auto] items-end gap-[5mm] pt-[6mm] text-center text-[10px] font-semibold text-slate-600">
-          {["L'élève", "Le parent / tuteur", "La Direction"].map((k) => (
+          {["L'élève", "Le parent / tuteur"].map((k) => (
             <div key={k}>
               <p>{k}</p>
-              <div className="mt-[14mm] border-t border-slate-400 pt-1 text-[9px] font-normal">Signature{k === "La Direction" ? " et cachet" : ""}</div>
+              <div className="mt-[14mm] border-t border-slate-400 pt-1 text-[9px] font-normal">Signature</div>
             </div>
           ))}
+          <div>
+            <p>{official.title}</p>
+            <OfficialSeal size="17mm" signatory={official} className="mt-0.5 mb-0.5" />
+            <div className="border-t border-slate-400 pt-1 text-[9px] font-bold text-slate-800">{official.name}</div>
+          </div>
           <div className="flex flex-col items-center">
             {qr ? (
               // eslint-disable-next-line @next/next/no-img-element -- QR code généré

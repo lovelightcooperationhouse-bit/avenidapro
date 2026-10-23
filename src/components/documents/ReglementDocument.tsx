@@ -1,4 +1,5 @@
 import { Fragment } from "react";
+import { OfficialSeal } from "@/components/cards/OfficialSeal";
 import { siteConfig } from "@/content/site";
 import { reglementChapitres, reglementPreambule, reglementSignataire, REGLEMENT_VERSION, type ReglementBlock } from "@/content/reglement";
 
@@ -127,7 +128,7 @@ export function ReglementDocument({ identity, signatures = [], id = "avenida-reg
         </div>
         <div className="mt-8 text-right font-sans">
           <p className="text-sm font-bold">{reglementSignataire.title}</p>
-          <div className="ml-auto mt-8 w-48 border-b border-slate-400" />
+          <OfficialSeal size="22mm" className="mt-2 mr-0 ml-auto" />
           <p className="mt-1 text-sm font-black">{reglementSignataire.name}</p>
         </div>
       </section>

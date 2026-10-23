@@ -4,8 +4,10 @@ import QRCode from "qrcode";
 import { useEffect, useState } from "react";
 import { siteConfig } from "@/content/site";
 import type { CardSettings } from "@/lib/cms-types";
+import { officialSignatory } from "@/lib/official";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+import { OfficialSeal } from "./OfficialSeal";
 
 export type CardVariant = "eleve" | "professeur" | "hotel" | "personnel" | "client";
 
@@ -102,7 +104,9 @@ export function IdCard({ data, side = "both", className, settings }: { data: Car
   const isStudent = data.type === "eleve";
   const lineLabel = isStudent ? "Filière & année" : isClient ? "Fidélité" : "Fonction";
   const signTitle = cs.signatureTitle || (variant === "eleve" ? "Directeur pédagogique" : "La Direction");
-  const signName = cs.signatoryName ?? (variant === "eleve" ? "Kodjo Messan DOGLO" : "");
+  // Cartes scolaires : tampon de l'école et signature du Directeur pédagogique, apposés automatiquement
+  const official = officialSignatory(cs);
+  const signName = variant === "eleve" ? official.name : "";
   const brandAccent = theme.accent === "#D4A017" ? "#F2C94C" : "#FF4D5E";
   const line2 = (data.line2 ?? "").replace(/^Année scolaire\s*/i, "").replace(/\s*-\s*/g, "-");
   // Le cadre porte le conteneur : toutes les tailles sont en % de la largeur de la carte (cqw),
@@ -264,9 +268,8 @@ export function IdCard({ data, side = "both", className, settings }: { data: Car
             <div className="rounded-[1.4cqw] bg-white px-[2cqw] py-[1cqw] text-center" style={{ color: theme.dark }}>
               <p className="text-[2.5cqw] leading-tight font-extrabold uppercase">{signTitle}</p>
               {signName && <p className="text-[2.8cqw] leading-tight font-bold">{signName}</p>}
-              {cs.signatureImage ? (
-                // eslint-disable-next-line @next/next/no-img-element -- signature scannée
-                <img src={cs.signatureImage} alt="Signature" className="mx-auto h-[7cqw] object-contain" />
+              {variant === "eleve" ? (
+                <OfficialSeal size="9cqw" signatory={official} />
               ) : (
                 <div className="mx-auto mt-[5.5cqw] mb-[0.5cqw] w-3/4 border-b border-slate-400" />
               )}

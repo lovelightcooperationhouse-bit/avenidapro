@@ -4,6 +4,7 @@ import { CheckCircle2, Loader2, ShieldCheck, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { OfficialAttestation } from "@/components/cards/OfficialAttestation";
 import { createClient } from "@/lib/supabase/client";
 import { formatFCFA } from "@/lib/utils";
 
@@ -32,7 +33,7 @@ export default function VerifyDocumentPage() {
           ["Classement", `${r.rank ?? "—"}${r.total ? ` sur ${r.total}` : ""}`],
           ["Appréciation", String(r.mention ?? "—")],
           ["N° de bulletin", String(r.number ?? "")],
-          ["Signé par", `${r.signed_by ?? "—"}, Directeur pédagogique`],
+          ["Signé et cacheté par", `${r.signed_by ?? "—"}, Directeur pédagogique`],
           ["Signé le", r.issued ? new Date(String(r.issued)).toLocaleDateString("fr-FR") : "—"],
           ...(Number(r.revision ?? 0) > 0 ? [["Version", `Bulletin rectifié (${r.revision})`] as [string, string]] : []),
         ]
@@ -97,6 +98,7 @@ export default function VerifyDocumentPage() {
                   </div>
                 ))}
               </dl>
+              {(r.type === "bulletin" || r.type === "billet") && <OfficialAttestation what={r.type === "bulletin" ? "Bulletin" : "Billet d'admission"} />}
             </>
           ) : (
             <p className="flex items-center gap-2 rounded-2xl bg-red-50 p-4 font-bold text-[#B8000F]">

@@ -4,6 +4,7 @@ import { AlertTriangle, BadgeCheck, CalendarCheck, CalendarX, Clock, CreditCard,
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { OfficialAttestation } from "@/components/cards/OfficialAttestation";
 import { SiteLogo } from "@/components/site/SiteLogo";
 import { createClient } from "@/lib/supabase/client";
 import { cn, formatFCFA } from "@/lib/utils";
@@ -133,6 +134,11 @@ export default function VerifyPage() {
                 <AlertTriangle aria-hidden className="size-4 shrink-0" />
                 Le personnel de l&apos;école connecté voit aussi la situation financière et l&apos;assiduité.
               </p>
+            )}
+            {r.valid && r.type === "eleve" && (
+              <div className="px-6 pb-6">
+                <OfficialAttestation what="Carte scolaire" />
+              </div>
             )}
           </div>
         )}

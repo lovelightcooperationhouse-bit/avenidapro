@@ -3,8 +3,10 @@
 import { RotateCcw } from "lucide-react";
 import { useState } from "react";
 import { CARD_THEMES, defaultCardRules, IdCard, type CardData, type CardVariant } from "@/components/cards/IdCard";
+import { OfficialSeal } from "@/components/cards/OfficialSeal";
 import { IMAGE_SLOTS, images, siteConfig } from "@/content/site";
 import type { CardSettings } from "@/lib/cms-types";
+import { OFFICIAL_SIGNATORY, officialSignatory } from "@/lib/official";
 import { cn } from "@/lib/utils";
 import { input, label, MediaPicker } from "./shared";
 import { SaveBar, saveKeys, useSettings } from "./SiteSettingsExtra";
@@ -122,14 +124,23 @@ export function CardsEditor() {
             Titre du signataire (verso)
             <input value={c.signatureTitle ?? ""} placeholder="Directeur pédagogique (élèves) · La Direction (autres)" onChange={(e) => set({ signatureTitle: e.target.value })} className={input} />
           </label>
+          <p className="rounded-xl bg-blue-50 p-3 text-xs text-blue-900">
+            Le tampon de l&apos;école et la signature du Directeur pédagogique sont apposés automatiquement sur les cartes scolaires, fiches d&apos;inscription, bulletins
+            signés, billets d&apos;admission et le règlement, et affichés quand on scanne le QR code. Laissez vide pour garder ceux en place.
+          </p>
           <label className={label}>
-            Nom du signataire (vide = aucun nom)
-            <input value={c.signatoryName ?? ""} placeholder="Kodjo Messan DOGLO (cartes scolaires)" onChange={(e) => set({ signatoryName: e.target.value })} className={input} />
+            Nom du Directeur pédagogique (signataire)
+            <input value={c.signatoryName ?? ""} placeholder={OFFICIAL_SIGNATORY.name} onChange={(e) => set({ signatoryName: e.target.value })} className={input} />
           </label>
           <div className={label}>
-            Signature scannée (image sur fond blanc ou transparent)
+            Signature du Directeur pédagogique (image sur fond transparent ; vide = signature en place)
             <MediaPicker value={c.signatureImage ? [{ url: c.signatureImage }] : []} onChange={(m) => set({ signatureImage: m[0]?.url ?? "" })} folder="cartes" />
           </div>
+          <div className={label}>
+            Tampon officiel de l&apos;école (image sur fond transparent ; vide = tampon en place)
+            <MediaPicker value={c.stampImage ? [{ url: c.stampImage }] : []} onChange={(m) => set({ stampImage: m[0]?.url ?? "" })} folder="cartes" />
+          </div>
+          <OfficialSeal size="22mm" signatory={officialSignatory(c)} className="my-1" />
           <div className="grid gap-3 sm:grid-cols-2">
             <label className={label}>
               Téléphone affiché

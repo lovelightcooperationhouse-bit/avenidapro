@@ -3,7 +3,10 @@
 import QRCode from "qrcode";
 import { useEffect, useState } from "react";
 import { siteConfig } from "@/content/site";
+import { officialSignatory } from "@/lib/official";
 import { createClient } from "@/lib/supabase/client";
+import { useCardSettings } from "./IdCard";
+import { OfficialSeal } from "./OfficialSeal";
 import { documentVerifyUrl } from "./ReportCardSheet";
 
 export type AccessSlip = {
@@ -41,6 +44,7 @@ export function AccessSlipSheet({ id }: { id: string }) {
   const [slip, setSlip] = useState<AccessSlip | null | undefined>(undefined);
   const [st, setSt] = useState<Student | null>(null);
   const [qr, setQr] = useState<string | null>(null);
+  const official = officialSignatory(useCardSettings());
 
   useEffect(() => {
     const supabase = createClient();
@@ -150,9 +154,12 @@ export function AccessSlipSheet({ id }: { id: string }) {
             </div>
           </div>
           <div>
-            <p className="font-bold">L&apos;administration</p>
-            <p className="mt-[3mm] text-[9px] font-semibold text-[#1B1652]">{slip.issued_by_name ?? ""}</p>
-            <div className="mt-[4mm] border-t border-slate-400 pt-1 text-[8.5px] text-slate-500">Accord et cachet</div>
+            <p className="font-bold">{slip.status === "annule" ? "L'administration" : official.title}</p>
+            {slip.status === "annule" ? <div className="h-[13mm]" /> : <OfficialSeal size="13mm" signatory={official} />}
+            <div className="border-t border-slate-400 pt-1 text-[8.5px] text-slate-500">
+              {slip.status === "annule" ? "Billet annulé" : <strong className="text-[#1B1652]">{official.name}</strong>}
+              {slip.issued_by_name && <span className="block">Délivré par {slip.issued_by_name}</span>}
+            </div>
           </div>
           <div className="flex flex-col items-center">
             {qr ? (

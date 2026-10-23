@@ -4,13 +4,15 @@ import { BookOpenCheck, FileSpreadsheet, ListOrdered, Loader2, Pencil, Plus, Pri
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DocumentToolbar } from "@/components/cards/DocumentToolbar";
+import { useCardSettings } from "@/components/cards/IdCard";
+import { OfficialSeal } from "@/components/cards/OfficialSeal";
 import { situationStatus } from "@/components/cards/SituationSheet";
-import { reglementSignataire } from "@/content/reglement";
 import { useAuth } from "@/context/AuthContext";
 import { useSchoolYear } from "@/context/SchoolYearContext";
 import { CONDUCTS, GROUPS, MARK_CLASS, MARK_COMPO, SANCTIONS, SEMESTERS, appreciation, maquetteFor, round2, type BulletinExtras, type BulletinStudent, type GradeRow, type MaquetteSubject, type SubjectGroup } from "@/lib/bulletins";
 import { loadClass, OfflineSaved, recalcClass, saveMarks } from "@/lib/bulletins-sync";
 import { pingNotifications } from "@/lib/notify";
+import { officialSignatory } from "@/lib/official";
 import { submitToDG } from "@/lib/validations";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -477,6 +479,7 @@ function Bulletins({ cls, semester, year }: { cls: string; semester: number; yea
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [fixing, setFixing] = useState<Card | null>(null);
   const [sending, setSending] = useState(false);
+  const official = officialSignatory(useCardSettings());
   const canSign = user?.role === "directeur_pedagogique" || user?.role === "directeur_general";
 
   const load = useCallback(async () => {
@@ -522,7 +525,8 @@ function Bulletins({ cls, semester, year }: { cls: string; semester: number; yea
   /** Étape 3 : décision du conseil et signature officielle du Directeur pédagogique (sans envoi). */
   const sign = async () => {
     if (!user || !toSign.length) return;
-    const name = user.role === "directeur_pedagogique" ? user.fullName : reglementSignataire.name;
+    // La signature apposée est toujours celle du Directeur pédagogique (nom officiel, tampon et signature)
+    const name = official.name;
     if (!window.confirm(`Valider et signer ${toSign.length} bulletin(s) au nom de ${name}, Directeur pédagogique ?\nLes bulletins ne seront PAS envoyés : vous déciderez ensuite de l'envoi.`)) return;
     setBusy(true);
     const supabase = createClient();
@@ -878,6 +882,7 @@ function Results({ semester, year }: { semester: number; year: string }) {
   const [rows, setRows] = useState<ResultRow[] | null>(null);
   const [view, setView] = useState<"filiere" | "classe">("filiere");
   const [scope, setScope] = useState("");
+  const official = officialSignatory(useCardSettings());
 
   useEffect(() => {
     createClient()
@@ -994,8 +999,9 @@ function Results({ semester, year }: { semester: number; year: string }) {
           <div className="mt-8 flex justify-between text-sm">
             <p>Fait à Lomé, le {new Date().toLocaleDateString("fr-FR")}</p>
             <div className="text-center">
-              <p className="font-bold uppercase">Le Directeur pédagogique</p>
-              <p className="mt-10 font-semibold">{reglementSignataire.name}</p>
+              <p className="font-bold uppercase">{official.title}</p>
+              <OfficialSeal size="24mm" signatory={official} className="my-1" />
+              <p className="font-semibold">{official.name}</p>
             </div>
           </div>
         </article>

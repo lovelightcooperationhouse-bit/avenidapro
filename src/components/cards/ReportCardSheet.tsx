@@ -3,8 +3,10 @@
 import QRCode from "qrcode";
 import { Fragment, useEffect, useState } from "react";
 import { useCardSettings } from "@/components/cards/IdCard";
+import { OfficialSeal } from "@/components/cards/OfficialSeal";
 import { siteConfig } from "@/content/site";
 import { GROUPS, SANCTIONS, type BulletinExtras, type SubjectLine } from "@/lib/bulletins";
+import { officialSignatory } from "@/lib/official";
 import { createClient } from "@/lib/supabase/client";
 
 export type ReportCard = {
@@ -287,13 +289,8 @@ export function ReportCardSheet({ id }: { id: string }) {
         <div className="min-w-[62mm] text-center text-[10.5px]">
           <p>Fait à Lomé, le {d(r.signed_at ?? r.issue_date) || ".............................."}</p>
           <p className="mt-1 font-extrabold uppercase">Le Directeur pédagogique</p>
-          {r.signed_at && cs.signatureImage ? (
-            // eslint-disable-next-line @next/next/no-img-element -- signature scannée
-            <img src={cs.signatureImage} alt="Signature" className="mx-auto mt-1 h-[13mm] object-contain" />
-          ) : (
-            <div className="h-[13mm]" />
-          )}
-          <p className="font-bold">{r.signed_by_name ?? ""}</p>
+          {r.signed_at ? <OfficialSeal size="19mm" signatory={officialSignatory(cs)} className="my-0.5" /> : <div className="h-[19mm]" />}
+          <p className="font-bold">{r.signed_at ? (r.signed_by_name ?? officialSignatory(cs).name) : ""}</p>
           {r.signed_at ? (
             <p className="text-[8px] text-emerald-700">Validé et signé électroniquement le {new Date(r.signed_at).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}</p>
           ) : (

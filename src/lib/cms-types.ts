@@ -94,6 +94,8 @@ export type CardSettings = {
   /** Nom du signataire et signature scannée (image), au verso. */
   signatoryName?: string;
   signatureImage?: string;
+  /** Tampon officiel de l'école (dossiers scolaires : cartes, fiches, bulletins, billets). */
+  stampImage?: string;
   phone?: string;
   email?: string;
   address?: string;
