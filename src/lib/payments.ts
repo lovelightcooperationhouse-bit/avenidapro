@@ -2,6 +2,8 @@ import { createClient as createAdmin, type SupabaseClient } from "@supabase/supa
 
 /**
  * Paiement en ligne des réservations de l'hôtel.
+ *   Prestataire principal : PayDunya (PAYDUNYA_MASTER_KEY, PAYDUNYA_PRIVATE_KEY, PAYDUNYA_TOKEN, PAYDUNYA_SANDBOX=oui pour les essais)
+ *   — Mixx by Yas (T-Money Togo), Moov Money Togo et carte, sur la page de paiement PayDunya ; IPN : /api/paiements/paydunya.
  *   Carte bancaire : Stripe Checkout (STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET) en priorité
  *   Mobile Money Togo (Yas, Moov) : KkiaPay (KKIAPAY_PUBLIC_KEY, KKIAPAY_PRIVATE_KEY, KKIAPAY_SECRET_KEY, KKIAPAY_SANDBOX=oui pour les essais),
  *   dans une fenêtre de paiement sur le site, puis vérification serveur ; KkiaPay prend aussi la carte si Stripe n'est pas configuré.
@@ -49,6 +51,15 @@ async function cinetpayCall(method: "GET" | "POST", path: string, body?: unknown
   return { status: "INVALID_TOKEN", description: "jeton CinetPay refusé" };
 }
 
+const paydunya = () => !!process.env.PAYDUNYA_MASTER_KEY && !!process.env.PAYDUNYA_PRIVATE_KEY && !!process.env.PAYDUNYA_TOKEN;
+const paydunyaBase = () => `https://app.paydunya.com/${/^(oui|1|true)$/i.test(process.env.PAYDUNYA_SANDBOX ?? "") ? "sandbox-api" : "api"}/v1/checkout-invoice`;
+const paydunyaHeaders = () => ({
+  "Content-Type": "application/json",
+  "PAYDUNYA-MASTER-KEY": process.env.PAYDUNYA_MASTER_KEY!,
+  "PAYDUNYA-PRIVATE-KEY": process.env.PAYDUNYA_PRIVATE_KEY!,
+  "PAYDUNYA-TOKEN": process.env.PAYDUNYA_TOKEN!,
+});
+
 const kkiapay = () => !!process.env.KKIAPAY_PUBLIC_KEY && !!process.env.KKIAPAY_PRIVATE_KEY && !!process.env.KKIAPAY_SECRET_KEY;
 const kkiapaySandbox = () => /^(oui|1|true)$/i.test(process.env.KKIAPAY_SANDBOX ?? "");
 
@@ -56,9 +67,9 @@ const kkiapaySandbox = () => /^(oui|1|true)$/i.test(process.env.KKIAPAY_SANDBOX 
 export type KkiapayWidget = { amount: number; key: string; sandbox: boolean; partnerId: string; paymentmethod: string[]; countries: string[]; phone?: string; name: string; email?: string; reason: string; theme: string; position: string };
 
 export const onlineMethods = (): Record<OnlineMethod, boolean> => ({
-  carte: kkiapay() || (cinetpay() && /^(oui|1|true)$/i.test(process.env.CINETPAY_CARTE ?? "")) || !!process.env.STRIPE_SECRET_KEY,
-  yas: kkiapay() || cinetpay() || !!process.env.PAYGATE_AUTH_TOKEN,
-  moov: kkiapay() || cinetpay() || !!process.env.PAYGATE_AUTH_TOKEN,
+  carte: paydunya() || kkiapay() || (cinetpay() && /^(oui|1|true)$/i.test(process.env.CINETPAY_CARTE ?? "")) || !!process.env.STRIPE_SECRET_KEY,
+  yas: paydunya() || kkiapay() || cinetpay() || !!process.env.PAYGATE_AUTH_TOKEN,
+  moov: paydunya() || kkiapay() || cinetpay() || !!process.env.PAYGATE_AUTH_TOKEN,
 });
 
 export function adminClient(): SupabaseClient | null {
@@ -93,13 +104,44 @@ export async function startPayment(token: string, method: OnlineMethod, origin: 
   // Identifiant unique par tentative (30 caractères au plus, sans caractères spéciaux)
   const identifier = `${v.booking_ref.replace(/[^A-Z0-9]/gi, "")}T${Date.now().toString(36).toUpperCase()}`;
   // Carte : Stripe s'il est configuré ; Mobile Money (Yas, Moov) : KkiaPay, sinon CinetPay ou PayGate
-  const provider = method === "carte" && process.env.STRIPE_SECRET_KEY ? "stripe" : kkiapay() ? "kkiapay" : cinetpay() ? "cinetpay" : method === "carte" ? "stripe" : "paygate";
+  const provider = method === "carte" && process.env.STRIPE_SECRET_KEY ? "stripe" : paydunya() ? "paydunya" : kkiapay() ? "kkiapay" : cinetpay() ? "cinetpay" : method === "carte" ? "stripe" : "paygate";
   const amount = due;
   if (provider === "cinetpay" && (amount < 100 || amount > 2_500_000)) return { error: "Montant hors des limites du paiement en ligne (100 à 2 500 000 F) : réglez à la réception." };
   const { error: insErr } = await admin.from("reservation_payments").insert({ reservation_id: v.id, provider, method, amount, identifier, status: "en_cours" });
   if (insErr) return { error: insErr.message };
   const back = `${origin}/api/reservations/retour?id=${encodeURIComponent(identifier)}`;
   const label = `Réservation ${v.booking_ref} · ${v.room_type ?? "Chambre"} ${v.room_number ?? ""}`.trim();
+
+  if (provider === "paydunya") {
+    const create = (channels?: string[]) =>
+      fetch(`${paydunyaBase()}/create`, {
+        method: "POST",
+        headers: paydunyaHeaders(),
+        body: JSON.stringify({
+          invoice: {
+            total_amount: amount,
+            description: label,
+            ...(channels ? { channels } : {}),
+            customer: { name: v.customer_name, email: v.customer_email ?? "", phone: (v.customer_phone ?? "").replace(/\D/g, "") },
+          },
+          store: { name: "Hôtel École Avenida", phone: "+228 22 21 46 72", website_url: "https://www.hotelecoleavenida.net" },
+          custom_data: { identifier, booking_ref: v.booking_ref },
+          actions: { cancel_url: `${origin}/reservation/${v.token}?paiement=annule`, return_url: back, callback_url: `${origin}/api/paiements/paydunya` },
+        }),
+      })
+        .then((r) => r.json() as Promise<{ response_code?: string; response_text?: string; description?: string; token?: string }>)
+        .catch(() => ({}) as { response_code?: string; response_text?: string; description?: string; token?: string });
+    // Moyen choisi présélectionné ; si PayDunya ne reconnaît pas ce canal, page avec tous les moyens
+    const channel = method === "yas" ? "t-money-togo" : method === "moov" ? "moov-togo" : "card";
+    let j = await create([channel]);
+    if (j.response_code !== "00") j = await create();
+    if (j.response_code !== "00" || !j.response_text?.startsWith("http") || !j.token) {
+      await admin.from("reservation_payments").update({ status: "echoue", raw: j }).eq("identifier", identifier);
+      return { error: `Paiement en ligne indisponible : ${j.response_text ?? j.description ?? "PayDunya ne répond pas"}` };
+    }
+    await admin.from("reservation_payments").update({ provider_ref: j.token }).eq("identifier", identifier);
+    return { url: j.response_text };
+  }
 
   if (provider === "kkiapay") {
     const phone = (v.customer_phone ?? "").replace(/\D/g, "").replace(/^228/, "");
@@ -204,7 +246,17 @@ export async function verifyPayment(identifier: string): Promise<{ ok: boolean; 
   let paid = false;
   let ref: string | null = null;
   let details: unknown = null;
-  if (pay.provider === "kkiapay") {
+  if (pay.provider === "paydunya") {
+    if (!pay.provider_ref) return { ok: false, token };
+    const res = await fetch(`${paydunyaBase()}/confirm/${encodeURIComponent(pay.provider_ref)}`, { headers: paydunyaHeaders() }).catch(() => null);
+    const st = res ? ((await res.json().catch(() => ({}))) as { response_code?: string; status?: string; invoice?: { total_amount?: number | string }; custom_data?: { identifier?: string } }) : {};
+    const status = st.status ?? "";
+    paid = st.response_code === "00" && status === "completed" && Number(st.invoice?.total_amount ?? 0) >= Number(pay.amount) && (!st.custom_data?.identifier || st.custom_data.identifier === identifier);
+    ref = pay.provider_ref;
+    details = st;
+    if (status === "cancelled" || status === "failed") await admin.from("reservation_payments").update({ status: "echoue", raw: st }).eq("id", pay.id);
+    if (!paid) return { ok: false, token, pending: status === "pending" };
+  } else if (pay.provider === "kkiapay") {
     if (!pay.provider_ref) return { ok: false, token, pending: true };
     const res = await fetch(`${kkiapaySandbox() ? "https://api-sandbox.kkiapay.me" : "https://api.kkiapay.me"}/api/v1/transactions/status`, {
       method: "POST",

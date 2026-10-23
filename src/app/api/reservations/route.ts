@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
 
   if (!r.online) return NextResponse.json({ token: r.token, ref: r.ref });
   // KkiaPay : la fenêtre de paiement s'ouvre sur la page du reçu
-  if (process.env.KKIAPAY_PUBLIC_KEY && !(body.payment === "carte" && process.env.STRIPE_SECRET_KEY)) return NextResponse.json({ token: r.token, ref: r.ref, url: `/reservation/${r.token}?payer=${body.payment}` });
+  if (process.env.KKIAPAY_PUBLIC_KEY && !process.env.PAYDUNYA_MASTER_KEY && !(body.payment === "carte" && process.env.STRIPE_SECRET_KEY)) return NextResponse.json({ token: r.token, ref: r.ref, url: `/reservation/${r.token}?payer=${body.payment}` });
   const pay = await startPayment(r.token, body.payment as OnlineMethod, origin);
   // Paiement en ligne impossible : la réservation reste enregistrée, le client peut payer depuis son reçu ou à l'arrivée
   return NextResponse.json({ token: r.token, ref: r.ref, ...("url" in pay ? { url: pay.url } : "error" in pay ? { paymentError: pay.error } : { url: `/reservation/${r.token}?payer=${body.payment}` }) });
