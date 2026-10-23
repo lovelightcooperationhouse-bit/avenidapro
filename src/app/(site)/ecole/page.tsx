@@ -49,9 +49,9 @@ export default async function SchoolPage() {
       </PageHeader>
 
       {/* Explorateur des diplômes */}
-      <Section id="formations" tone="night" aria-labelledby="formations-title" className="scroll-mt-28 overflow-hidden">
+      <Section id="formations" tone="night" aria-labelledby="ecole-formations-title" className="scroll-mt-28 overflow-hidden">
         <SectionTitle
-          id="formations-title"
+          id="ecole-formations-title"
           eyebrow="Tableau des formations 2026-2027"
           title={
             <>
@@ -152,9 +152,9 @@ export default async function SchoolPage() {
       </Section>
 
       {/* Pédagogie */}
-      <Section id="pedagogie" tone="night" aria-labelledby="pedagogy-title" className="scroll-mt-28">
+      <Section id="pedagogie" tone="night" aria-labelledby="ecole-pedagogy-title" className="scroll-mt-28">
         <SectionTitle
-          id="pedagogy-title"
+          id="ecole-pedagogy-title"
           eyebrow="Notre pédagogie"
           title={
             <>

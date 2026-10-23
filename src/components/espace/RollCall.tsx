@@ -2,6 +2,7 @@
 
 import { CheckCircle2, Loader2, Save } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { enqueue, isNetworkError } from "@/lib/offline-queue";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { ATTENDANCE, type AttendanceRow } from "./AttendanceView";
@@ -61,10 +62,18 @@ export function RollCall({ classes, recorderId }: { classes: string[]; recorderI
   const save = async () => {
     setBusy(true);
     const rows = students.map((s) => ({ student_id: s.id, date, period: "journee", status: marks[s.id]?.status ?? "present", note: marks[s.id]?.note.trim() || null, recorded_by: recorderId }));
+    const absents = rows.filter((r) => r.status === "absent" || r.status === "retard").length;
+    const keepOffline = () => {
+      // Sans réseau : l'appel est gardé sur l'appareil et envoyé automatiquement au retour de la connexion
+      enqueue({ label: `Appel ${cls} du ${new Date(`${date}T12:00:00`).toLocaleDateString("fr-FR")}`, table: "student_attendance", kind: "upsert", rows, onConflict: "student_id,date,period" });
+      setBusy(false);
+      setSaved("Hors connexion : appel enregistré sur cet appareil. Il sera envoyé (et les familles prévenues) dès le retour du réseau.");
+    };
+    if (!navigator.onLine) return keepOffline();
     const { error } = await createClient().from("student_attendance").upsert(rows, { onConflict: "student_id,date,period" });
+    if (error && isNetworkError(error)) return keepOffline();
     setBusy(false);
     if (!error) pingNotifications();
-    const absents = rows.filter((r) => r.status === "absent" || r.status === "retard").length;
     setSaved(error ? "Enregistrement impossible : vérifiez que la classe vous est attribuée." : `Appel enregistré. ${absents ? `${absents} famille(s) prévenue(s).` : "Tous présents."}`);
   };
 

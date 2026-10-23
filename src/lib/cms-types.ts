@@ -111,6 +111,14 @@ export type CmsSettings = {
   cards?: CardSettings;
   /** En-têtes des pages (sur-titre, titre, introduction, photo), par clé de page. */
   page_headers?: Record<string, { eyebrow?: string; title?: string; description?: string; image?: string }>;
+  /** Titres de section (par identifiant) : sur-titre, titre (avec [mot mis en valeur]), introduction. */
+  section_texts?: Record<string, { eyebrow?: string; title?: string; description?: string }>;
+  /** Chambres de l'hôtel (nom et description) ; vide = liste d'origine. */
+  rooms?: { name: string; text: string }[];
+  /** Services de l'hôtel (accueil, restaurant, bar) ; vide = liste d'origine. */
+  hotel_services?: { title: string; text: string }[];
+  /** Questions fréquentes de l'accueil ; vide = liste d'origine. */
+  faq?: { q: string; a: string }[];
   hero?: HeroSlideSetting[];
   bandeau?: { text: string; href?: string; visible: boolean };
   socials?: Partial<Record<"facebook" | "instagram" | "tiktok" | "youtube" | "linkedin" | "whatsapp", string>>;

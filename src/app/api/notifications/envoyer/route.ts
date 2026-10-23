@@ -76,7 +76,10 @@ async function dispatch() {
   }
 
   if (sendSms) {
-    const { data } = await admin.from("notifications").select("id, title, body, profiles(phone)").eq("sms_status", "pending").in("kind", ["presence", "permission", "paiement", "carte", "alerte"]).order("created_at").limit(50);
+    // Un SMS n'a de sens qu'au moment de l'événement : les alertes de plus de 24 h ne partent plus par SMS
+    const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+    await admin.from("notifications").update({ sms_status: "skipped" }).eq("sms_status", "pending").lt("created_at", since);
+    const { data } = await admin.from("notifications").select("id, title, body, profiles(phone)").eq("sms_status", "pending").gte("created_at", since).in("kind", ["presence", "permission", "paiement", "carte", "alerte", "validation", "correspondance"]).order("created_at").limit(50);
     for (const n of data ?? []) {
       const phone = (n.profiles as unknown as { phone: string | null } | null)?.phone?.replace(/[^\d+]/g, "");
       if (!phone || phone.length < 8) {

@@ -1,5 +1,7 @@
 -- Fiches du personnel (RH) créées à partir de l'annuaire : matricule unique, poste, téléphone.
 -- Contrats, salaires et dates d'embauche restent à compléter par les RH (rien n'est inventé).
+-- Date d'embauche inconnue tant que les RH ne l'ont pas saisie (jamais de date inventée)
+alter table public.employees alter column hire_date drop not null;
 alter table public.staff_directory add column if not exists employee_id uuid references public.employees(id) on delete set null;
 
 create or replace function public.create_employees_from_directory()
@@ -20,8 +22,9 @@ begin
   for d in select * from public.staff_directory where employee_id is null order by position loop
     -- Nom en capitales = nom de famille ; le reste = prénoms
     parts := regexp_split_to_array(trim(d.full_name), '\s+');
-    select string_agg(p, ' ') into last from unnest(parts) p where p = upper(p) and p ~ '[A-ZÀ-Ý]';
-    select string_agg(p, ' ') into first from unnest(parts) p where not (p = upper(p) and p ~ '[A-ZÀ-Ý]');
+    -- (une initiale comme « B. » reste avec les prénoms)
+    select string_agg(p, ' ') into last from unnest(parts) p where p = upper(p) and p ~ '[A-ZÀ-Ý]{2}';
+    select string_agg(p, ' ') into first from unnest(parts) p where not (p = upper(p) and p ~ '[A-ZÀ-Ý]{2}');
     last := coalesce(last, d.full_name);
     sec := case when d.function_title in ('Directeur d''exploitation', 'Directeur commercial') then 'hotel' else 'ecole' end;
     mat := public.next_matricule(case when sec = 'hotel' then 'HOT' else 'ENS' end);
@@ -30,7 +33,7 @@ begin
             coalesce(d.function_title, 'Professeur'),
             coalesce(d.function_title, 'Professeur'),
             case when d.function_title is not null then 'Administration' else 'Enseignement' end,
-            sec, d.subjects, 'À compléter', 0, current_date,
+            sec, d.subjects, 'À compléter', 0, null,
             nullif(trim(split_part(coalesce(d.phones, ''), '/', 1)), ''), 'actif',
             jsonb_build_object('source', 'annuaire', 'a_completer', 'contrat, salaire et date d''embauche'))
     returning id into eid;
@@ -41,3 +44,5 @@ begin
 end $$;
 revoke execute on function public.create_employees_from_directory() from public, anon;
 grant execute on function public.create_employees_from_directory() to authenticated;
+
+update public.employees set hire_date = null where raw_data->>'source' = 'annuaire';

@@ -439,6 +439,13 @@ export const aboutValues = [
 /* ─────────────────────────── Hôtel ─────────────────────────── */
 
 /** Catégories de chambres (docs/ARCHITECTURE.md). ⚠️ Descriptions et tarifs à confirmer par la direction. */
+/** Services de l'hôtel présentés sur la page L'Hôtel (textes modifiables dans la gestion du site). */
+export const hotelServices = [
+  { title: "Accueil & réception", text: "Une réception attentive, assurée par nos équipes et nos élèves de la filière hébergement." },
+  { title: "Restaurant", text: "Une cuisine préparée par notre brigade, avec nos élèves cuisiniers et pâtissiers." },
+  { title: "Bar", text: "Boissons et cocktails servis par nos élèves de la filière restaurant / bar." },
+];
+
 export const rooms = [
   { name: "Chambre Standard", text: "Confortable et fonctionnelle, idéale pour un court séjour à Lomé.", image: images.roomComfort },
   { name: "Chambre Confort", text: "Plus d'espace et d'équipements pour un séjour en toute sérénité.", image: images.roomGarden },

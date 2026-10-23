@@ -53,9 +53,9 @@ export default async function AdmissionsPage() {
       </PageHeader>
 
       {/* Étapes */}
-      <Section aria-labelledby="steps-title">
+      <Section aria-labelledby="admissions-steps-title">
         <SectionTitle
-          id="steps-title"
+          id="admissions-steps-title"
           eyebrow="Comment s'inscrire"
           title={
             <>

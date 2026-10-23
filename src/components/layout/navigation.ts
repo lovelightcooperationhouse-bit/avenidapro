@@ -206,6 +206,7 @@ export const MODULES: NavModule[] = [
           { label: "Menus et sous-menus", href: "/dashboard/site?tab=menus", icon: MenuIcon, roles: SITE, hint: "Ajouter, renommer, ordonner" },
           { label: "Pages et sections", href: "/dashboard/site?tab=pages", icon: LayoutTemplate, roles: SITE, hint: "Textes, images, vidéos" },
           { label: "Sections de l'accueil", href: "/dashboard/site?tab=accueil", icon: Rows3, roles: SITE, hint: "Afficher ou masquer" },
+          { label: "Textes des pages", href: "/dashboard/site?tab=textes", icon: LayoutTemplate, roles: SITE, hint: "Titres, chambres, services, FAQ" },
           { label: "En-têtes des pages", href: "/dashboard/site?tab=entetes", icon: LayoutTemplate, roles: SITE, hint: "Titre, texte, photo de chaque page" },
           { label: "Pied de page", href: "/dashboard/site?tab=pied", icon: LayoutTemplate, roles: SITE, hint: "Présentation et liens" },
           { label: "Images du site", href: "/dashboard/site?tab=images", icon: Images, roles: SITE, hint: "Façades, chambres, restaurant, élèves" },

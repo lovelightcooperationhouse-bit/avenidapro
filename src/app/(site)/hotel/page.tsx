@@ -1,5 +1,6 @@
 import { ArrowRight, BedDouble, ConciergeBell, Mail, Phone, Utensils, Wine } from "lucide-react";
 import { getSiteImages } from "@/lib/site-images";
+import { getSettings } from "@/lib/cms";
 import type { Metadata } from "next";
 import Image from "next/image";
 import { BookingForm } from "@/components/site/BookingForm";
@@ -8,7 +9,7 @@ import { PageHeader } from "@/components/site/PageHeader";
 import { Reveal } from "@/components/site/Reveal";
 import { Section } from "@/components/site/Section";
 import { Accent, SectionTitle } from "@/components/site/SectionTitle";
-import { hotelGallery, rooms, siteConfig } from "@/content/site";
+import { hotelGallery, hotelServices, rooms, siteConfig } from "@/content/site";
 import { PhotoGallery } from "@/components/site/PhotoGallery";
 import { CmsSections } from "@/components/site/CmsBlocks";
 
@@ -21,12 +22,15 @@ export const metadata: Metadata = {
 export const revalidate = 60;
 
 export default async function HotelPage() {
-  const { images, im } = await getSiteImages();
+  const [{ images, im }, settings] = await Promise.all([getSiteImages(), getSettings()]);
+  // Chambres et services : textes modifiables (les photos se changent dans « Images du site »)
+  const roomList = rooms.map((r, i) => ({ ...r, ...(settings.rooms?.[i] ?? {}) }));
   const services = [
-    { title: "Accueil & réception", text: "Une réception attentive, assurée par nos équipes et nos élèves de la filière hébergement.", icon: ConciergeBell, image: images.reception },
-    { title: "Restaurant", text: "Une cuisine préparée par notre brigade, avec nos élèves cuisiniers et pâtissiers.", icon: Utensils, image: images.plating },
-    { title: "Bar", text: "Boissons et cocktails servis par nos élèves de la filière restaurant / bar.", icon: Wine, image: images.diningRoom },
+    { ...hotelServices[0], icon: ConciergeBell, image: images.reception },
+    { ...hotelServices[1], icon: Utensils, image: images.plating },
+    { ...hotelServices[2], icon: Wine, image: images.diningRoom },
   ];
+  const serviceList = services.map((x, i) => ({ ...x, ...(settings.hotel_services?.[i] ?? {}) }));
   return (
     <>
       <PageHeader
@@ -72,7 +76,7 @@ export default async function HotelPage() {
           </ButtonLink>
         </div>
         <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {rooms.map((r, i) => (
+          {roomList.map((r, i) => (
             <li key={r.name}>
               <Reveal delay={i * 90} className="group flex h-full flex-col overflow-hidden rounded-3xl bg-white shadow-lg ring-1 ring-slate-900/5 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl">
                 <div className="relative aspect-[4/3] overflow-hidden">
@@ -108,7 +112,7 @@ export default async function HotelPage() {
           inverted
         />
         <ul className="mt-14 grid gap-6 md:grid-cols-3">
-          {services.map((s, i) => (
+          {serviceList.map((s, i) => (
             <li key={s.title}>
               <Reveal delay={i * 100} className="group flex h-full flex-col overflow-hidden rounded-3xl border border-white/10 bg-white/5 backdrop-blur-sm">
                 <div className="relative aspect-[16/10] overflow-hidden">

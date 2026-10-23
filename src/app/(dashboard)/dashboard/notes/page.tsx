@@ -9,7 +9,7 @@ import { reglementSignataire } from "@/content/reglement";
 import { useAuth } from "@/context/AuthContext";
 import { useSchoolYear } from "@/context/SchoolYearContext";
 import { CONDUCTS, GROUPS, MARK_CLASS, MARK_COMPO, SANCTIONS, SEMESTERS, appreciation, maquetteFor, round2, type BulletinExtras, type BulletinStudent, type GradeRow, type MaquetteSubject, type SubjectGroup } from "@/lib/bulletins";
-import { loadClass, recalcClass, saveMarks } from "@/lib/bulletins-sync";
+import { loadClass, OfflineSaved, recalcClass, saveMarks } from "@/lib/bulletins-sync";
 import { pingNotifications } from "@/lib/notify";
 import { submitToDG } from "@/lib/validations";
 import { createClient } from "@/lib/supabase/client";
@@ -324,7 +324,7 @@ function Entry({ cls, semester, year }: { cls: string; semester: number; year: s
       setMsg({ ok: true, text: `${n} note(s) enregistrée(s) en ${m.name}. Bulletins préparés automatiquement (${r.count} élève(s)), sans envoi${r.rectified ? ` · ${r.rectified} bulletin(s) signé(s) à revalider` : ""}.` });
       load();
     } catch (e) {
-      setMsg({ ok: false, text: e instanceof Error ? e.message : "Enregistrement impossible" });
+      setMsg({ ok: e instanceof OfflineSaved, text: e instanceof Error ? e.message : "Enregistrement impossible" });
     } finally {
       setBusy(false);
     }

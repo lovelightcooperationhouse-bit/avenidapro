@@ -1,11 +1,12 @@
 "use client";
 
-import { BarChart3, ExternalLink, Globe, IdCard, Images, LayoutTemplate, PanelBottom, PanelsTopLeft, Loader2, Mail, Menu, Newspaper, Palette, PanelTop, Phone, Rows3 } from "lucide-react";
+import { BarChart3, ExternalLink, Globe, IdCard, Images, LayoutTemplate, PanelBottom, PanelsTopLeft, Type, Loader2, Mail, Menu, Newspaper, Palette, PanelTop, Phone, Rows3 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { CardsEditor, ImagesEditor } from "@/components/cms/ImagesCardsEditor";
 import { FooterEditor, PageHeadersEditor } from "@/components/cms/PagesFooterEditor";
+import { PageTextsEditor } from "@/components/cms/PageTextsEditor";
 import { MenuEditor } from "@/components/cms/MenuEditor";
 import { PostsEditor } from "@/components/cms/PostsEditor";
 import { SectionsEditor } from "@/components/cms/SectionsEditor";
@@ -21,6 +22,7 @@ const SITE_TABS = [
   { key: "menus", label: "Menus", icon: Menu, hint: "Menus et sous-menus" },
   { key: "pages", label: "Pages et sections", icon: LayoutTemplate, hint: "Nouvelles pages, sections, images" },
   { key: "accueil", label: "Sections de l'accueil", icon: Rows3, hint: "Afficher ou masquer" },
+  { key: "textes", label: "Textes des pages", icon: Type, hint: "Titres et textes des sections, chambres, services, questions fréquentes" },
   { key: "entetes", label: "En-têtes des pages", icon: PanelsTopLeft, hint: "Titre, texte et photo du bandeau de chaque page" },
   { key: "pied", label: "Pied de page", icon: PanelBottom, hint: "Présentation, citation, colonnes de liens" },
   { key: "images", label: "Images du site", icon: Images, hint: "Façades, chambres, restaurant, élèves en action" },
@@ -81,6 +83,7 @@ function SiteAdmin() {
       {tab === "abonnes" && <SubscribersList />}
       {tab === "images" && <ImagesEditor />}
       {tab === "entetes" && <PageHeadersEditor />}
+      {tab === "textes" && <PageTextsEditor />}
       {tab === "pied" && <FooterEditor />}
       {tab === "cartes" && <CardsEditor />}
     </div>

@@ -1,4 +1,12 @@
+import { enqueue, isNetworkError } from "@/lib/offline-queue";
 import { createClient } from "@/lib/supabase/client";
+
+/** Notes gardées sur l'appareil faute de réseau : elles partiront au retour de la connexion. */
+export class OfflineSaved extends Error {
+  constructor(public count: number) {
+    super(`Hors connexion : ${count} note(s) enregistrée(s) sur cet appareil. Elles seront envoyées et les bulletins recalculés dès le retour du réseau.`);
+  }
+}
 import { MARK_CLASS, MARK_COMPO, SEMESTERS, assiduite, computeClass, conductFor, distinctionFor, maquetteFor, round2, semesterRange, appreciation, type BulletinExtras, type BulletinStudent, type GradeRow, type MaquetteSubject } from "@/lib/bulletins";
 
 export const STUDENT_COLS = "id, first_name, last_name, registration_number, student_number, class_name, program_code, gender, birth_date, birth_place, nationality, photo_url";
@@ -57,8 +65,17 @@ export async function saveMarks(
       });
     }
   }
+  // Sans réseau : les notes sont gardées sur l'appareil et envoyées au retour de la connexion (bulletins recalculés ensuite)
+  const keepOffline = () => {
+    const recalc = { cls, semester, year };
+    if (upserts.length) enqueue({ label: `Notes ${cls} (${upserts.length})`, table: "grades", kind: "upsert", rows: upserts, onConflict: "student_id,academic_year,term,subject,evaluation_type", recalc });
+    for (const d of deletes) enqueue({ label: `Note effacée ${cls}`, table: "grades", kind: "delete", match: { student_id: d.student_id, academic_year: year, term: semester, subject: d.subject, evaluation_type: d.type }, recalc });
+    throw new OfflineSaved(upserts.length);
+  };
+  if (typeof navigator !== "undefined" && !navigator.onLine) keepOffline();
   if (upserts.length) {
     const { error } = await supabase.from("grades").upsert(upserts, { onConflict: "student_id,academic_year,term,subject,evaluation_type" });
+    if (error && isNetworkError(error)) keepOffline();
     if (error) throw new Error(error.message);
   }
   for (const d of deletes) {

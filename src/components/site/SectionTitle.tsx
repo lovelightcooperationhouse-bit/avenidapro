@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { getSettings } from "@/lib/cms";
 import { cn } from "@/lib/utils";
 
 type SectionTitleProps = {
@@ -17,8 +18,23 @@ type SectionTitleProps = {
 };
 
 /** Titre de section : sur-titre avec liseré tricolore, grand titre et introduction. */
-export function SectionTitle({ eyebrow, title, description, align = "left", as: Heading = "h2", id, inverted = false, className }: SectionTitleProps) {
+export async function SectionTitle({ eyebrow: baseEyebrow, title: baseTitle, description: baseDescription, align = "left", as: Heading = "h2", id, inverted = false, className }: SectionTitleProps) {
   const centered = align === "center";
+  // Textes modifiés dans « Gestion globale du site › Textes des pages » (par identifiant de section)
+  const o = id ? (await getSettings()).section_texts?.[id] : undefined;
+  const eyebrow = o?.eyebrow || baseEyebrow;
+  const description = o?.description || baseDescription;
+  const title = o?.title
+    ? o.title.split(/\[([^\]]+)\]/).map((part, i) =>
+        i % 2 ? (
+          <Accent key={i} inverted={inverted}>
+            {part}
+          </Accent>
+        ) : (
+          part
+        ),
+      )
+    : baseTitle;
 
   return (
     <div className={cn("flex max-w-3xl flex-col gap-4", centered && "mx-auto items-center text-center", className)}>

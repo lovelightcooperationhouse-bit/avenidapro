@@ -30,7 +30,7 @@ export const revalidate = 60;
 
 export default async function HomePage() {
   const { images, imageMap } = await getSiteImages();
-  const { hero, home_hidden } = await getSettings();
+  const { hero, home_hidden, faq: faqOverride } = await getSettings();
   // Sections de l'accueil masquées depuis « Site web → Sections de l'accueil »
   const show = (key: string) => !(home_hidden ?? []).includes(key);
   return (
@@ -527,7 +527,7 @@ export default async function HomePage() {
                 </div>
               </div>
               <Reveal>
-                <Faq items={faq} />
+                <Faq items={faqOverride?.length ? faqOverride : faq} />
               </Reveal>
             </div>
           </Section>
